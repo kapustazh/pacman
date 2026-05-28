@@ -1,3 +1,5 @@
+"""Map data structures for Pac-Man."""
+
 from enum import Enum
 
 
@@ -8,6 +10,7 @@ class TileType(Enum):
     EMPTY = " "
     PACGUM = "."
     SUPER_PACGUM = "o"
+#  Enum = 给固定选项正式命名
 
 
 class MapData:
@@ -28,9 +31,17 @@ class MapData:
              TileType.WALL, TileType.WALL],
         ]
 
-    def print_map(self) -> None:
-        """Print the maze to the terminal."""
-        for row in self.grid:
-            for tile in row:
-                print(tile.value, end="")
+    def is_wall(self, row: int, col: int) -> bool:
+        """Return True if tile is wall."""
+        return self.grid[row][col] == TileType.WALL
+
+    def print_map(self, player_row: int, player_col: int) -> None:
+        """Print maze with player."""
+        for row_index, row in enumerate(self.grid):
+            for col_index, tile in enumerate(row):
+                if row_index == player_row and col_index == player_col:
+                    print("P", end="")
+                else:
+                    print(tile.value, end="")
+                    # Print("P")==print("P", end="\n")
             print()
