@@ -3,17 +3,19 @@
 import sys
 
 from src.config import load_config
+from src.game.game_state import GameState
 
 
 def main() -> int:
-    """Run the Pac-Man game."""
+    """Start the Pac-Man game."""
     if len(sys.argv) != 2:
         print("Usage: python3 pac-man.py config.json")
         return 1
 
-    config_path = sys.argv[1]
-    config = load_config(config_path)
-    print(config)
+    config = load_config(sys.argv[1])
+    game = GameState(config)
+    game.start()
+    # print(config)
 
     return 0
 

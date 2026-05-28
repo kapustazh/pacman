@@ -16,9 +16,9 @@ clean:
 	rm -rf .mypy_cache .pytest_cache
 
 lint:
-	flake8 pac-man.py src
-	mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+	$(PYTHON) -m flake8 pac-man.py src
+	$(PYTHON) -m mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 lint-strict:
-	flake8 pac-man.py src
-	mypy . --strict
+	$(PYTHON) -m flake8 pac-man.py src
+	$(PYTHON) -m mypy . --strict

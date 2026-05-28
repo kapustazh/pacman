@@ -98,7 +98,7 @@ def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
 
     for level in value:
         if not isinstance(level, dict):
-            continue  # if not dict jump over???
+            continue
 
         width = level.get("width", 21)
         height = level.get("height", 21)
