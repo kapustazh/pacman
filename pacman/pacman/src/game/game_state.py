@@ -76,7 +76,7 @@ class GameState:
         gained_score = self.map_data.eat_tile(self.player.row, self.player.col)
         self.player.score += gained_score
 
-        self.ghost.move_towards(self.player.row, self.player.col)
+        self.ghost.move_towards(self.player.row, self.player.col, self.map_data)
         self.check_collision()
 
     def check_collision(self) -> None:

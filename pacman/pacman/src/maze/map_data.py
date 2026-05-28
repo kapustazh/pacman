@@ -20,15 +20,15 @@ class MapData:
         """Initialize a simple test map."""
         self.grid: list[list[TileType]] = [
             [TileType.WALL, TileType.WALL, TileType.WALL,
-             TileType.WALL, TileType.WALL],
+             TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL],
             [TileType.WALL, TileType.PACGUM, TileType.PACGUM,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.SUPER_PACGUM,
+             TileType.PACGUM, TileType.PACGUM, TileType.WALL, TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.WALL, TileType.PACGUM,
+             TileType.PACGUM, TileType.PACGUM, TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.WALL, TileType.SUPER_PACGUM, TileType.SUPER_PACGUM, TileType.SUPER_PACGUM,
              TileType.PACGUM, TileType.WALL],
             [TileType.WALL, TileType.WALL, TileType.WALL,
-             TileType.WALL, TileType.WALL],
+             TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL,]
         ]
 
     def is_wall(self, row: int, col: int) -> bool:
