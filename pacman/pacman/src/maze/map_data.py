@@ -53,12 +53,21 @@ class MapData:
         tile = self.grid[row][col]
 
         if tile == TileType.PACGUM:
-            self.grid[row][col] == TileType.EMPTY
+            self.grid[row][col] = TileType.EMPTY
             return 10
 
         if tile == TileType.SUPER_PACGUM:
-            self.grid[row][col] == TileType.EMPTY
+            self.grid[row][col] = TileType.EMPTY
             return 50
 
         return 0
 
+    def check_pacgum_left(self) -> bool:
+        """Return True if any pacgum or super pacgum is left. """
+        for row in self.grid:
+            for tile in row:
+                if tile == TileType.PACGUM:
+                    return True
+                elif tile == TileType.SUPER_PACGUM:
+                    return True
+        return False
