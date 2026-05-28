@@ -1,4 +1,4 @@
-#!/home/wehan/python/pacman/pacman/.venv/bin/python3
+#!/home/wehan/python/pac_man-draft/pacman/pacman/.venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

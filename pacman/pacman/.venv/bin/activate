@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV=/home/wehan/python/pacman/pacman/.venv
+VIRTUAL_ENV=/home/wehan/python/pac_man-draft/pacman/pacman/.venv
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

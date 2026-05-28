@@ -6,6 +6,7 @@ from src.maze.map_data import MapData
 from src.entities.player import Player
 from src.entities.ghost import Ghost
 from src.managers.highscore_manager import HighscoreManager
+from src.maze.maze_adaptor import MazeAdaptor
 
 
 class GameState:
@@ -14,7 +15,12 @@ class GameState:
     def __init__(self, config: dict[str, Any]) -> None:
         """Initialize the game state."""
         self.config = config
-        self.map_data = MapData()
+        # self.map_data = MapData()
+        level = self.config["levels"][0]
+        adaptor = MazeAdaptor()
+        grid = adaptor.generate(width=int(level["width"]), height=int(level["height"]), seed=int(self.config["seed"]))
+        self.map_data = MapData(grid)
+
         self.player = Player(row=2, col=2)
         self.player.lives = int(self.config["lives"])
         self.ghost = Ghost(row=1, col=1)

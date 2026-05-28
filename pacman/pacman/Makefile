@@ -4,6 +4,7 @@ PYTHON = python3
 
 install:
 	$(PYTHON) -m pip install -r requirements.txt
+	$(PYTHON) -m pip install mazegenerator-00001-py3-none-any.whl
 
 run:
 	$(PYTHON) pac-man.py config.json
@@ -14,6 +15,7 @@ debug:
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	rm -rf .mypy_cache .pytest_cache
+	$(PYTHON) -m pip uninstall -y mazegenerator
 
 lint:
 	$(PYTHON) -m flake8 pac-man.py src

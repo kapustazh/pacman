@@ -18,18 +18,19 @@ class MapData:
 
     def __init__(self) -> None:
         """Initialize a simple test map."""
-        self.grid: list[list[TileType]] = [
-            [TileType.WALL, TileType.WALL, TileType.WALL,
-             TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.PACGUM,
-             TileType.PACGUM, TileType.PACGUM, TileType.WALL, TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.WALL, TileType.PACGUM,
-             TileType.PACGUM, TileType.PACGUM, TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.WALL, TileType.SUPER_PACGUM, TileType.SUPER_PACGUM, TileType.SUPER_PACGUM,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.WALL, TileType.WALL,
-             TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL,]
-        ]
+        self.grid: list[list[TileType]] = grid
+        # = [
+        #     [TileType.WALL, TileType.WALL, TileType.WALL,
+        #      TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL],
+        #     [TileType.WALL, TileType.PACGUM, TileType.PACGUM,
+        #      TileType.PACGUM, TileType.PACGUM, TileType.WALL, TileType.PACGUM, TileType.WALL],
+        #     [TileType.WALL, TileType.PACGUM, TileType.WALL, TileType.PACGUM,
+        #      TileType.PACGUM, TileType.PACGUM, TileType.PACGUM, TileType.WALL],
+        #     [TileType.WALL, TileType.PACGUM, TileType.WALL, TileType.SUPER_PACGUM, TileType.SUPER_PACGUM, TileType.SUPER_PACGUM,
+        #      TileType.PACGUM, TileType.WALL],
+        #     [TileType.WALL, TileType.WALL, TileType.WALL,
+        #      TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL,]
+        # ]
 
     def is_wall(self, row: int, col: int) -> bool:
         """Return True if tile is wall."""
