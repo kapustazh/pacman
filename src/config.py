@@ -23,7 +23,7 @@ def remove_comments(content: str) -> str:
         stripped = line.strip()
         if stripped.startswith("#"):
             continue
-        lines.append(line)  # can i use extend?
+        lines.append(line)
     return "\n".join(lines)
 
 

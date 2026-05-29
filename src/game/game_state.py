@@ -48,7 +48,7 @@ class GameState:
 
     def print_state(self) -> None:
         """Print current game state."""
-        print("\033[H\033[J", end="")
+        print("\033c", end="")  # reset the terminal
         print("=== PAC-MAN ===")
         print(f"Score: {self.player.score}")
         print(f"Lives: {self.player.lives}")
