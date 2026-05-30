@@ -13,10 +13,10 @@ class AssetError(Exception):
 
 class Assets:
     def __init__(self, root: Path) -> None:
-        pass
+        self.root = root
 
     def load(self) -> None:
-        assets_root = Path(__file__).resolve().parent.parent / "assets"
+        assets_root = self.root
 
         def load_image(*parts: str) -> Surface:
             return pygame.image.load(
