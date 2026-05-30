@@ -1,10 +1,18 @@
 [
   {
+    "name": "sd",
+    "score": 50
+  },
+  {
     "name": "df",
     "score": 40
   },
   {
     "name": "d",
     "score": 30
+  },
+  {
+    "name": "f",
+    "score": 0
   }
 ]

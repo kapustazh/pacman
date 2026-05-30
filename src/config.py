@@ -6,6 +6,7 @@ from typing import Any
 DEFAULT_CONFIG: dict[str, Any] = {
     "highscore_filename": "highscores.json",
     "lives": 3,
+    "pacgum": 42,
     "points_per_pacgum": 10,
     "points_per_super_pacgum": 50,
     "points_per_ghost": 200,
@@ -63,9 +64,10 @@ def get_positive_int(data: dict[str, Any], key: str, default: int) -> int:
 def validate_config(data: dict[str, Any]) -> dict[str, Any]:
     """Validate known config keys and ignore unknown keys."""
     return {
-        "highscore_filename": get_string(data, "hgihscore_filename",
+        "highscore_filename": get_string(data, "highscore_filename",
                                          "highscores.json"),
         "lives": get_positive_int(data, "lives", 3),
+        "pacgum": get_positive_int(data, "pacgum", 42),
         "points_per_pacgum": get_positive_int(data, "points_per_pacgum", 10),
         "points_per_super_pacgum": get_positive_int(
             data, "points_per_super_pacgum", 50),

@@ -6,8 +6,9 @@ from src.maze.map_data import MapData
 class Ghost:
     """Represent a ghost."""
 
-    def __init__(self, row: int, col: int) -> None:
+    def __init__(self, name: str, row: int, col: int) -> None:
         """Initialize ghost position."""
+        self.name = name
         self.row = row
         self.col = col
 
@@ -19,10 +20,10 @@ class Ghost:
         -choose smallest Manhattan distance
         """
         moves = [
-            (0, 1), # right
-            (0, -1), # left
-            (-1, 0), # up
-            (1, 0), # down
+            (0, 1),  # right
+            (0, -1),  # left
+            (-1, 0),  # up
+            (1, 0),  # down
         ]
 
         best_row = self.row

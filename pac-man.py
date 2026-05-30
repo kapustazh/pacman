@@ -22,3 +22,18 @@ def main() -> int:
 
 if __name__ == "__main__":
     main()
+
+# add level builder and multi ghost gameplay
+
+# - Added LevelBuilder for automated level setup
+# - Generate playable levels from maze layouts
+# - Added player spawn initialization
+# - Added four ghost spawn positions
+# - Implemented pacgum placement logic
+# - Implemented super pacgum placement
+# - Added multi-ghost support
+# - Added TerminalRenderer for map display
+# - Implemented ghost-player collision handling
+# - Added player and ghost respawn system
+# - Added cheat mode framework (invincibility, ghost freeze, extra life, level skip)
+# - Refactored GameState to separate gameplay and level setup responsibilities
