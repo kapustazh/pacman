@@ -42,8 +42,8 @@ class AnimatedSprite:
             rect = pygame.Rect(i * width, 0, width, self.height)
             frame = self.surface.subsurface(rect)
             new_size = (
-                frame.get_width() * scale,
-                frame.get_height() * scale,
+                int(frame.get_width() * scale),
+                int(frame.get_height() * scale),
             )
             frame = pygame.transform.scale(frame, new_size)
             self.frames.append(frame)
