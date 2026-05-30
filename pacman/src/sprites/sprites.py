@@ -24,7 +24,7 @@ class Sprite:
         self, x: int, y: int, w: int, h: int, factor: float
     ) -> None:
         tile = self.surface.subsurface(pygame.Rect(x, y, w, h))
-        new_size = (w * factor, h * factor)
+        new_size = (int(w * factor), int(h * factor))
         self.surface = pygame.transform.scale(tile, new_size)
         self.width = self.surface.get_width()
         self.height = self.surface.get_height()
