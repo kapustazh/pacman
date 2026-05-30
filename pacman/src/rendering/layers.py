@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pygame.surface import Surface  # noqa E402
-from sprites import AnimatedSprite
+from sprites.sprites import AnimatedSprite
 
 
 class LayerRenderError(Exception):
