@@ -4,8 +4,6 @@ import random
 from typing import Any
 
 
-
-
 class LevelManager:
     """Manage level loading and progression."""
     def __init__(self, config: dict[str, Any]) -> None:

@@ -27,17 +27,23 @@ class MapData:
         """Return True if tile is not wall."""
         return not self.is_wall(row, col)
 
-    def eat_tile(self, row: int, col: int) -> int:
+    def eat_tile(
+        self,
+        row: int,
+        col: int,
+        points_per_pacgum: int,
+        points_per_super_pacgum: int
+    ) -> int:
         """Eat tile and return gained score."""
         tile = self.grid[row][col]
 
         if tile == TileType.PACGUM:
             self.grid[row][col] = TileType.EMPTY
-            return 10
+            return points_per_pacgum
 
         if tile == TileType.SUPER_PACGUM:
             self.grid[row][col] = TileType.EMPTY
-            return 50
+            return points_per_super_pacgum
 
         return 0
 

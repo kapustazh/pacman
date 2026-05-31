@@ -23,6 +23,8 @@ class GameState:
         self.is_running = True
         self.invincible = False
         self.freeze_ghost = False
+        self.edible_turns = 0
+
         self.renderer = TerminalRenderer()
 
         self.highscore_manager = HighscoreManager(str(self.config["highscore_filename"]))
@@ -65,7 +67,7 @@ class GameState:
             command = input("Move with WASD,  Q to quit: ").lower()
             # input read from keybaord, return str
 
-            if command == "q" or command == "Q":
+            if command == "q":
                 print("Quit game.")
                 self.is_running = False
             else:
@@ -83,6 +85,7 @@ class GameState:
         print(f"Score: {self.player.score}")
         print(f"Lives: {self.player.lives}")
         print(f"Level: {self.level_manager.current_level + 1}")
+        print(f"Edible turns: {self.edible_turns}")
         self.renderer.print_map(
             self.map_data,
             self.player.row,
@@ -130,10 +133,19 @@ class GameState:
 
         self.player.move(row_delta, col_delta)
 
-        self.player.score += self.map_data.eat_tile(
+        gained_score = self.map_data.eat_tile(
             self.player.row,
             self.player.col,
+            int(self.config["points_per_pacgum"]),
+            int(self.config["points_per_super_pacgum"]),
         )
+        if gained_score == int(self.config["points_per_super_pacgum"]):
+            self.edible_turns = 10000
+
+            for ghost in self.ghosts:
+                ghost.edible = True
+
+        self.player.score += gained_score
 
         if not self.freeze_ghost:
             for ghost in self.ghosts:
@@ -145,17 +157,31 @@ class GameState:
 
         for index, ghost in enumerate(self.ghosts):
             if ghost.row == self.player.row and ghost.col == self.player.col:
+                if ghost.edible:
+                    self.player.score += int(self.config["points_per_ghost"])
+                    print("You ate a ghost!")
+                    ghost.row, ghost.col = self.ghost_starts[index]
+                    ghost.edible = False
+                    continue
+                
                 if not self.invincible:
                     self.player.lives -= 1
                     print("Ghost caught you!")
                     self.player.row, self.player.col = self.player_start
-                    ghost.row, ghost.col = self.ghost_starts[index]
+                    for index, ghost in enumerate(self.ghosts):
+                        ghost.row, ghost.col = self.ghost_starts[index]
 
         if self.player.lives <= 0:
             print("Game over.")
             self.is_running = False
             return
-    
+
+        if self.edible_turns > 0:
+            self.edible_turns -= 1
+            if self.edible_turns == 0:
+                for ghost in self.ghosts:
+                    ghost.edible = False
+
         if not self.map_data.check_pacgum_left():
             self.complete_level()
 

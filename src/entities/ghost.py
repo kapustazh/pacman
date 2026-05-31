@@ -11,6 +11,7 @@ class Ghost:
         self.name = name
         self.row = row
         self.col = col
+        self.edible = False
 
     def move_towards(self, target_row: int, target_col: int, map_data: MapData) -> None:
         """
