@@ -4,6 +4,14 @@
     "score": 1740
   },
   {
+    "name": "dm",
+    "score": 900
+  },
+  {
+    "name": "Player",
+    "score": 790
+  },
+  {
     "name": "q",
     "score": 500
   },
@@ -16,6 +24,10 @@
     "score": 410
   },
   {
+    "name": "ann",
+    "score": 350
+  },
+  {
     "name": "dfmkf",
     "score": 300
   },
@@ -26,17 +38,5 @@
   {
     "name": "d",
     "score": 50
-  },
-  {
-    "name": "df",
-    "score": 40
-  },
-  {
-    "name": "d",
-    "score": 30
-  },
-  {
-    "name": "ajf",
-    "score": 30
   }
 ]

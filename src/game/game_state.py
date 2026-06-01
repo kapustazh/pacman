@@ -147,34 +147,26 @@ class GameState:
 
         self.player.score += gained_score
 
+        self.handle_ghost_collisions()
+
+        if not self.is_running:
+            return
+
         if not self.freeze_ghost:
             for ghost in self.ghosts:
-                ghost.move_towards(
-                    self.player.row,
-                    self.player.col,
-                    self.map_data
-                )
-
-        for index, ghost in enumerate(self.ghosts):
-            if ghost.row == self.player.row and ghost.col == self.player.col:
-                if ghost.edible:
-                    self.player.score += int(self.config["points_per_ghost"])
-                    print("You ate a ghost!")
-                    ghost.row, ghost.col = self.ghost_starts[index]
-                    ghost.edible = False
-                    continue
-                
-                if not self.invincible:
-                    self.player.lives -= 1
-                    print("Ghost caught you!")
-                    self.player.row, self.player.col = self.player_start
-                    for index, ghost in enumerate(self.ghosts):
-                        ghost.row, ghost.col = self.ghost_starts[index]
-
-        if self.player.lives <= 0:
-            print("Game over.")
-            self.is_running = False
-            return
+                if self.edible_turns > 0:
+                    ghost.move_away(
+                        self.player.row,
+                        self.player.col,
+                        self.map_data
+                    )
+                else:
+                    ghost.move_towards(
+                        self.player.row,
+                        self.player.col,
+                        self.map_data
+                    )
+        self.handle_ghost_collisions()
 
         if self.edible_turns > 0:
             self.edible_turns -= 1
@@ -185,12 +177,42 @@ class GameState:
         if not self.map_data.check_pacgum_left():
             self.complete_level()
 
+    def handle_ghost_collisions(self) -> None:
+        """Handle collisions between player and ghosts."""
+        for index, ghost in enumerate(self.ghosts):
+            if ghost.row != self.player.row or ghost.col != self.player.col:
+                continue
+
+            if ghost.edible:
+                self.player.score += int(self.config["points_per_ghost"])
+                print(f"You eat {ghost.name}!")
+                ghost.row, ghost.col = self.ghost_starts[index]
+                ghost.edible = False
+                continue
+
+            if not self.invincible:
+                self.player.lives -= 1
+                print("Ghost caught you!")
+
+                self.player.row, self.player.col = self.player_start
+                for ghost_index, current_ghost in enumerate(self.ghosts):
+                    current_ghost.row, current_ghost.col = (
+                        self.ghost_starts[ghost_index]
+                    )
+
+                if self.player.lives <= 0:
+                    print("Game over!")
+                    self.is_running = False
+                    return
+
+                return
+
     def complete_level(self) -> None:
         """Finish current level or win the game."""
         if not self.level_manager.has_next_level():
             print("You win the game!")
             self.is_running = False
-            return 
+            return
 
         self.level_manager.go_next_level()
         self.load_current_level(first_load=False)

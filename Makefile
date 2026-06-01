@@ -1,13 +1,13 @@
 .PHONY: venv install run debug clean lint lint-strict
 
-PYTHON = python3
+PYTHON = uv run python3
 
 venv:
 	uv venv
 
 install:
-	$(PYTHON) -m pip install -r requirements.txt
-	$(PYTHON) -m pip install mazegenerator-00001-py3-none-any.whl
+	uv pip install -r requirements.txt
+	UV_SKIP_WHEEL_FILENAME_CHECK=1 uv pip install mazegenerator-00001-py3-none-any.whl
 
 run:
 	$(PYTHON) pac-man.py config.json
