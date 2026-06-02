@@ -14,6 +14,8 @@ from src.ui.terminal_renderer import TerminalRenderer
 
 class GameState:
     """Represent the current game state."""
+    GHOST_RESPAWN_DELAY = 10
+    EDIBLE_DURATION = 20
 
     def __init__(self, config: dict[str, Any]) -> None:
         """Initialize the game state."""
@@ -28,7 +30,9 @@ class GameState:
 
         self.renderer = TerminalRenderer()
 
-        self.highscore_manager = HighscoreManager(str(self.config["highscore_filename"]))
+        self.highscore_manager = HighscoreManager(
+            str(self.config["highscore_filename"])
+            )
         self.highscore_manager.load()
 
         self.load_current_level(first_load=True)
@@ -127,6 +131,17 @@ class GameState:
         row_delta, col_delta = moves[command]
         self.try_move_player(row_delta, col_delta)
 
+    def pause_game(self) -> None:
+        """Pause the game until the player resumes or quits."""
+        while self.is_running:
+            command = input("Paused. Press R to resume or Q to quit:").lower()
+            if command == "r":
+                return
+            if command == "q":
+                self.is_running = False
+                return
+            print("Unknown pause command.")
+
     def try_move_player(self, row_delta: int, col_delta: int) -> None:
         """Move player if target is not wall."""
         new_row = self.player.row + row_delta
@@ -142,6 +157,23 @@ class GameState:
         if self.handle_time_limit():
             return
 
+        self.handle_tile_eating()
+
+        self.handle_ghost_collisions()
+
+        if not self.is_running:
+            return
+
+        self.move_ghosts()
+        self.handle_ghost_collisions()
+
+        self.update_timer()
+
+        if not self.map_data.check_pacgum_left():
+            self.complete_level()
+
+    def handle_tile_eating(self) -> None:
+        """Eat current tile and apply score or frightened mode effects."""
         gained_score = self.map_data.eat_tile(
             self.player.row,
             self.player.col,
@@ -149,42 +181,46 @@ class GameState:
             int(self.config["points_per_super_pacgum"]),
         )
         if gained_score == int(self.config["points_per_super_pacgum"]):
-            self.edible_turns = 20
+            self.edible_turns = self.EDIBLE_DURATION
 
             for ghost in self.ghosts:
                 ghost.edible = True
 
         self.player.score += gained_score
 
-        self.handle_ghost_collisions()
-
-        if not self.is_running:
+    def move_ghosts(self) -> None:
+        """Move ghosts according to current mode."""
+        if self.freeze_ghost:
             return
 
-        if not self.freeze_ghost:
+        for ghost in self.ghosts:
+            if not ghost.active:
+                continue
+            if self.edible_turns > 0:
+                ghost.move_away(
+                    self.player.row,
+                    self.player.col,
+                    self.map_data,
+                )
+            else:
+                ghost.move_towards(
+                    self.player.row,
+                    self.player.col,
+                    self.map_data,
+                )
+
+    def update_timer(self) -> None:
+        """Update edible and ghost respawn timers after one turn."""
+        for ghost in self.ghosts:
+            ghost.tick_respawn()
+
+        if self.edible_turns <= 0:
+            return
+
+        self.edible_turns -= 1
+        if self.edible_turns == 0:
             for ghost in self.ghosts:
-                if self.edible_turns > 0:
-                    ghost.move_away(
-                        self.player.row,
-                        self.player.col,
-                        self.map_data
-                    )
-                else:
-                    ghost.move_towards(
-                        self.player.row,
-                        self.player.col,
-                        self.map_data
-                    )
-        self.handle_ghost_collisions()
-
-        if self.edible_turns > 0:
-            self.edible_turns -= 1
-            if self.edible_turns == 0:
-                for ghost in self.ghosts:
-                    ghost.edible = False
-
-        if not self.map_data.check_pacgum_left():
-            self.complete_level()
+                ghost.edible = False
 
     def handle_time_limit(self) -> bool:
         """Handle level timeout. Return True if level ended."""

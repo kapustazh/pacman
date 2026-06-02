@@ -1,4 +1,3 @@
-    
 """Terminal rendering for Pac-Man."""
 
 from src.entities.ghost import Ghost
@@ -30,7 +29,7 @@ class TerminalRenderer:
     def _has_ghost(self, row: int, col: int, ghosts: list[Ghost]) -> bool:
         """Return True if ghost is on position."""
         for ghost in ghosts:
-            if ghost.row == row and ghost.col == col:
+            if ghost.active and ghost.row == row and ghost.col == col:
                 return True
 
         return False

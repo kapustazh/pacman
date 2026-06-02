@@ -14,7 +14,12 @@ class Ghost:
         self.name = name
         self.row = row
         self.col = col
+        self.spawn_row = row
+        self.spawn_col = col
         self.edible = False
+
+        self.active = True
+        self.respawn_turns = 0
 
     def find_path_bfs(
         self,
@@ -27,7 +32,8 @@ class Ghost:
         target = (target_row, target_col)
 
         queue: deque[tuple[int, int]] = deque([start])
-        came_from: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+        came_from: dict[tuple[int, int],
+                        tuple[int, int] | None] = {start: None}
 
         moves = [
             (0, 1),  # right
@@ -69,15 +75,26 @@ class Ghost:
         path.reverse()
         return path
 
-    def move_towards(self, target_row: int, target_col: int, map_data: MapData) -> None:
+    def move_towards(
+            self,
+            target_row: int,
+            target_col: int,
+            map_data: MapData
+            ) -> None:
         """
-        Move one step towards the target without crossing walls using BFS shortest path.
+        Move one step towards the target without crossing walls
+        using BFS shortest path.
         """
         path = self.find_path_bfs(target_row, target_col, map_data)
         if len(path) >= 2:
             self.row, self.col = path[1]
 
-    def move_away(self, target_row: int, target_col: int, map_data: MapData) -> None:
+    def move_away(
+            self,
+            target_row: int,
+            target_col: int,
+            map_data: MapData
+            ) -> None:
         """
         Move one step away from the target without crossing walls.
         -check 4 directions
@@ -125,3 +142,33 @@ class Ghost:
 
         self.row = best_row
         self.col = best_col
+
+    def start_repawn(self, delay_turns: int) -> None:
+        """Temporarily remove ghost before respawning at its corner."""
+        self.active = False
+        self.edible = False
+        self.respawn_turns = delay_turns
+        self.row = self.spawn_row
+        self.col = self.spawn_col
+
+    def tick_respawn(self) -> None:
+        """"Count down respawn turns and reactivate ghost when it reaches 0."""
+        if self.active:
+            return
+        
+        self.respawn_turns -= 1
+        if self.respawn_turns <= 0:
+            self.active = True
+            self.respawn_turns = 0
+            self.row = self.spawn_row
+            self.col = self.spawn_col
+
+    def reset_to_spawn(self) -> None:
+        """"Immediately reset ghost to its spawn position without delay."""
+        self.row = self.spawn_row
+        self.col = self.spawn_col
+        self.edible = False
+        self.active = True
+        self.respawn_turns = 0
+
+ 

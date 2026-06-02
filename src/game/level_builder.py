@@ -24,7 +24,8 @@ class LevelBuilder:
         height = len(grid)
         width = len(grid[0])
 
-        player_start = self._nearest_walkable(grid, height // 2, width // 2)  # center may be wall
+        player_start = self._nearest_walkable(grid, height // 2, width // 2)
+        # center may be wall
 
         corner_targets = [
             (1, 1),
@@ -39,7 +40,7 @@ class LevelBuilder:
         ]
 
         reserved = set(ghost_starts)  # pacgum avoid reserved
-        reserved .add(player_start)
+        reserved.add(player_start)
 
         self._place_pacgums(grid, reserved)
 
@@ -51,7 +52,8 @@ class LevelBuilder:
 
         return LevelSetup(player_start, ghost_starts)
 
-    def _place_pacgums(self, grid: list[list[TileType]], reserved: set[tuple[int, int]]) -> None:
+    def _place_pacgums(self, grid: list[list[TileType]],
+                       reserved: set[tuple[int, int]]) -> None:
         """Place normal pacgums in available corridors."""
         candidates = []
 
@@ -64,7 +66,8 @@ class LevelBuilder:
         for row, col in candidates[:limit]:
             grid[row][col] = TileType.PACGUM
 
-    def _nearest_walkable(self, grid: list[list[TileType]], target_row: int, target_col: int) -> tuple[int, int]:
+    def _nearest_walkable(self, grid: list[list[TileType]],
+                          target_row: int, target_col: int) -> tuple[int, int]:
         """Find nearest non-wall tile."""
         best_position = (target_row, target_col)
         best_distance = 999999
@@ -78,7 +81,10 @@ class LevelBuilder:
 
         return best_position
 
-    def _walkable_positions(self, grid: list[list[TileType]]) -> list[tuple[int, int]]:
+    def _walkable_positions(
+            self,
+            grid: list[list[TileType]]
+    ) -> list[tuple[int, int]]:
         """Return all non-wall positions."""
         positions = []
 
@@ -88,7 +94,6 @@ class LevelBuilder:
                     positions.append((row_index, col_index))
 
         return positions
-
 
 # MazeAdapter: 造基础地图
 # LevelBuilder: 初始化 items + spawn positions

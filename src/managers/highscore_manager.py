@@ -19,7 +19,7 @@ class HighscoreManager:
                 data = json.load(file)
         except OSError:
             self.highscores = []
-            return 
+            return
         except json.JSONDecodeError:
             self.highscores = []
             return
@@ -48,7 +48,10 @@ class HighscoreManager:
             }
         )
 
-        self.highscores.sort(key=lambda entry: int(entry["score"]), reverse=True)
+        self.highscores.sort(
+            key=lambda entry: int(entry["score"]),
+            reverse=True
+        )
         self.highscores = self.highscores[:10]
         self.save()
 

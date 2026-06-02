@@ -10,12 +10,17 @@ class MazeAdaptor:
     SOUTH = 4  # 0100
     WEST = 8   # 1000
 
-    def generate(self, width: int, height: int, seed: int) -> list[list[TileType]]:
+    def generate(
+        self, width: int,
+        height: int,
+        seed: int
+    ) -> list[list[TileType]]:
         """Generate a maze using the external package."""
-        try: 
+        try:
             from mazegenerator.mazegenerator import MazeGenerator
 
-            generator = MazeGenerator(size=(width, height), perfect=False, seed=seed)
+            generator = MazeGenerator(size=(width, height),
+                                      perfect=False, seed=seed)
             return self.convert_maze(generator.maze)
         except Exception as Error:
             print(f"Warning: maze generator failed: {Error}")
@@ -51,9 +56,14 @@ class MazeAdaptor:
     def fallback_grid(self) -> list[list[TileType]]:
         """Return a safe fallback grid if generation fails."""
         return [
-            [TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.EMPTY, TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.EMPTY, TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.SUPER_PACGUM, TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL, TileType.WALL],
+            [TileType.WALL, TileType.WALL, TileType.WALL,
+             TileType.WALL, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.SUPER_PACGUM,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.WALL, TileType.WALL,
+             TileType.WALL, TileType.WALL],
         ]
