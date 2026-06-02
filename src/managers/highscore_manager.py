@@ -31,8 +31,11 @@ class HighscoreManager:
 
     def save(self) -> None:
         """Save highscores to file."""
-        with open(self.filename, "w", encoding="utf-8") as file:
-            json.dump(self.highscores, file, indent=2)
+        try:
+            with open(self.filename, "w", encoding="utf-8") as file:
+                json.dump(self.highscores, file, indent=2)
+        except OSError:
+            print(f"Warning: could not save highscores to {self.filename}")
 
     def add_score(self, name: str, score: int) -> None:
         """Add score andkeep only top 10."""

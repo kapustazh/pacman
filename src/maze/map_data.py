@@ -20,7 +20,11 @@ class MapData:
         self.grid = grid
 
     def is_wall(self, row: int, col: int) -> bool:
-        """Return True if tile is wall."""
+        """Return True if tile is wall or outside map."""
+        if row < 0 or col < 0:
+            return True
+        if row >= len(self.grid) or col >= len(self.grid[0]):
+            return True
         return self.grid[row][col] == TileType.WALL
 
     def is_walkable(self, row: int, col: int) -> bool:

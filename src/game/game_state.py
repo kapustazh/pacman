@@ -24,6 +24,7 @@ class GameState:
         self.invincible = False
         self.freeze_ghost = False
         self.edible_turns = 0
+        self.remaining_time = int(self.config["level_max_time"])
 
         self.renderer = TerminalRenderer()
 
@@ -34,6 +35,9 @@ class GameState:
 
     def load_current_level(self, first_load: bool) -> None:
         """Load current level."""
+        self.remaining_time = int(self.config["level_max_time"])
+        self.edible_turns = 0
+
         level = self.level_manager.get_current_level()
         grid = MazeAdaptor().generate(
             width=int(level["width"]),
@@ -86,6 +90,7 @@ class GameState:
         print(f"Lives: {self.player.lives}")
         print(f"Level: {self.level_manager.current_level + 1}")
         print(f"Edible turns: {self.edible_turns}")
+        print(f"Time left: {self.remaining_time}")
         self.renderer.print_map(
             self.map_data,
             self.player.row,
@@ -132,6 +137,10 @@ class GameState:
             return
 
         self.player.move(row_delta, col_delta)
+        self.remaining_time -= 1
+
+        if self.handle_time_limit():
+            return
 
         gained_score = self.map_data.eat_tile(
             self.player.row,
@@ -140,7 +149,7 @@ class GameState:
             int(self.config["points_per_super_pacgum"]),
         )
         if gained_score == int(self.config["points_per_super_pacgum"]):
-            self.edible_turns = 10000
+            self.edible_turns = 20
 
             for ghost in self.ghosts:
                 ghost.edible = True
@@ -176,6 +185,22 @@ class GameState:
 
         if not self.map_data.check_pacgum_left():
             self.complete_level()
+
+    def handle_time_limit(self) -> bool:
+        """Handle level timeout. Return True if level ended."""
+        if self.remaining_time > 0:
+            return False
+
+        print("Time is up!")
+        self.player.lives -= 1
+
+        if self.player.lives <= 0:
+            print("Game over!")
+            self.is_running = False
+            return True
+
+        self.load_current_level(first_load=False)
+        return True
 
     def handle_ghost_collisions(self) -> None:
         """Handle collisions between player and ghosts."""

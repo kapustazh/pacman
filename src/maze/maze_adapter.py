@@ -38,13 +38,13 @@ class MazeAdaptor:
 
                 grid[grid_row][grid_col] = TileType.EMPTY
 
-                if cell & self.NORTH == 0:
+                if cell & self.NORTH == 0 and grid_row > 1:
                     grid[grid_row - 1][grid_col] = TileType.EMPTY
-                if cell & self.EAST == 0:
+                if cell & self.EAST == 0 and grid_col < grid_width - 2:
                     grid[grid_row][grid_col + 1] = TileType.EMPTY
-                if cell & self.SOUTH == 0:
+                if cell & self.SOUTH == 0 and grid_row < grid_height - 2:
                     grid[grid_row + 1][grid_col] = TileType.EMPTY
-                if cell & self.WEST == 0:
+                if cell & self.WEST == 0 and grid_col > 1:
                     grid[grid_row][grid_col - 1] = TileType.EMPTY
         return grid
 
