@@ -4,6 +4,10 @@
     "score": 1740
   },
   {
+    "name": "fdf",
+    "score": 1060
+  },
+  {
     "name": "dm",
     "score": 900
   },
@@ -16,8 +20,16 @@
     "score": 680
   },
   {
+    "name": "mak",
+    "score": 670
+  },
+  {
     "name": "dsfd",
     "score": 590
+  },
+  {
+    "name": "fm",
+    "score": 520
   },
   {
     "name": "q",
@@ -26,17 +38,5 @@
   {
     "name": "df",
     "score": 450
-  },
-  {
-    "name": "ann",
-    "score": 440
-  },
-  {
-    "name": "gd",
-    "score": 410
-  },
-  {
-    "name": "ann",
-    "score": 350
   }
 ]

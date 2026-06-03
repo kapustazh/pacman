@@ -23,12 +23,14 @@ class Ghost:
 
     def find_path_bfs(
         self,
+        start_row: int,
+        start_col: int,
         target_row: int,
         target_col: int,
         map_data: MapData,
     ) -> list[tuple[int, int]]:
         """Find shortest path from ghost to target using BFS."""
-        start = (self.row, self.col)
+        start = (start_row, start_col)
         target = (target_row, target_col)
 
         queue: deque[tuple[int, int]] = deque([start])
@@ -82,12 +84,20 @@ class Ghost:
             map_data: MapData
             ) -> None:
         """
-        Move one step towards the target without crossing walls
-        using BFS shortest path.
+        Move one step towards the target using BFS shortest path.
         """
-        path = self.find_path_bfs(target_row, target_col, map_data)
+        if not self.active:
+            return
+        
+        chase_row, chase_col = self.get_chase_target(
+            target_row, target_col, map_data
+        )
+        path = self.find_path_bfs(
+            self.row, self.col, chase_row, chase_col, map_data)
         if len(path) >= 2:
             self.row, self.col = path[1]
+            return
+        self.move_away(target_row, target_col, map_data)
 
     def move_away(
             self,
@@ -96,12 +106,16 @@ class Ghost:
             map_data: MapData
             ) -> None:
         """
-        Move one step away from the target without crossing walls.
-        -check 4 directions
-        -ignore walls
-        -choose biggest Manhattan distance
-        -if no better move exists, choose any valid move
+        Move one step away from the player avoiding reverse BFS path chosen.
         """
+
+        if not self.active:
+            return
+        path = self.find_path_bfs(
+            target_row, target_col, self.row, self.col, map_data)
+        if len(path) >= 2:
+            avoid_pos = path[-2]
+
         moves = [
             (0, 1),  # right
             (0, -1),  # left
@@ -109,39 +123,19 @@ class Ghost:
             (1, 0),  # down
         ]
 
-        best_row = self.row
-        best_col = self.col
         valid_moves: list[tuple[int, int]] = []
-
-        best_distance = (
-            abs(self.row - target_row)
-            + abs(self.col - target_col)
-        )
-
         for row_delta, col_delta in moves:
             new_row = self.row + row_delta
             new_col = self.col + col_delta
-
+            new_pos = (new_row, new_col)
             if map_data.is_wall(new_row, new_col):
                 continue
+            if avoid_pos is not None and new_pos == avoid_pos:
+                continue
+            valid_moves.append(new_pos)
 
-            valid_moves.append((new_row, new_col))
-
-            distance = (
-                abs(new_row - target_row)
-                + abs(new_col - target_col)
-            )
-
-            if distance > best_distance:
-                best_distance = distance
-                best_row = new_row
-                best_col = new_col
-
-        if valid_moves and best_row == self.row and best_col == self.col:
-            best_row, best_col = random.choice(valid_moves)
-
-        self.row = best_row
-        self.col = best_col
+        if valid_moves:
+            self.row, self.col = random.choice(valid_moves)
 
     def start_repawn(self, delay_turns: int) -> None:
         """Temporarily remove ghost before respawning at its corner."""
@@ -155,7 +149,7 @@ class Ghost:
         """"Count down respawn turns and reactivate ghost when it reaches 0."""
         if self.active:
             return
-        
+
         self.respawn_turns -= 1
         if self.respawn_turns <= 0:
             self.active = True
@@ -171,4 +165,27 @@ class Ghost:
         self.active = True
         self.respawn_turns = 0
 
- 
+    def get_chase_target(
+        self,
+        player_row: int,
+        player_col: int,
+        map_data: MapData,
+    ) -> tuple[int, int]:
+        """Return a different chase target based on ghost name."""
+        if self.name == "Blinky":
+            target = (player_row, player_col)
+        elif self.name == "Pinky":
+            target = (player_row - 2, player_col)
+        elif self.name == "Inky":
+            target = (player_row, player_col - 2)
+        elif self.name == "Clyde":
+            target = (player_row, player_col + 2)
+        else:
+            target = (player_row, player_col)
+
+        target_row, target_col = target
+
+        if map_data.is_wall(target_row, target_col):
+            return player_row, player_col
+
+        return target

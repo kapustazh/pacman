@@ -15,7 +15,7 @@ from src.ui.terminal_renderer import TerminalRenderer
 class GameState:
     """Represent the current game state."""
     GHOST_RESPAWN_DELAY = 10
-    EDIBLE_DURATION = 20
+    EDIBLE_DURATION = 1000
 
     def __init__(self, config: dict[str, Any]) -> None:
         """Initialize the game state."""
