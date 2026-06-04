@@ -17,16 +17,11 @@ class HighscoreManager:
         try:
             with open(self.filename, "r", encoding="utf-8") as file:
                 data = json.load(file)
+                self.highscores = self.validate_highscores(data)
         except OSError:
             self.highscores = []
             return
         except json.JSONDecodeError:
-            self.highscores = []
-            return
-
-        if isinstance(data, list):
-            self.highscores = data
-        else:
             self.highscores = []
 
     def save(self) -> None:
@@ -38,19 +33,19 @@ class HighscoreManager:
             print(f"Warning: could not save highscores to {self.filename}")
 
     def add_score(self, name: str, score: int) -> None:
-        """Add score andkeep only top 10."""
+        """Add score and keep only top 10."""
         clean_name = self.clean_name(name)
 
         self.highscores.append(
             {
                 "name": clean_name,
-                "score": score
+                "score": score,
             }
         )
 
         self.highscores.sort(
             key=lambda entry: int(entry["score"]),
-            reverse=True
+            reverse=True,
         )
         self.highscores = self.highscores[:10]
         self.save()
@@ -67,6 +62,42 @@ class HighscoreManager:
             return "Player"
 
         return cleaned[:10]
+
+    def validate_highscores(
+        self,
+        data: object,
+    ) -> list[dict[str, Any]]:
+        """Validate loaded highscore data."""
+        valid_scores: list[dict[str, Any]] = []
+
+        if not isinstance(data, list):
+            return valid_scores
+
+        for entry in data:
+            if not isinstance(entry, dict):
+                continue
+
+            name = entry.get("name")
+            score = entry.get("score")
+
+            if not isinstance(name, str):
+                continue
+            if not isinstance(score, int):
+                continue
+            if score < 0:
+                continue
+            valid_scores.append(
+                {
+                    "name": self.clean_name(name),
+                    "score": score,
+                }
+            )
+        valid_scores.sort(
+            key=lambda entry: int(entry["score"]),
+            reverse=True,
+        )
+
+        return valid_scores[:10]
 
     def print_highscores(self) -> None:
         """Print highscores."""

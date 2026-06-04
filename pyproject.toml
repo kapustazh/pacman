@@ -1,0 +1,20 @@
+[project]
+name = "pac-man"
+version = "0.3.0"
+description = "Pacman 42 School project"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pygame-ce",
+    "mazegenerator",
+]
+
+[dependency-groups]
+dev = [
+    "flake8",
+    "mypy",
+    "pytest>=9.0.2",
+]
+
+[tool.uv.sources]
+mazegenerator = { path = "packages/mazegenerator-00001-py3-none-any.whl" }
