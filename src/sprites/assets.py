@@ -120,9 +120,8 @@ class Assets:
             self._load_from_general_sheet()
             self._load_maze_tiles(load_image)
             self._loaded = True
-        except FileNotFoundError as exc:
-            raise AssetError(f"File not found: {exc}") from exc
-
+        except pygame.error as exc:
+            raise AssetError(str(exc)) from exc
     def _slice_cells(
         self,
         col: int,
