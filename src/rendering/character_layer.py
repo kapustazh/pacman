@@ -19,19 +19,25 @@ class CharacterLayer(RenderLayer):
         col = 0
         for direction in Direction:
             animation = self.assets.pacman[direction]
-            frame_index = (now_ms // FRAME_DURATION_MS) % animation.num_frames
             x = col * SPRITE_STRIDE
-            surface.blit(animation.frames[frame_index], (x, self.y))
+            surface.blit(
+                self.get_current_sprite(now_ms, animation, FRAME_DURATION_MS),
+                (x, self.y),
+            )
             col += 1
 
         for kind in GhostKind:
             animation = self.assets.ghosts.by_kind[kind]
-            frame_index = (now_ms // FRAME_DURATION_MS) % animation.num_frames
             x = col * SPRITE_STRIDE
-            surface.blit(animation.frames[frame_index], (x, self.y))
+            surface.blit(
+                self.get_current_sprite(now_ms, animation, FRAME_DURATION_MS),
+                (x, self.y),
+            )
             col += 1
 
         frightened = self.assets.ghosts.frightened
-        frame_index = (now_ms // FRAME_DURATION_MS) % frightened.num_frames
         x = col * SPRITE_STRIDE
-        surface.blit(frightened.frames[frame_index], (x, self.y))
+        surface.blit(
+            self.get_current_sprite(now_ms, frightened, FRAME_DURATION_MS),
+            (x, self.y),
+        )
