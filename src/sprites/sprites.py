@@ -1,8 +1,9 @@
 import os
+from dataclasses import dataclass, field
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-from pygame.surface import Surface  # noqa E402
-import pygame  # noqa E402
+from pygame.surface import Surface  # noqa: E402
+import pygame  # noqa: E402
 
 
 class Sprite:
@@ -30,20 +31,13 @@ class Sprite:
         self.height = self.surface.get_height()
 
 
+@dataclass
 class AnimatedSprite:
+    """Animation built from a list of frame surfaces."""
 
-    def __init__(self, frames: list[Sprite], fps: int) -> None:
-        self.num_frames: int = fps
-        self.frames: list[Surface] = []
+    frames: list[Surface] = field(default_factory=list)
+    frame_duration_ms: int = 150
 
-    def prepare_frames(self, scale: float = 1.0) -> None:
-        width = self.width // self.num_frames
-        for i in range(self.num_frames):
-            rect = pygame.Rect(i * width, 0, width, self.height)
-            frame = self.surface.subsurface(rect)
-            new_size = (
-                int(frame.get_width() * scale),
-                int(frame.get_height() * scale),
-            )
-            frame = pygame.transform.scale(frame, new_size)
-            self.frames.append(frame)
+    @property
+    def num_frames(self) -> int:
+        return len(self.frames)
