@@ -1,13 +1,11 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-import os
 
-os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
-from pygame.surface import Surface  # noqa: E402
-import pygame  # noqa: E402
+import pygame
+from pygame.surface import Surface
 
-from sprites.sprites import AnimatedSprite, Sprite
+from sprites.sprites import AnimatedSprite, AssetSprite
 from sprites.types import (
     Direction,
     FruitKind,
@@ -68,23 +66,22 @@ class AssetError(Exception):
         super().__init__(f"Asset loading error: {detail}")
 
 
-@dataclass
+@dataclass(slots=True)
 class ItemSprites:
-    dot: Sprite = field(
-        default_factory=lambda: Sprite(pygame.Surface((1, 1))),
+    dot: AssetSprite = field(
+        default_factory=lambda: AssetSprite(pygame.Surface((1, 1))),
     )
-    power_pellet: Sprite = field(
-        default_factory=lambda: Sprite(pygame.Surface((1, 1))),
+    power_pellet: AssetSprite = field(
+        default_factory=lambda: AssetSprite(pygame.Surface((1, 1))),
     )
 
 
-@dataclass
+@dataclass(slots=True)
 class MazeSprites:
-    tiles: dict[TileKind, Sprite] = field(default_factory=dict)
-    sheet_tiles: dict[tuple[int, int], Sprite] = field(default_factory=dict)
+    tiles: dict[TileKind, AssetSprite] = field(default_factory=dict)
 
 
-@dataclass
+@dataclass(slots=True)
 class GhostSprites:
     by_kind: dict[GhostKind, AnimatedSprite] = field(default_factory=dict)
     frightened: AnimatedSprite = field(
@@ -93,15 +90,30 @@ class GhostSprites:
 
 
 class Assets:
+    __slots__ = (
+        "_fruits_loaded",
+        "_general_sheet",
+        "_ghosts_loaded",
+        "_loaded",
+        "fruits",
+        "ghosts",
+        "items",
+        "maze",
+        "pacman",
+        "root",
+    )
+
     def __init__(self, root: Path | None = None) -> None:
         self.root = root or ASSETS_ROOT
         self.pacman: dict[Direction, AnimatedSprite] = {}
         self.ghosts = GhostSprites()
         self.items = ItemSprites()
-        self.fruits: dict[FruitKind, Sprite] = {}
+        self.fruits: dict[FruitKind, AssetSprite] = {}
         self.maze = MazeSprites()
         self._general_sheet: Surface | None = None
         self._loaded = False
+        self._ghosts_loaded = False
+        self._fruits_loaded = False
 
     def load(self) -> None:
         if self._loaded:
@@ -117,11 +129,29 @@ class Assets:
 
         try:
             self._general_sheet = load_image("sheets", "general_sprites.png")
-            self._load_from_general_sheet()
+            self._load_gameplay_assets()
             self._load_maze_tiles(load_image)
             self._loaded = True
         except FileNotFoundError as exc:
             raise AssetError(f"File not found: {exc}") from exc
+
+    def load_ghosts(self) -> None:
+        """Load ghost animations when ghost entities are implemented."""
+        if self._ghosts_loaded:
+            return
+        if self._general_sheet is None:
+            raise AssetError("General sprites sheet not loaded")
+        self._load_ghosts()
+        self._ghosts_loaded = True
+
+    def load_fruits(self) -> None:
+        """Load fruit sprites when bonus fruit entities are implemented."""
+        if self._fruits_loaded:
+            return
+        if self._general_sheet is None:
+            raise AssetError("General sprites sheet not loaded")
+        self._load_fruits()
+        self._fruits_loaded = True
 
     def _slice_cells(
         self,
@@ -152,49 +182,43 @@ class Assets:
         frames = [self._slice_cells(col, row) for col, row in coords]
         return AnimatedSprite(frames=frames)
 
-    def _load_sprite(self, coord: tuple[int, int]) -> Sprite:
+    def _load_sprite(self, coord: tuple[int, int]) -> AssetSprite:
         col, row = coord
-        return Sprite(self._slice_cells(col, row))
+        return AssetSprite(self._slice_cells(col, row))
 
-    def _load_from_general_sheet(self) -> None:
+    def _load_gameplay_assets(self) -> None:
         for direction, coords in PACMAN_COORDS.items():
             self.pacman[direction] = self._load_frames(coords)
-
-        for kind, coords in GHOST_COORDS.items():
-            self.ghosts.by_kind[kind] = self._load_frames(coords)
-
-        self.ghosts.frightened = self._load_frames(FRIGHTENED_COORDS)
 
         dot_surface = self._slice_cells(
             DOT_COORD[0], DOT_COORD[1], width_cells=1, height_cells=1
         )
-        self.items.dot = Sprite(dot_surface)
-        self.items.power_pellet = Sprite(
+        self.items.dot = AssetSprite(dot_surface)
+        self.items.power_pellet = AssetSprite(
             self._slice_cells(POWER_PELLET_COORD[0], POWER_PELLET_COORD[1])
         )
 
+    def _load_ghosts(self) -> None:
+        for kind, coords in GHOST_COORDS.items():
+            self.ghosts.by_kind[kind] = self._load_frames(coords)
+        self.ghosts.frightened = self._load_frames(FRIGHTENED_COORDS)
+
+    def _load_fruits(self) -> None:
         for kind, coord in FRUIT_COORDS.items():
             self.fruits[kind] = self._load_sprite(coord)
 
     def _load_maze_tiles(self, load_image: Callable[..., Surface]) -> None:
         sheet = load_image("maze", "maze_parts.png")
-        sheet_width, sheet_height = sheet.get_size()
-        cols = sheet_width // CELL_SIZE
-        rows = sheet_height // CELL_SIZE
-
-        for row in range(rows):
-            for col in range(cols):
-                rect = pygame.Rect(
-                    col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE
-                )
-                tile_surface = sheet.subsurface(rect)
-                scaled = pygame.transform.scale(
-                    tile_surface, (DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE)
-                )
-                self.maze.sheet_tiles[(col, row)] = Sprite(scaled)
-
         for tile_kind, coords in TILE_KIND_COORDS.items():
-            sprite = self.maze.sheet_tiles.get(coords)
-            if sprite is None:
-                raise AssetError(f"Maze tile missing at {coords}")
-            self.maze.tiles[tile_kind] = sprite
+            col, row = coords
+            rect = pygame.Rect(
+                col * CELL_SIZE,
+                row * CELL_SIZE,
+                CELL_SIZE,
+                CELL_SIZE,
+            )
+            tile_surface = sheet.subsurface(rect)
+            scaled = pygame.transform.scale(
+                tile_surface, (DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE)
+            )
+            self.maze.tiles[tile_kind] = AssetSprite(scaled)
