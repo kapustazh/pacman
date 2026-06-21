@@ -186,8 +186,7 @@ class ArcadeFont:
             if char == " ":
                 width += self._space_advance()
                 continue
-            if _ATLAS.glyph(char, self._color) is not None:
-                width += advance
+            width += advance
         width = max(width, 0)
         height = advance
         surface = pygame.Surface((width, height), pygame.SRCALPHA)
