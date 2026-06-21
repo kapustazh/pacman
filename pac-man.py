@@ -6,39 +6,33 @@ os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 SRC_ROOT = Path(__file__).resolve().parent / "src"
 sys.path.insert(0, str(SRC_ROOT))
+ICON_PATH = Path(__file__).resolve().parent / "assets" / "icon" / "image.png"
 
 import pygame  # noqa: E402
 
-from rendering.render import DemoRenderer  # noqa: E402
+from core.engine import GameEngine  # noqa: E402
+from core.resources import AssetsResourceManager  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
+from states.menu_state import MenuState  # noqa: E402
+from states.text import preload_arcade_font  # noqa: E402
 
-BG_COLOR = (0, 0, 0)
-SPRITE_STRIDE = 20
-SCREEN_WIDTH = SPRITE_STRIDE * 10 + 16
-SCREEN_HEIGHT = 120
+SCREEN_WIDTH = 1920
+SCREEN_HEIGHT = 1080
 
 
 def main() -> None:
     pygame.init()
+    pygame.mouse.set_visible(False)
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Pac-Man Asset Demo")
+    pygame.display.set_caption("Pac-Man")
+    if ICON_PATH.exists():
+        pygame.display.set_icon(pygame.image.load(ICON_PATH))
 
-    assets = Assets()
-    assets.load()
-    renderer = DemoRenderer(assets)
-    clock = pygame.time.Clock()
-
-    running = True
-    while running:
-        now_ms = pygame.time.get_ticks()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        screen.fill(BG_COLOR)
-        renderer.render(screen, now_ms)
-        pygame.display.flip()
-        clock.tick(60)
+    resources = AssetsResourceManager(Assets())
+    resources.load_all()
+    preload_arcade_font()
+    engine = GameEngine(screen, resources, MenuState())
+    engine.run()
 
     pygame.quit()
 

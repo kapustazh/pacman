@@ -1,0 +1,47 @@
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+import pygame
+from pygame.surface import Surface
+
+from core.context import GameContext
+
+StatePayload = dict[str, object]
+
+
+# BOILERPLATE: all scenes implement this FSM lifecycle.
+class GameState(ABC):
+    """BOILERPLATE: base interface for all scenes managed by SceneManager."""
+
+    @abstractmethod
+    def enter(
+        self,
+        context: GameContext,
+        payload: StatePayload | None = None,
+    ) -> None:
+        """Enter state and allocate scene-local resources."""
+
+    @abstractmethod
+    def leave(self, context: GameContext) -> None:
+        """Leave state and release scene-local resources."""
+
+    @abstractmethod
+    def handle_events(
+        self,
+        events: list[pygame.event.Event],
+        context: GameContext,
+    ) -> None:
+        """Handle pygame events for this state."""
+
+    @abstractmethod
+    def update(self, dt: float, now_ms: int, context: GameContext) -> None:
+        """Advance state simulation."""
+
+    @abstractmethod
+    def draw(self, surface: Surface, context: GameContext) -> None:
+        """Draw state to target surface."""
+
+    def covers_previous_layers(self) -> bool:
+        """When True, states below this one are skipped during draw."""
+        return False
