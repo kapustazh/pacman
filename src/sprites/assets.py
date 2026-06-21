@@ -50,12 +50,14 @@ FRUIT_COORDS: dict[FruitKind, tuple[int, int]] = {
 DOT_COORD: tuple[int, int] = (13, 12)
 POWER_PELLET_COORD: tuple[int, int] = (11, 10)
 
+_COORD_CORNER_TR = (24, 0)
+
 TILE_KIND_COORDS: dict[TileKind, tuple[int, int]] = {
     TileKind.WALL: (26, 0),
-    TileKind.HORIZONTAL: (24, 0),
+    TileKind.HORIZONTAL: _COORD_CORNER_TR,  # intentionally shared with CORNER_TR
     TileKind.VERTICAL: (27, 1),
     TileKind.CORNER_TL: (22, 0),
-    TileKind.CORNER_TR: (24, 0),
+    TileKind.CORNER_TR: _COORD_CORNER_TR,
     TileKind.CORNER_BL: (22, 2),
     TileKind.CORNER_BR: (24, 2),
 }
@@ -132,8 +134,8 @@ class Assets:
             self._load_gameplay_assets()
             self._load_maze_tiles(load_image)
             self._loaded = True
-        except FileNotFoundError as exc:
-            raise AssetError(f"File not found: {exc}") from exc
+        except pygame.error as exc:
+            raise AssetError(str(exc)) from exc
 
     def load_ghosts(self) -> None:
         """Load ghost animations when ghost entities are implemented."""
