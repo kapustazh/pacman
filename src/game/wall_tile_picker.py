@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from game.level import CellPos, LevelLayout
-from sprites.types import TileKind
+from typing import cast
+
+from game.level import CellPos, CellType, LevelLayout
+from sprites.sprite_types import TileKind
 
 
 def _has_wall_neighbor(layout: LevelLayout, pos: CellPos) -> bool:
@@ -10,7 +12,8 @@ def _has_wall_neighbor(layout: LevelLayout, pos: CellPos) -> bool:
         return False
     if pos.row >= layout.height or pos.col >= layout.width:
         return False
-    return layout.is_wall(pos)
+    cell_type = cast(CellType, layout.cells[pos.row][pos.col])
+    return bool(cell_type == CellType.WALL)
 
 
 def _pick_wall_tile(

@@ -30,6 +30,7 @@ class LevelLayout:
     pellet_cells: frozenset[CellPos]
     power_pellet_cells: frozenset[CellPos]
     player_spawn: CellPos
+    # TODO: populate from level data when ghost entities are implemented.
     ghost_spawns: tuple[CellPos, ...]
 
     @property

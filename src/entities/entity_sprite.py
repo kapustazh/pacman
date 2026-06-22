@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pygame
 from pygame.sprite import Sprite
 
 from entities.game_entity import GameEntity

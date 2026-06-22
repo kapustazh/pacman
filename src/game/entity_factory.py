@@ -5,7 +5,7 @@ from entities.wall_tile_entity import WallTileEntity
 from game.level import CellPos, LevelLayout
 from game.render_config import WorldRenderConfig
 from game.wall_tile_picker import pick_wall_tile
-from sprites.types import Direction
+from sprites.sprite_types import Direction
 
 PELLET_POINTS = 10
 POWER_PELLET_POINTS = 50
@@ -63,7 +63,8 @@ class EntityFactory:
     def create_player(self, cell: CellPos) -> PlayerEntity:
         """Create player entity from loaded directional animations."""
         animations_by_direction = {
-            direction: self._catalog.pacman[direction] for direction in Direction
+            direction: self._catalog.pacman[direction]
+            for direction in Direction
         }
         return PlayerEntity(
             animations_by_direction,

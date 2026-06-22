@@ -10,7 +10,7 @@ from entities.player_entity import PlayerEntity
 from entities.wall_tile_entity import WallTileEntity
 from game.entity_factory import EntityFactory
 from game.level import CellPos, CellType, LevelLayout
-from sprites.types import Direction
+from sprites.sprite_types import Direction
 
 PLAYER_STEP_MS = 120
 DEFAULT_TRAVEL_DIRECTION = Direction.LEFT
@@ -34,17 +34,17 @@ class GameWorld:
     )
 
     def __init__(self, layout: LevelLayout, factory: EntityFactory) -> None:
-        self._layout = layout
-        self._factory = factory
-        self.all_sprites = LayeredUpdates()
+        self._layout: LevelLayout = layout
+        self._factory: EntityFactory = factory
+        self.all_sprites: LayeredUpdates = LayeredUpdates()
         self.consumables: Group[EntitySprite] = Group()
-        self._remaining_consumables = set(layout.pellet_cells)
+        self._remaining_consumables: set[CellPos] = set(layout.pellet_cells)
         self._remaining_consumables.update(layout.power_pellet_cells)
         self._player: PlayerEntity | None = None
         self._player_sprite: EntitySprite | None = None
-        self._score = 0
-        self._step_accumulator_ms = 0.0
-        self._travel_direction = DEFAULT_TRAVEL_DIRECTION
+        self._score: int = 0
+        self._step_accumulator_ms: float = 0.0
+        self._travel_direction: Direction = DEFAULT_TRAVEL_DIRECTION
         self._requested_direction: Direction | None = None
         self._spawn_from_layout()
 

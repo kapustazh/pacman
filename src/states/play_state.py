@@ -4,7 +4,7 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StatePayload
+from core.state import GameState, StateEnterData
 from game.entity_factory import EntityFactory
 from game.game_session import (
     GAME_OVER_DURATION_MS,
@@ -18,7 +18,7 @@ from game.game_world import GameWorld
 from game.level import load_smoke_level
 from game.render_config import MazeViewport, WorldRenderConfig
 from rendering.hud_overlay import HudOverlay
-from sprites.types import Direction
+from sprites.sprite_types import Direction
 
 
 class PlayState(GameState):
@@ -33,7 +33,7 @@ class PlayState(GameState):
     def enter(
         self,
         context: GameContext,
-        payload: StatePayload | None = None,
+        enter_data: StateEnterData | None = None,
     ) -> None:
         """Create a fresh world from smoke level boilerplate."""
         catalog = context.resources.get_asset_catalog()
@@ -48,7 +48,10 @@ class PlayState(GameState):
         self._maze_viewport = render_config.viewport_for(layout)
 
         life_icon = catalog.pacman[Direction.RIGHT].frames[0]
-        self._hud = HudOverlay(life_icon=life_icon)
+        self._hud = HudOverlay(
+            context.resources.get_text_renderer(),
+            life_icon=life_icon,
+        )
 
         started_at = pygame.time.get_ticks()
         self._session = GameSession(phase_started_at_ms=started_at)
@@ -113,6 +116,7 @@ class PlayState(GameState):
                 self._finish_life_lost(now_ms)
             return
 
+        # TODO: reachable once pellet-clear calls enter_level_complete().
         if phase == GameplayPhase.LEVEL_COMPLETE:
             if (
                 self._session.phase_elapsed_ms(now_ms)

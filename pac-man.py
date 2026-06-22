@@ -14,7 +14,6 @@ from core.engine import GameEngine  # noqa: E402
 from core.resources import AssetsResourceManager  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
 from states.menu_state import MenuState  # noqa: E402
-from states.text import preload_arcade_font  # noqa: E402
 
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
@@ -31,7 +30,6 @@ def main() -> None:
 
     resources = AssetsResourceManager(Assets())
     resources.load_all()
-    preload_arcade_font()
     engine = GameEngine(screen, resources, MenuState())
     engine.run()
 

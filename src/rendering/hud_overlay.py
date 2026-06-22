@@ -4,7 +4,7 @@ from pygame.surface import Surface
 
 from game.game_session import GameplayPhase, HudSnapshot
 from game.render_config import MazeViewport
-from states.text import ArcadeFont, ArcadeTextColor
+from states.text import ArcadeTextColor, ArcadeTextRenderer
 
 
 TOP_LABEL_Y = 8
@@ -19,10 +19,15 @@ MESSAGE_SCALE = 3
 class HudOverlay:
     """Classic Pac-Man-style persistent in-game HUD."""
 
-    __slots__ = ("_font", "_label_cache", "_life_icon")
+    __slots__ = ("_font", "_label_cache", "_life_icon", "_text")
 
-    def __init__(self, life_icon: Surface | None = None) -> None:
-        self._font = ArcadeFont(ArcadeTextColor.WHITE, HUD_SCALE)
+    def __init__(
+        self,
+        text: ArcadeTextRenderer,
+        life_icon: Surface | None = None,
+    ) -> None:
+        self._text = text
+        self._font = text.font(ArcadeTextColor.WHITE, HUD_SCALE)
         self._label_cache: dict[str, Surface] = {}
         self._life_icon = life_icon
 
@@ -69,7 +74,9 @@ class HudOverlay:
     ) -> None:
         """Draw spare life icons and current level below the maze."""
         bottom_y = viewport.bottom + BOTTOM_MARGIN
-        self._draw_life_icons(surface, snapshot.spare_lives, viewport.x, bottom_y)
+        self._draw_life_icons(
+            surface, snapshot.spare_lives, viewport.x, bottom_y
+        )
         level_text = f"LEVEL {snapshot.level_number}"
         level_surface = self._font.render(level_text)
         level_rect = level_surface.get_rect(
@@ -131,7 +138,9 @@ class HudOverlay:
         if snapshot.message is None:
             return
         color = _message_color(snapshot.phase)
-        rendered = ArcadeFont(color, MESSAGE_SCALE).render(snapshot.message)
+        rendered = self._text.font(color, MESSAGE_SCALE).render(
+            snapshot.message
+        )
         rect = rendered.get_rect(center=viewport.center)
         surface.blit(rendered, rect)
 
@@ -140,7 +149,7 @@ class HudOverlay:
         cached = self._label_cache.get(label)
         if cached is not None:
             return cached
-        rendered = self._font.render(label)
+        rendered: Surface = self._font.render(label)
         self._label_cache[label] = rendered
         return rendered
 
@@ -159,8 +168,10 @@ def _message_color(phase: GameplayPhase) -> ArcadeTextColor:
     """Return arcade color for a phase overlay message."""
     if phase == GameplayPhase.GAME_OVER:
         return ArcadeTextColor.RED
+    # TODO: LEVEL_COMPLETE branch reachable once level-clear is wired.
     if phase in (GameplayPhase.READY, GameplayPhase.LEVEL_COMPLETE):
         return ArcadeTextColor.YELLOW
+    # TODO: VICTORY branch reachable once win condition lands.
     if phase == GameplayPhase.VICTORY:
         return ArcadeTextColor.GOLD
     return ArcadeTextColor.WHITE

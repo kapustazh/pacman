@@ -8,6 +8,7 @@ DEFAULT_LEVEL_TIME_S = 90
 
 READY_DURATION_MS = 2000
 LIFE_LOST_DURATION_MS = 2000
+# TODO: use when pellet-clear triggers enter_level_complete().
 LEVEL_COMPLETE_DURATION_MS = 2000
 GAME_OVER_DURATION_MS = 2000
 
@@ -18,8 +19,10 @@ class GameplayPhase(Enum):
     READY = auto()
     PLAYING = auto()
     LIFE_LOST = auto()
+    # TODO: set via enter_level_complete() when all pellets are cleared.
     LEVEL_COMPLETE = auto()
     GAME_OVER = auto()
+    # TODO: set when final level is cleared or win condition lands.
     VICTORY = auto()
 
 
@@ -50,7 +53,7 @@ class GameSession:
     phase_started_at_ms: int = 0
 
     def spare_lives(self) -> int:
-        """Return spare lives shown as icons (classic shows lives minus current)."""
+        """Return spare life icons (classic shows lives minus current)."""
         return max(0, self.lives - 1)
 
     def remaining_time_s(self) -> int:
@@ -67,7 +70,7 @@ class GameSession:
             self.high_score = score
 
     def tick_timer(self, dt_s: float) -> bool:
-        """Subtract elapsed time while playing. Return True when timer hits zero."""
+        """Subtract play time. Return True when timer hits zero."""
         if self.phase != GameplayPhase.PLAYING:
             return False
         elapsed_ms = int(dt_s * 1000)
@@ -97,11 +100,13 @@ class GameSession:
         self.phase = GameplayPhase.GAME_OVER
         self.phase_started_at_ms = now_ms
 
+    # TODO: call from GameWorld when _remaining_consumables is empty.
     def enter_level_complete(self, now_ms: int) -> None:
         """Enter level-complete transition phase."""
         self.phase = GameplayPhase.LEVEL_COMPLETE
         self.phase_started_at_ms = now_ms
 
+    # TODO: used by LEVEL_COMPLETE phase handler in PlayState.
     def advance_level(self) -> None:
         """Increment level index and reset timer for next round."""
         self.level_number += 1
@@ -130,10 +135,12 @@ def _phase_message(phase: GameplayPhase) -> str | None:
     """Return centered overlay text for a gameplay phase."""
     if phase == GameplayPhase.READY:
         return "READY!"
+    # TODO: reachable once enter_level_complete() is wired.
     if phase == GameplayPhase.LEVEL_COMPLETE:
         return "LEVEL CLEAR"
     if phase == GameplayPhase.GAME_OVER:
         return "GAME OVER"
+    # TODO: reachable once victory condition is implemented.
     if phase == GameplayPhase.VICTORY:
         return "YOU WIN"
     return None

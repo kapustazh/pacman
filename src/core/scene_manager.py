@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from core.context import GameContext
-from core.state import GameState, StatePayload
+from core.state import GameState, StateEnterData
 
 TransitionKind = Literal["change", "push", "pop", "shutdown"]
 
@@ -16,7 +16,7 @@ class Transition:
 
     kind: TransitionKind
     state: GameState | None = None
-    payload: StatePayload | None = None
+    enter_data: StateEnterData | None = None
 
 
 class SceneManager:
@@ -47,18 +47,18 @@ class SceneManager:
     def change(
         self,
         state: GameState,
-        payload: StatePayload | None = None,
+        enter_data: StateEnterData | None = None,
     ) -> None:
         """Replace full stack with a new state."""
-        self._enqueue(Transition("change", state, payload))
+        self._enqueue(Transition("change", state, enter_data))
 
     def push(
         self,
         state: GameState,
-        payload: StatePayload | None = None,
+        enter_data: StateEnterData | None = None,
     ) -> None:
         """Push modal state on top of current stack."""
-        self._enqueue(Transition("push", state, payload))
+        self._enqueue(Transition("push", state, enter_data))
 
     def pop(self) -> None:
         """Pop top state."""
@@ -88,11 +88,15 @@ class SceneManager:
                 raise ValueError("Transition state is required")
 
             if transition.kind == "change":
-                self._change_state(context, transition.state, transition.payload)
+                self._change_state(
+                    context, transition.state, transition.enter_data
+                )
                 continue
 
             if transition.kind == "push":
-                self._push_state(context, transition.state, transition.payload)
+                self._push_state(
+                    context, transition.state, transition.enter_data
+                )
 
     def _enqueue(self, transition: Transition) -> None:
         """Queue a transition for the next flush."""
@@ -102,20 +106,20 @@ class SceneManager:
         self,
         context: GameContext,
         state: GameState,
-        payload: StatePayload | None,
+        enter_data: StateEnterData | None,
     ) -> None:
         while self._stack:
             self._leave_top_state(context)
-        self._push_state(context, state, payload)
+        self._push_state(context, state, enter_data)
 
     def _push_state(
         self,
         context: GameContext,
         state: GameState,
-        payload: StatePayload | None,
+        enter_data: StateEnterData | None,
     ) -> None:
         self._stack.append(state)
-        state.enter(context, payload)
+        state.enter(context, enter_data)
 
     def _pop_state(self, context: GameContext) -> None:
         if not self._stack:

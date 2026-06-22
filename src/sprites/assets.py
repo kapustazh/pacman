@@ -6,7 +6,7 @@ import pygame
 from pygame.surface import Surface
 
 from sprites.sprites import AnimatedSprite, AssetSprite
-from sprites.types import (
+from sprites.sprite_types import (
     Direction,
     FruitKind,
     GhostKind,
@@ -50,7 +50,7 @@ FRUIT_COORDS: dict[FruitKind, tuple[int, int]] = {
 DOT_COORD: tuple[int, int] = (10, 1)
 POWER_PELLET_COORD: tuple[int, int] = (26, 3)
 
-# Isolated wall catalog on general_sprites (rows 2-4), not the mini-maze preview at row 0.
+# Isolated wall catalog on general_sprites rows 2-4 (not mini-maze row 0).
 TILE_KIND_COORDS: dict[TileKind, tuple[int, int]] = {
     TileKind.WALL: (23, 2),
     TileKind.HORIZONTAL: (23, 2),
@@ -137,6 +137,7 @@ class Assets:
             raise AssetError(str(exc)) from exc
 
     def load_ghosts(self) -> None:
+        # TODO: call when ghost entities are implemented.
         """Load ghost animations when ghost entities are implemented."""
         if self._ghosts_loaded:
             return
@@ -146,6 +147,7 @@ class Assets:
         self._ghosts_loaded = True
 
     def load_fruits(self) -> None:
+        # TODO: call when bonus fruit entities are implemented.
         """Load fruit sprites when bonus fruit entities are implemented."""
         if self._fruits_loaded:
             return
@@ -204,11 +206,13 @@ class Assets:
             )
         )
 
+    # TODO: invoked by load_ghosts() when ghost entities land.
     def _load_ghosts(self) -> None:
         for kind, coords in GHOST_COORDS.items():
             self.ghosts.by_kind[kind] = self._load_frames(coords)
         self.ghosts.frightened = self._load_frames(FRIGHTENED_COORDS)
 
+    # TODO: invoked by load_fruits() when bonus fruit entities land.
     def _load_fruits(self) -> None:
         for kind, coord in FRUIT_COORDS.items():
             self.fruits[kind] = self._load_sprite(coord)
