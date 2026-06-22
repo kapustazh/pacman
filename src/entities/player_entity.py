@@ -4,13 +4,17 @@ from entities.game_entity import GameEntity
 from entities.sprite_layer import SpriteLayer
 from game.level import CellPos
 from sprites.sprites import AnimatedSprite
-from sprites.types import Direction
+from sprites.sprite_types import Direction
 
 
 class PlayerEntity(GameEntity):
     """Animated Pac-Man entity."""
 
-    __slots__ = ("_animations_by_direction", "_direction", "_image")
+    __slots__ = (
+        "_animations_by_direction",
+        "_direction",
+        "_image",
+    )
 
     def __init__(
         self,
@@ -22,7 +26,7 @@ class PlayerEntity(GameEntity):
         super().__init__(cell, center, SpriteLayer.ACTORS)
         self._animations_by_direction = animations_by_direction
         self._direction = direction
-        self._image = animations_by_direction[direction].frame_at(0)
+        self._image: Surface = animations_by_direction[direction].frame_at(0)
 
     @property
     def direction(self) -> Direction:

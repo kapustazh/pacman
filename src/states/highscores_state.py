@@ -4,25 +4,24 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StatePayload
-from states.text import (
-    ArcadeTextColor,
-    draw_centered_arcade_text,
-    draw_screen_backdrop,
-)
-
-TITLE_Y = 300
-BODY_Y = 480
-FOOTER_Y = 620
+from core.state import GameState, StateEnterData
+from states.text import ArcadeTextColor
 
 
 class HighscoresState(GameState):
     """Placeholder high scores screen."""
 
+    TITLE_Y = 300
+    BODY_Y = 480
+    FOOTER_Y = 620
+    TITLE_SCALE = 4
+    BODY_SCALE = 3
+    FOOTER_SCALE = 2
+
     def enter(
         self,
         context: GameContext,
-        payload: StatePayload | None = None,
+        enter_data: StateEnterData | None = None,
     ) -> None:
         """Enter high scores view."""
 
@@ -54,26 +53,27 @@ class HighscoresState(GameState):
 
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw placeholder high scores."""
-        draw_screen_backdrop(surface)
+        text = context.resources.get_text_renderer()
+        text.draw_screen_backdrop(surface)
 
-        draw_centered_arcade_text(
+        text.draw_centered_arcade_text(
             surface,
             "HIGH SCORES",
-            TITLE_Y,
+            self.TITLE_Y,
             ArcadeTextColor.YELLOW,
-            scale=4,
+            scale=self.TITLE_SCALE,
         )
-        draw_centered_arcade_text(
+        text.draw_centered_arcade_text(
             surface,
             "NO SCORES YET",
-            BODY_Y,
+            self.BODY_Y,
             ArcadeTextColor.WHITE,
-            scale=3,
+            scale=self.BODY_SCALE,
         )
-        draw_centered_arcade_text(
+        text.draw_centered_arcade_text(
             surface,
             "PRESS ESC TO RETURN",
-            FOOTER_Y,
+            self.FOOTER_Y,
             ArcadeTextColor.ROSE,
-            scale=2,
+            scale=self.FOOTER_SCALE,
         )

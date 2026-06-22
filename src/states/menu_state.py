@@ -7,13 +7,8 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StatePayload
-from states.text import (
-    ArcadeTextColor,
-    draw_centered_arcade_text,
-    draw_centered_menu_line,
-    draw_menu_row_highlight,
-)
+from core.state import GameState, StateEnterData
+from states.text import ArcadeTextColor, draw_menu_row_highlight
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,15 +26,15 @@ MENU_OPTIONS: tuple[MenuOption, ...] = (
     MenuOption("EXIT", "exit"),
 )
 
-TITLE_Y = 280
-MENU_START_Y = 520
-MENU_LINE_HEIGHT = 56
-MENU_SCALE = 3
-TITLE_SCALE = 5
-
 
 class MenuState(GameState):
     """Main menu scene with keyboard navigation."""
+
+    TITLE_Y = 280
+    MENU_START_Y = 520
+    MENU_LINE_HEIGHT = 56
+    MENU_SCALE = 3
+    TITLE_SCALE = 5
 
     __slots__ = ("_selected_index",)
 
@@ -49,7 +44,7 @@ class MenuState(GameState):
     def enter(
         self,
         context: GameContext,
-        payload: StatePayload | None = None,
+        enter_data: StateEnterData | None = None,
     ) -> None:
         """Reset menu selection."""
         self._selected_index = 0
@@ -72,29 +67,30 @@ class MenuState(GameState):
 
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw title and menu options."""
-        draw_centered_arcade_text(
+        text = context.resources.get_text_renderer()
+        text.draw_centered_arcade_text(
             surface,
             "PAC-MAN",
-            TITLE_Y,
+            self.TITLE_Y,
             ArcadeTextColor.YELLOW,
-            TITLE_SCALE,
+            self.TITLE_SCALE,
         )
 
         for index, option in enumerate(MENU_OPTIONS):
-            y = MENU_START_Y + index * MENU_LINE_HEIGHT
+            y = self.MENU_START_Y + index * self.MENU_LINE_HEIGHT
             if index == self._selected_index:
                 draw_menu_row_highlight(
                     surface,
                     index,
-                    MENU_START_Y,
-                    MENU_LINE_HEIGHT,
+                    self.MENU_START_Y,
+                    self.MENU_LINE_HEIGHT,
                 )
-            draw_centered_menu_line(
+            text.draw_centered_menu_line(
                 surface,
                 option.label,
                 y,
                 color=ArcadeTextColor.WHITE,
-                scale=MENU_SCALE,
+                scale=self.MENU_SCALE,
             )
 
     def _handle_key(

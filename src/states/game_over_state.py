@@ -7,13 +7,8 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StatePayload
-from states.text import (
-    ArcadeTextColor,
-    draw_centered_arcade_text,
-    draw_centered_menu_line,
-    draw_menu_row_highlight,
-)
+from core.state import GameState, StateEnterData
+from states.text import ArcadeTextColor, draw_menu_row_highlight
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,17 +25,17 @@ GAME_OVER_OPTIONS: tuple[GameOverOption, ...] = (
     GameOverOption("EXIT", "exit"),
 )
 
-TITLE_Y = 340
-SCORE_Y = 430
-MENU_START_Y = 560
-MENU_LINE_HEIGHT = 56
-MENU_SCALE = 3
-TITLE_SCALE = 5
-SCORE_SCALE = 4
-
 
 class GameOverState(GameState):
     """Game-over scene with arcade score display and menu."""
+
+    TITLE_Y = 340
+    SCORE_Y = 430
+    MENU_START_Y = 560
+    MENU_LINE_HEIGHT = 56
+    MENU_SCALE = 3
+    TITLE_SCALE = 5
+    SCORE_SCALE = 4
 
     __slots__ = ("_score", "_selected_index")
 
@@ -51,12 +46,12 @@ class GameOverState(GameState):
     def enter(
         self,
         context: GameContext,
-        payload: StatePayload | None = None,
+        enter_data: StateEnterData | None = None,
     ) -> None:
-        """Read score payload and reset menu selection."""
+        """Apply enter_data and reset menu selection."""
         self._selected_index = 0
-        if payload is not None:
-            score = payload.get("score", 0)
+        if enter_data is not None:
+            score = enter_data.get("score", 0)
             self._score = score if isinstance(score, int) else 0
 
     def leave(self, context: GameContext) -> None:
@@ -77,36 +72,37 @@ class GameOverState(GameState):
 
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw game-over title, score, and menu."""
-        draw_centered_arcade_text(
+        text = context.resources.get_text_renderer()
+        text.draw_centered_arcade_text(
             surface,
             "GAME OVER",
-            TITLE_Y,
+            self.TITLE_Y,
             ArcadeTextColor.RED,
-            TITLE_SCALE,
+            self.TITLE_SCALE,
         )
-        draw_centered_arcade_text(
+        text.draw_centered_arcade_text(
             surface,
             f"SCORE {self._score:06d}",
-            SCORE_Y,
+            self.SCORE_Y,
             ArcadeTextColor.GOLD,
-            SCORE_SCALE,
+            self.SCORE_SCALE,
         )
 
         for index, option in enumerate(GAME_OVER_OPTIONS):
-            y = MENU_START_Y + index * MENU_LINE_HEIGHT
+            y = self.MENU_START_Y + index * self.MENU_LINE_HEIGHT
             if index == self._selected_index:
                 draw_menu_row_highlight(
                     surface,
                     index,
-                    MENU_START_Y,
-                    MENU_LINE_HEIGHT,
+                    self.MENU_START_Y,
+                    self.MENU_LINE_HEIGHT,
                 )
-            draw_centered_menu_line(
+            text.draw_centered_menu_line(
                 surface,
                 option.label,
                 y,
                 color=ArcadeTextColor.WHITE,
-                scale=MENU_SCALE,
+                scale=self.MENU_SCALE,
             )
 
     def _handle_key(

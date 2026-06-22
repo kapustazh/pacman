@@ -30,6 +30,7 @@ class LevelLayout:
     pellet_cells: frozenset[CellPos]
     power_pellet_cells: frozenset[CellPos]
     player_spawn: CellPos
+    # TODO: populate from level data when ghost entities are implemented.
     ghost_spawns: tuple[CellPos, ...]
 
     @property
@@ -72,7 +73,7 @@ def load_smoke_level() -> LevelLayout:
     cells: list[tuple[CellType, ...]] = []
     pellets: set[CellPos] = set()
     power_pellets: set[CellPos] = set()
-    player_spawn = CellPos(5, 9)
+    player_spawn = CellPos(7, 9)
 
     for row_index, row in enumerate(grid):
         current_row: list[CellType] = []

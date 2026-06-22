@@ -9,7 +9,7 @@ from game.level import CellPos
 
 
 class GameEntity(ABC):
-    """BOILERPLATE: game logic and draw state without pygame Sprite inheritance."""
+    """BOILERPLATE: game logic/draw state without pygame Sprite inheritance."""
 
     __slots__ = ("cell", "center", "_layer")
 

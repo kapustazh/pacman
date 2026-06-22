@@ -4,10 +4,8 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StatePayload
-from states.text import ArcadeFont, ArcadeTextColor
-
-OVERLAY_COLOR = (0, 0, 0, 180)
+from core.state import GameState, StateEnterData
+from states.text import ArcadeTextColor
 
 PAUSE_LINES: tuple[tuple[str, ArcadeTextColor, int], ...] = (
     ("PAUSED", ArcadeTextColor.YELLOW, 5),
@@ -19,6 +17,9 @@ PAUSE_LINES: tuple[tuple[str, ArcadeTextColor, int], ...] = (
 class PauseState(GameState):
     """Modal pause overlay over gameplay."""
 
+    OVERLAY_COLOR = (0, 0, 0, 180)
+    LINE_HEIGHT = 64
+
     __slots__ = ("_line_surfaces", "_overlay")
 
     def __init__(self) -> None:
@@ -28,22 +29,22 @@ class PauseState(GameState):
     def enter(
         self,
         context: GameContext,
-        payload: StatePayload | None = None,
+        enter_data: StateEnterData | None = None,
     ) -> None:
         """Create pause overlay and cache text once."""
         self._overlay = Surface(context.screen.get_size(), pygame.SRCALPHA)
-        self._overlay.fill(OVERLAY_COLOR)
+        self._overlay.fill(self.OVERLAY_COLOR)
 
-        line_height = 64
-        total_height = line_height * len(PAUSE_LINES)
+        total_height = self.LINE_HEIGHT * len(PAUSE_LINES)
         start_y = (
             context.screen.get_height() - total_height
-        ) // 2 + line_height // 2
+        ) // 2 + self.LINE_HEIGHT // 2
 
         self._line_surfaces = []
+        text = context.resources.get_text_renderer()
         for index, (line, color, scale) in enumerate(PAUSE_LINES):
-            y = start_y + index * line_height
-            rendered = ArcadeFont(color, scale).render(line)
+            y = start_y + index * self.LINE_HEIGHT
+            rendered = text.font(color, scale).render(line)
             self._line_surfaces.append((rendered, y))
 
     def leave(self, context: GameContext) -> None:

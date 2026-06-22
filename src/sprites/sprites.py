@@ -8,14 +8,12 @@ class SpriteError(Exception):
 
 
 class AssetSprite:
-    """Single image with width and height."""
+    """Single drawable image surface."""
 
-    __slots__ = ("height", "surface", "width")
+    __slots__ = ("surface",)
 
     def __init__(self, surface: Surface) -> None:
         self.surface: Surface = surface
-        self.width: int = surface.get_width()
-        self.height: int = surface.get_height()
 
 
 @dataclass(slots=True)

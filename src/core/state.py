@@ -7,7 +7,7 @@ from pygame.surface import Surface
 
 from core.context import GameContext
 
-StatePayload = dict[str, object]
+StateEnterData = dict[str, object]
 
 
 # BOILERPLATE: all scenes implement this FSM lifecycle.
@@ -18,13 +18,13 @@ class GameState(ABC):
     def enter(
         self,
         context: GameContext,
-        payload: StatePayload | None = None,
+        enter_data: StateEnterData | None = None,
     ) -> None:
-        """Enter state and allocate scene-local resources."""
+        """Enter state with optional initialization data."""
 
     @abstractmethod
     def leave(self, context: GameContext) -> None:
-        """Leave state and release scene-local resources."""
+        """Leave state, releasing any allocated resources."""
 
     @abstractmethod
     def handle_events(

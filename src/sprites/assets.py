@@ -6,7 +6,7 @@ import pygame
 from pygame.surface import Surface
 
 from sprites.sprites import AnimatedSprite, AssetSprite
-from sprites.types import (
+from sprites.sprite_types import (
     Direction,
     FruitKind,
     GhostKind,
@@ -47,19 +47,18 @@ FRUIT_COORDS: dict[FruitKind, tuple[int, int]] = {
     FruitKind.KEY: (77, 6),
 }
 
-DOT_COORD: tuple[int, int] = (13, 12)
-POWER_PELLET_COORD: tuple[int, int] = (11, 10)
+DOT_COORD: tuple[int, int] = (10, 1)
+POWER_PELLET_COORD: tuple[int, int] = (26, 3)
 
-_COORD_CORNER_TR = (24, 0)
-
+# Isolated wall catalog on general_sprites rows 2-4 (not mini-maze row 0).
 TILE_KIND_COORDS: dict[TileKind, tuple[int, int]] = {
-    TileKind.WALL: (26, 0),
-    TileKind.HORIZONTAL: _COORD_CORNER_TR,  # intentionally shared with CORNER_TR
-    TileKind.VERTICAL: (27, 1),
-    TileKind.CORNER_TL: (22, 0),
-    TileKind.CORNER_TR: _COORD_CORNER_TR,
-    TileKind.CORNER_BL: (22, 2),
-    TileKind.CORNER_BR: (24, 2),
+    TileKind.WALL: (23, 2),
+    TileKind.HORIZONTAL: (23, 2),
+    TileKind.VERTICAL: (22, 3),
+    TileKind.CORNER_TL: (22, 2),
+    TileKind.CORNER_TR: (25, 2),
+    TileKind.CORNER_BL: (2, 4),
+    TileKind.CORNER_BR: (5, 4),
 }
 
 
@@ -138,6 +137,7 @@ class Assets:
             raise AssetError(str(exc)) from exc
 
     def load_ghosts(self) -> None:
+        # TODO: call when ghost entities are implemented.
         """Load ghost animations when ghost entities are implemented."""
         if self._ghosts_loaded:
             return
@@ -147,6 +147,7 @@ class Assets:
         self._ghosts_loaded = True
 
     def load_fruits(self) -> None:
+        # TODO: call when bonus fruit entities are implemented.
         """Load fruit sprites when bonus fruit entities are implemented."""
         if self._fruits_loaded:
             return
@@ -197,30 +198,38 @@ class Assets:
         )
         self.items.dot = AssetSprite(dot_surface)
         self.items.power_pellet = AssetSprite(
-            self._slice_cells(POWER_PELLET_COORD[0], POWER_PELLET_COORD[1])
+            self._slice_cells(
+                POWER_PELLET_COORD[0],
+                POWER_PELLET_COORD[1],
+                width_cells=1,
+                height_cells=1,
+            )
         )
 
+    # TODO: invoked by load_ghosts() when ghost entities land.
     def _load_ghosts(self) -> None:
         for kind, coords in GHOST_COORDS.items():
             self.ghosts.by_kind[kind] = self._load_frames(coords)
         self.ghosts.frightened = self._load_frames(FRIGHTENED_COORDS)
 
+    # TODO: invoked by load_fruits() when bonus fruit entities land.
     def _load_fruits(self) -> None:
         for kind, coord in FRUIT_COORDS.items():
             self.fruits[kind] = self._load_sprite(coord)
 
     def _load_maze_tiles(self, load_image: Callable[..., Surface]) -> None:
-        sheet = load_image("maze", "maze_parts.png")
+        del load_image  # wall catalog lives on general_sprites rows 2-4.
+        if self._general_sheet is None:
+            raise AssetError("General sprites sheet not loaded")
         for tile_kind, coords in TILE_KIND_COORDS.items():
             col, row = coords
-            rect = pygame.Rect(
-                col * CELL_SIZE,
-                row * CELL_SIZE,
-                CELL_SIZE,
-                CELL_SIZE,
+            source = self._slice_cells(
+                col,
+                row,
+                width_cells=1,
+                height_cells=1,
             )
-            tile_surface = sheet.subsurface(rect)
-            scaled = pygame.transform.scale(
-                tile_surface, (DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE)
+            tile_surface = pygame.transform.scale(
+                source, (DISPLAY_TILE_SIZE, DISPLAY_TILE_SIZE)
             )
-            self.maze.tiles[tile_kind] = AssetSprite(scaled)
+            self.maze.tiles[tile_kind] = AssetSprite(tile_surface)
