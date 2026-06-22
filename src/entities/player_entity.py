@@ -11,9 +11,6 @@ class PlayerEntity(GameEntity):
     """Animated Pac-Man entity."""
 
     __slots__ = (
-        "cell",
-        "center",
-        "_layer",
         "_animations_by_direction",
         "_direction",
         "_image",
