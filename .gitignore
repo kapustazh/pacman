@@ -220,3 +220,6 @@ __marimo__/
 # Cursor
 .cursor/
 *.pdf
+
+# debug files
+debug_tiles/

@@ -12,6 +12,9 @@ from game.entity_factory import EntityFactory
 from game.level import CellPos, CellType, LevelLayout
 from sprites.types import Direction
 
+PLAYER_STEP_MS = 120
+DEFAULT_TRAVEL_DIRECTION = Direction.LEFT
+
 
 class GameWorld:
     """Owns runtime gameplay entities, groups, and collision state."""
@@ -21,6 +24,9 @@ class GameWorld:
         "_layout",
         "_player",
         "_player_sprite",
+        "_travel_direction",
+        "_requested_direction",
+        "_step_accumulator_ms",
         "_remaining_consumables",
         "_score",
         "all_sprites",
@@ -37,6 +43,9 @@ class GameWorld:
         self._player: PlayerEntity | None = None
         self._player_sprite: EntitySprite | None = None
         self._score = 0
+        self._step_accumulator_ms = 0.0
+        self._travel_direction = DEFAULT_TRAVEL_DIRECTION
+        self._requested_direction: Direction | None = None
         self._spawn_from_layout()
 
     @property
@@ -44,10 +53,10 @@ class GameWorld:
         """Return current score."""
         return self._score
 
-    def move_player(self, direction: Direction) -> None:
+    def move_player(self, direction: Direction) -> bool:
         """Move player one grid step if target cell is walkable."""
         if self._player is None:
-            return
+            return False
 
         row_delta, col_delta = self._direction_delta(direction)
         target = CellPos(
@@ -56,10 +65,41 @@ class GameWorld:
         )
         self._player.face(direction)
         if self._layout.is_wall(target):
-            return
+            return False
 
         self._player.move_to(target, self._factory.cell_center(target))
+        if self._player_sprite is not None:
+            self._player_sprite.sync_from_entity()
         self._consume_current_cell()
+        return True
+
+    def start_auto_movement(self) -> None:
+        """Begin classic auto-walk after READY clears."""
+        self._travel_direction = DEFAULT_TRAVEL_DIRECTION
+        self._step_accumulator_ms = 0.0
+        if self._player is not None:
+            self._player.face(self._travel_direction)
+
+    def request_turn(self, direction: Direction) -> None:
+        """Buffer a direction change from player input."""
+        self._requested_direction = direction
+
+    def update_player_movement(self, dt_s: float) -> None:
+        """Advance player on grid at fixed speed while PLAYING."""
+        if self._player is None:
+            return
+        self._step_accumulator_ms += dt_s * 1000.0
+        while self._step_accumulator_ms >= PLAYER_STEP_MS:
+            self._step_accumulator_ms -= PLAYER_STEP_MS
+            self._auto_step()
+
+    def _auto_step(self) -> None:
+        """Try buffered turn first, else keep walking current direction."""
+        if self._requested_direction is not None:
+            if self.move_player(self._requested_direction):
+                self._travel_direction = self._requested_direction
+                return
+        self.move_player(self._travel_direction)
 
     def update(self, dt: float, now_ms: int) -> None:
         """Update all sprites."""

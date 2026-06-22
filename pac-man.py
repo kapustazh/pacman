@@ -22,6 +22,7 @@ SCREEN_HEIGHT = 1080
 
 def main() -> None:
     pygame.init()
+    pygame.key.set_repeat(0)
     pygame.mouse.set_visible(False)
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Pac-Man")
