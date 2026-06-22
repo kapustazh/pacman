@@ -29,7 +29,6 @@ class PlayState(GameState):
         self._session: GameSession | None = None
         self._hud: HudOverlay | None = None
         self._maze_viewport: MazeViewport | None = None
-        self._last_now_ms = 0
 
     def enter(
         self,
@@ -54,7 +53,6 @@ class PlayState(GameState):
         started_at = pygame.time.get_ticks()
         self._session = GameSession(phase_started_at_ms=started_at)
         self._session.enter_ready(started_at)
-        self._last_now_ms = started_at
 
     def leave(self, context: GameContext) -> None:
         """Tear down world resources."""
@@ -91,7 +89,6 @@ class PlayState(GameState):
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
         """Advance gameplay phase, timer, and world animation."""
-        self._last_now_ms = now_ms
         if self._session is None or self._world is None:
             return
 
@@ -108,12 +105,12 @@ class PlayState(GameState):
             self._world.update_player_movement(dt)
             self._world.update(dt, now_ms)
             if timer_expired:
-                self._handle_life_lost(now_ms, context)
+                self._handle_life_lost(now_ms)
             return
 
         if phase == GameplayPhase.LIFE_LOST:
             if self._session.phase_elapsed_ms(now_ms) >= LIFE_LOST_DURATION_MS:
-                self._finish_life_lost(now_ms, context)
+                self._finish_life_lost(now_ms)
             return
 
         if phase == GameplayPhase.LEVEL_COMPLETE:
@@ -143,7 +140,7 @@ class PlayState(GameState):
         snapshot = self._session.snapshot(score=self._world.score)
         self._hud.draw(surface, snapshot, self._maze_viewport)
 
-    def _handle_life_lost(self, now_ms: int, context: GameContext) -> None:
+    def _handle_life_lost(self, now_ms: int) -> None:
         """Lose one life when timer expires or collision lands later."""
         if self._session is None:
             return
@@ -151,7 +148,7 @@ class PlayState(GameState):
         if self._session.lives == 0:
             self._session.enter_game_over(now_ms)
 
-    def _finish_life_lost(self, now_ms: int, context: GameContext) -> None:
+    def _finish_life_lost(self, now_ms: int) -> None:
         """Respawn after death or end the run."""
         if self._session is None:
             return

@@ -58,6 +58,3 @@ class WorldRenderConfig:
             width=layout.width * self.tile_px,
             height=layout.height * self.tile_px,
         )
-
-
-DEFAULT_RENDER_CONFIG = WorldRenderConfig()
