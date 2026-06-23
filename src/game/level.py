@@ -58,10 +58,10 @@ def load_smoke_level() -> LevelLayout:
     # TODO: replace with load_level_from_config() when maze generation lands.
     grid = (
         "###################",
-        "#.................#",
+        "#o...............o#",
         "#.###.###.###.###.#",
         "#.#...#.....#...#.#",
-        "#o#.#.#.###.#.#.#o#",
+        "#.#.#.#.###.#.#.#.#",
         "#.#...#.....#...#.#",
         "#.#####.###.#####.#",
         "#.................#",
@@ -73,7 +73,8 @@ def load_smoke_level() -> LevelLayout:
     cells: list[tuple[CellType, ...]] = []
     pellets: set[CellPos] = set()
     power_pellets: set[CellPos] = set()
-    player_spawn = CellPos(7, 9)
+    player_spawn = CellPos(7, 10)
+    # ghost_spawns = (CellPos(7, 11), CellPos(7, 12))
 
     for row_index, row in enumerate(grid):
         current_row: list[CellType] = []
@@ -91,7 +92,7 @@ def load_smoke_level() -> LevelLayout:
         cells.append(tuple(current_row))
 
     return LevelLayout(
-        cells=tuple(cells),
+        cells=tuple[tuple[CellType, ...], ...](cells),
         pellet_cells=frozenset(pellets),
         power_pellet_cells=frozenset(power_pellets),
         player_spawn=player_spawn,

@@ -18,6 +18,7 @@ from game.game_world import GameWorld
 from game.level import load_smoke_level
 from game.render_config import MazeViewport, WorldRenderConfig
 from rendering.hud_overlay import HudOverlay
+from rendering.level_clear_effect import LevelClearEffect
 from sprites.sprite_types import Direction
 
 
@@ -29,6 +30,7 @@ class PlayState(GameState):
         self._session: GameSession | None = None
         self._hud: HudOverlay | None = None
         self._maze_viewport: MazeViewport | None = None
+        self._level_clear_effect = LevelClearEffect()
 
     def enter(
         self,
@@ -37,16 +39,6 @@ class PlayState(GameState):
     ) -> None:
         """Create a fresh world from smoke level boilerplate."""
         catalog = context.resources.get_asset_catalog()
-        # DEMO: smoke level only; TODO: swap for real loader.
-        layout = load_smoke_level()
-        render_config = WorldRenderConfig.centered(
-            layout,
-            context.screen.get_size(),
-        )
-        factory = EntityFactory(catalog, render_config, layout)
-        self._world = GameWorld(layout, factory)
-        self._maze_viewport = render_config.viewport_for(layout)
-
         life_icon = catalog.pacman[Direction.RIGHT].frames[0]
         self._hud = HudOverlay(
             context.resources.get_text_renderer(),
@@ -55,6 +47,7 @@ class PlayState(GameState):
 
         started_at = pygame.time.get_ticks()
         self._session = GameSession(phase_started_at_ms=started_at)
+        self._build_world(context)
         self._session.enter_ready(started_at)
 
     def leave(self, context: GameContext) -> None:
@@ -76,6 +69,11 @@ class PlayState(GameState):
             if event.type != pygame.KEYDOWN:
                 continue
             if event.key == pygame.K_ESCAPE:
+                if (
+                    self._session is not None
+                    and self._session.phase == GameplayPhase.LEVEL_COMPLETE
+                ):
+                    continue
                 from states.pause_state import PauseState
 
                 context.scene_manager.push(PauseState())
@@ -104,11 +102,18 @@ class PlayState(GameState):
             return
 
         if phase == GameplayPhase.PLAYING:
-            timer_expired = self._session.tick_timer(dt)
-            self._world.update_player_movement(dt)
-            self._world.update(dt, now_ms)
-            if timer_expired:
-                self._handle_life_lost(now_ms)
+            if not self._world.is_frozen:
+                timer_expired = self._session.tick_timer(dt)
+                self._world.update_player_movement(dt)
+                self._world.update(dt, now_ms)
+                if timer_expired:
+                    self._handle_life_lost(now_ms)
+                elif self._world.all_consumables_cleared:
+                    self._session.sync_score(self._world.score)
+                    self._world.freeze_gameplay()
+                    self._session.enter_level_complete(now_ms)
+            else:
+                self._world.update(dt, now_ms)
             return
 
         if phase == GameplayPhase.LIFE_LOST:
@@ -116,13 +121,14 @@ class PlayState(GameState):
                 self._finish_life_lost(now_ms)
             return
 
-        # TODO: reachable once pellet-clear calls enter_level_complete().
         if phase == GameplayPhase.LEVEL_COMPLETE:
+            self._world.update(dt, now_ms)
             if (
                 self._session.phase_elapsed_ms(now_ms)
                 >= LEVEL_COMPLETE_DURATION_MS
             ):
                 self._session.advance_level()
+                self._reload_world(context)
                 self._session.enter_ready(now_ms)
             return
 
@@ -141,8 +147,37 @@ class PlayState(GameState):
         ):
             return
         self._world.draw(surface)
-        snapshot = self._session.snapshot(score=self._world.score)
+        if self._session.phase == GameplayPhase.LEVEL_COMPLETE:
+            elapsed_ms = self._session.phase_elapsed_ms(pygame.time.get_ticks())
+            overlay = self._level_clear_effect.surface_for(
+                self._maze_viewport,
+                elapsed_ms,
+            )
+            if overlay is not None:
+                surface.blit(overlay, (self._maze_viewport.x, self._maze_viewport.y))
+        world_score = self._world.score
+        snapshot = self._session.snapshot(score=world_score)
         self._hud.draw(surface, snapshot, self._maze_viewport)
+
+    def _build_world(self, context: GameContext) -> None:
+        """Load smoke level and spawn a fresh GameWorld."""
+        catalog = context.resources.get_asset_catalog()
+        layout = load_smoke_level()
+        render_config = WorldRenderConfig.centered(
+            layout,
+            context.screen.get_size(),
+        )
+        factory = EntityFactory(catalog, render_config, layout)
+        initial_score = self._session.score if self._session is not None else 0
+        self._world = GameWorld(layout, factory, initial_score=initial_score)
+        self._maze_viewport = render_config.viewport_for(layout)
+
+    def _reload_world(self, context: GameContext) -> None:
+        """Tear down the active world and build a new one for the next level."""
+        if self._world is not None:
+            self._world.teardown()
+            self._world = None
+        self._build_world(context)
 
     def _handle_life_lost(self, now_ms: int) -> None:
         """Lose one life when timer expires or collision lands later."""
@@ -166,7 +201,9 @@ class PlayState(GameState):
         """Transition to game-over screen with final score."""
         from states.game_over_state import GameOverState
 
-        score = self._world.score if self._world is not None else 0
+        score = self._session.score if self._session is not None else 0
+        if self._world is not None:
+            score = max(score, self._world.score)
         context.scene_manager.change(GameOverState(), {"score": score})
 
 

@@ -8,8 +8,7 @@ DEFAULT_LEVEL_TIME_S = 90
 
 READY_DURATION_MS = 2000
 LIFE_LOST_DURATION_MS = 2000
-# TODO: use when pellet-clear triggers enter_level_complete().
-LEVEL_COMPLETE_DURATION_MS = 2000
+LEVEL_COMPLETE_DURATION_MS = 2500
 GAME_OVER_DURATION_MS = 2000
 
 
@@ -48,6 +47,7 @@ class GameSession:
     lives: int = DEFAULT_LIVES
     level_time_limit_s: int = DEFAULT_LEVEL_TIME_S
     remaining_time_ms: int = DEFAULT_LEVEL_TIME_S * 1000
+    score: int = 0
     high_score: int = 0
     phase: GameplayPhase = GameplayPhase.READY
     phase_started_at_ms: int = 0
@@ -68,6 +68,10 @@ class GameSession:
         """Track best score seen this session until persistence lands."""
         if score > self.high_score:
             self.high_score = score
+
+    def sync_score(self, world_score: int) -> None:
+        """Persist run score from the active world before teardown."""
+        self.score = max(self.score, world_score)
 
     def tick_timer(self, dt_s: float) -> bool:
         """Subtract play time. Return True when timer hits zero."""
@@ -100,17 +104,14 @@ class GameSession:
         self.phase = GameplayPhase.GAME_OVER
         self.phase_started_at_ms = now_ms
 
-    # TODO: call from GameWorld when _remaining_consumables is empty.
     def enter_level_complete(self, now_ms: int) -> None:
         """Enter level-complete transition phase."""
         self.phase = GameplayPhase.LEVEL_COMPLETE
         self.phase_started_at_ms = now_ms
 
-    # TODO: used by LEVEL_COMPLETE phase handler in PlayState.
     def advance_level(self) -> None:
-        """Increment level index and reset timer for next round."""
+        """Increment level index for the next round."""
         self.level_number += 1
-        self.reset_level_timer()
 
     def phase_elapsed_ms(self, now_ms: int) -> int:
         """Return milliseconds spent in the current phase."""
@@ -118,9 +119,10 @@ class GameSession:
 
     def snapshot(self, score: int) -> HudSnapshot:
         """Build HUD snapshot from current session and score."""
-        self.update_high_score(score)
+        effective_score = max(self.score, score)
+        self.update_high_score(effective_score)
         return HudSnapshot(
-            score=score,
+            score=effective_score,
             high_score=self.high_score,
             lives=self.lives,
             spare_lives=self.spare_lives(),
@@ -135,7 +137,6 @@ def _phase_message(phase: GameplayPhase) -> str | None:
     """Return centered overlay text for a gameplay phase."""
     if phase == GameplayPhase.READY:
         return "READY!"
-    # TODO: reachable once enter_level_complete() is wired.
     if phase == GameplayPhase.LEVEL_COMPLETE:
         return "LEVEL CLEAR"
     if phase == GameplayPhase.GAME_OVER:

@@ -13,7 +13,7 @@ from game.level import CellPos, CellType, LevelLayout
 from sprites.sprite_types import Direction
 
 PLAYER_STEP_MS = 120
-DEFAULT_TRAVEL_DIRECTION = Direction.LEFT
+DEFAULT_TRAVEL_DIRECTION = Direction.RIGHT
 
 
 class GameWorld:
@@ -29,11 +29,17 @@ class GameWorld:
         "_step_accumulator_ms",
         "_remaining_consumables",
         "_score",
+        "_frozen",
         "all_sprites",
         "consumables",
     )
 
-    def __init__(self, layout: LevelLayout, factory: EntityFactory) -> None:
+    def __init__(
+        self,
+        layout: LevelLayout,
+        factory: EntityFactory,
+        initial_score: int = 0,
+    ) -> None:
         self._layout: LevelLayout = layout
         self._factory: EntityFactory = factory
         self.all_sprites: LayeredUpdates = LayeredUpdates()
@@ -42,7 +48,8 @@ class GameWorld:
         self._remaining_consumables.update(layout.power_pellet_cells)
         self._player: PlayerEntity | None = None
         self._player_sprite: EntitySprite | None = None
-        self._score: int = 0
+        self._score: int = initial_score
+        self._frozen: bool = False
         self._step_accumulator_ms: float = 0.0
         self._travel_direction: Direction = DEFAULT_TRAVEL_DIRECTION
         self._requested_direction: Direction | None = None
@@ -52,6 +59,22 @@ class GameWorld:
     def score(self) -> int:
         """Return current score."""
         return self._score
+
+    @property
+    def all_consumables_cleared(self) -> bool:
+        """Return True when no pellets or power pellets remain on the maze."""
+        return not self._remaining_consumables
+
+    @property
+    def is_frozen(self) -> bool:
+        """Return True when movement and input are paused."""
+        return self._frozen
+
+    def freeze_gameplay(self) -> None:
+        """Stop movement and buffered turns while sprite animation continues."""
+        self._frozen = True
+        self._requested_direction = None
+        self._step_accumulator_ms = 0.0
 
     def move_player(self, direction: Direction) -> bool:
         """Move player one grid step if target cell is walkable."""
@@ -82,11 +105,13 @@ class GameWorld:
 
     def request_turn(self, direction: Direction) -> None:
         """Buffer a direction change from player input."""
+        if self._frozen:
+            return
         self._requested_direction = direction
 
     def update_player_movement(self, dt_s: float) -> None:
         """Advance player on grid at fixed speed while PLAYING."""
-        if self._player is None:
+        if self._frozen or self._player is None:
             return
         self._step_accumulator_ms += dt_s * 1000.0
         while self._step_accumulator_ms >= PLAYER_STEP_MS:
@@ -117,6 +142,8 @@ class GameWorld:
         self.consumables.empty()
         self._player = None
         self._player_sprite = None
+        self._remaining_consumables.clear()
+        self._frozen = False
 
     def _spawn_from_layout(self) -> None:
         for row_index, row in enumerate(self._layout.cells):
