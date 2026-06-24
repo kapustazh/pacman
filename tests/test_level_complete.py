@@ -103,3 +103,15 @@ def test_level_clear_effect_blinks() -> None:
     assert effect.surface_for(viewport, 0) is not None
     assert effect.surface_for(viewport, 250) is None
     assert effect.surface_for(viewport, 400) is not None
+
+
+def test_level_clear_effect_reuses_overlay_surface() -> None:
+    layout = load_smoke_level()
+    viewport = WorldRenderConfig.centered(layout, (800, 600)).viewport_for(
+        layout
+    )
+    effect = LevelClearEffect()
+    first = effect.surface_for(viewport, 0)
+    second = effect.surface_for(viewport, 0)
+    assert first is not None
+    assert first is second

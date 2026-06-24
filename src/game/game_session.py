@@ -2,14 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-
-DEFAULT_LIVES = 3
-DEFAULT_LEVEL_TIME_S = 90
-
-READY_DURATION_MS = 2000
-LIFE_LOST_DURATION_MS = 2000
-LEVEL_COMPLETE_DURATION_MS = 2500
-GAME_OVER_DURATION_MS = 2000
+from typing import ClassVar
 
 
 class GameplayPhase(Enum):
@@ -18,7 +11,6 @@ class GameplayPhase(Enum):
     READY = auto()
     PLAYING = auto()
     LIFE_LOST = auto()
-    # TODO: set via enter_level_complete() when all pellets are cleared.
     LEVEL_COMPLETE = auto()
     GAME_OVER = auto()
     # TODO: set when final level is cleared or win condition lands.
@@ -42,6 +34,19 @@ class HudSnapshot:
 @dataclass(slots=True)
 class GameSession:
     """Run-level metadata: lives, level index, timer, and gameplay phase."""
+
+    DEFAULT_LIVES: ClassVar[int] = 3
+    DEFAULT_LEVEL_TIME_S: ClassVar[int] = 90
+    READY_DURATION_MS: ClassVar[int] = 2000
+    LIFE_LOST_DURATION_MS: ClassVar[int] = 2000
+    LEVEL_COMPLETE_DURATION_MS: ClassVar[int] = 2500
+    GAME_OVER_DURATION_MS: ClassVar[int] = 2000
+    PHASE_MESSAGE: ClassVar[dict[GameplayPhase, str | None]] = {
+        GameplayPhase.READY: "READY!",
+        GameplayPhase.LEVEL_COMPLETE: "LEVEL CLEAR",
+        GameplayPhase.GAME_OVER: "GAME OVER",
+        GameplayPhase.VICTORY: "YOU WIN",
+    }
 
     level_number: int = 1
     lives: int = DEFAULT_LIVES
@@ -129,19 +134,5 @@ class GameSession:
             level_number=self.level_number,
             remaining_time_s=self.remaining_time_s(),
             phase=self.phase,
-            message=_phase_message(self.phase),
+            message=self.PHASE_MESSAGE.get(self.phase),
         )
-
-
-def _phase_message(phase: GameplayPhase) -> str | None:
-    """Return centered overlay text for a gameplay phase."""
-    if phase == GameplayPhase.READY:
-        return "READY!"
-    if phase == GameplayPhase.LEVEL_COMPLETE:
-        return "LEVEL CLEAR"
-    if phase == GameplayPhase.GAME_OVER:
-        return "GAME OVER"
-    # TODO: reachable once victory condition is implemented.
-    if phase == GameplayPhase.VICTORY:
-        return "YOU WIN"
-    return None

@@ -8,6 +8,7 @@ from pygame.surface import Surface
 
 from core.context import GameContext
 from core.state import GameState, StateEnterData
+from states.menu_input import MenuKeyBindings, handle_menu_key
 from states.text import ArcadeTextColor, draw_menu_row_highlight
 
 
@@ -17,13 +18,6 @@ class GameOverOption:
 
     label: str
     action: str
-
-
-GAME_OVER_OPTIONS: tuple[GameOverOption, ...] = (
-    GameOverOption("REPLAY", "replay"),
-    GameOverOption("MAIN MENU", "menu"),
-    GameOverOption("EXIT", "exit"),
-)
 
 
 class GameOverState(GameState):
@@ -36,12 +30,22 @@ class GameOverState(GameState):
     MENU_SCALE = 3
     TITLE_SCALE = 5
     SCORE_SCALE = 4
+    OPTIONS: tuple[GameOverOption, ...] = (
+        GameOverOption("REPLAY", "replay"),
+        GameOverOption("MAIN MENU", "menu"),
+        GameOverOption("EXIT", "exit"),
+    )
 
-    __slots__ = ("_score", "_selected_index")
+    __slots__ = ("_action_handlers", "_score", "_selected_index")
 
     def __init__(self) -> None:
         self._score = 0
         self._selected_index = 0
+        self._action_handlers: dict[str, Callable[[GameContext], None]] = {
+            "replay": self._replay,
+            "menu": self._main_menu,
+            "exit": self._exit_game,
+        }
 
     def enter(
         self,
@@ -88,7 +92,7 @@ class GameOverState(GameState):
             self.SCORE_SCALE,
         )
 
-        for index, option in enumerate(GAME_OVER_OPTIONS):
+        for index, option in enumerate(self.OPTIONS):
             y = self.MENU_START_Y + index * self.MENU_LINE_HEIGHT
             if index == self._selected_index:
                 draw_menu_row_highlight(
@@ -110,46 +114,42 @@ class GameOverState(GameState):
         event: pygame.event.Event,
         context: GameContext,
     ) -> None:
-        if event.key in (pygame.K_UP, pygame.K_w):
-            self._selected_index = (self._selected_index - 1) % len(
-                GAME_OVER_OPTIONS
-            )
-            return
-        if event.key in (pygame.K_DOWN, pygame.K_s):
-            self._selected_index = (self._selected_index + 1) % len(
-                GAME_OVER_OPTIONS
-            )
-            return
-        if event.key == pygame.K_r:
-            self._selected_index = 0
-            self._activate_by_name("replay", context)
-            return
-        if event.key == pygame.K_m:
-            self._selected_index = 1
-            self._activate_by_name("menu", context)
-            return
-        if event.key == pygame.K_ESCAPE:
-            self._activate_by_name("exit", context)
-            return
-        if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-            self._activate(self._selected_index, context)
-            return
-        if pygame.K_1 <= event.key <= pygame.K_3:
-            index = event.key - pygame.K_1
-            self._selected_index = index
-            self._activate(index, context)
+        handle_menu_key(
+            event,
+            MenuKeyBindings(
+                option_count=len(self.OPTIONS),
+                on_move_up=lambda: self._move_selection(-1),
+                on_move_down=lambda: self._move_selection(1),
+                on_activate_selected=lambda: self._activate(
+                    self._selected_index,
+                    context,
+                ),
+                on_select_index=lambda index: setattr(
+                    self, "_selected_index", index
+                ),
+                on_activate_index=lambda index: self._activate(index, context),
+                on_activate_action=lambda action: self._activate_by_name(
+                    action,
+                    context,
+                ),
+                shortcuts={
+                    pygame.K_r: (0, "replay"),
+                    pygame.K_m: (1, "menu"),
+                },
+            ),
+        )
+
+    def _move_selection(self, delta: int) -> None:
+        self._selected_index = (self._selected_index + delta) % len(
+            self.OPTIONS
+        )
 
     def _activate(self, index: int, context: GameContext) -> None:
-        if 0 <= index < len(GAME_OVER_OPTIONS):
-            self._activate_by_name(GAME_OVER_OPTIONS[index].action, context)
+        if 0 <= index < len(self.OPTIONS):
+            self._activate_by_name(self.OPTIONS[index].action, context)
 
     def _activate_by_name(self, action: str, context: GameContext) -> None:
-        handlers: dict[str, Callable[[GameContext], None]] = {
-            "replay": self._replay,
-            "menu": self._main_menu,
-            "exit": self._exit_game,
-        }
-        handler = handlers.get(action)
+        handler = self._action_handlers.get(action)
         if handler is not None:
             handler(context)
 

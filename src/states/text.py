@@ -3,24 +3,10 @@ from __future__ import annotations
 from collections import OrderedDict
 from enum import IntEnum
 from pathlib import Path
+from typing import ClassVar
 
 import pygame
 from pygame.surface import Surface
-
-TEXT_SHEET_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "assets"
-    / "new_assets"
-    / "Arcade - Pac-Man - Miscellaneous - Text.png"
-)
-
-CELL_SIZE = 8
-ROWS_PER_COLOR = 4
-_RENDER_CACHE_MAX = 128
-_SCALED_GLYPH_CACHE_MAX = 256
-
-SCREEN_BACKDROP = (0, 0, 0)
-MENU_ROW_HIGHLIGHT_COLOR = (40, 40, 80, 120)
 
 
 class ArcadeTextColor(IntEnum):
@@ -35,20 +21,27 @@ class ArcadeTextColor(IntEnum):
     YELLOW = 6
 
 
-_GLYPH_SHEET_CELLS: dict[str, tuple[int, int]] = {
-    **{chr(ord("A") + index): (index, 0) for index in range(15)},  # A-O
-    **{chr(ord("P") + index): (index, 1) for index in range(11)},  # P-Z
-    "!": (11, 1),
-    "©": (12, 1),
-    "/": (10, 2),
-    "-": (11, 2),
-    '"': (12, 2),
-    **{str(digit): (digit, 2) for digit in range(10)},
-}
-
-
 class ArcadeFontAtlas:
     """Lazy-loaded glyph atlas sliced from the Pac-Man text sheet."""
+
+    TEXT_SHEET_PATH: ClassVar[Path] = (
+        Path(__file__).resolve().parents[2]
+        / "assets"
+        / "new_assets"
+        / "Arcade - Pac-Man - Miscellaneous - Text.png"
+    )
+    CELL_SIZE: ClassVar[int] = 8
+    ROWS_PER_COLOR: ClassVar[int] = 4
+    GLYPH_SHEET_CELLS: ClassVar[dict[str, tuple[int, int]]] = {
+        **{chr(ord("A") + index): (index, 0) for index in range(15)},  # A-O
+        **{chr(ord("P") + index): (index, 1) for index in range(11)},  # P-Z
+        "!": (11, 1),
+        "©": (12, 1),
+        "/": (10, 2),
+        "-": (11, 2),
+        '"': (12, 2),
+        **{str(digit): (digit, 2) for digit in range(10)},
+    }
 
     __slots__ = ("_glyphs_by_color", "_loaded")
 
@@ -69,19 +62,21 @@ class ArcadeFontAtlas:
         if self._loaded:
             return
 
-        if not TEXT_SHEET_PATH.exists():
-            raise FileNotFoundError(f"Text sheet not found: {TEXT_SHEET_PATH}")
+        if not self.TEXT_SHEET_PATH.exists():
+            raise FileNotFoundError(
+                f"Text sheet not found: {self.TEXT_SHEET_PATH}"
+            )
 
-        sheet = pygame.image.load(TEXT_SHEET_PATH).convert_alpha()
+        sheet = pygame.image.load(self.TEXT_SHEET_PATH).convert_alpha()
         for color in ArcadeTextColor:
-            block_row = int(color) * ROWS_PER_COLOR
+            block_row = int(color) * self.ROWS_PER_COLOR
             glyphs: dict[str, Surface] = {}
-            for char, (col, row) in _GLYPH_SHEET_CELLS.items():
+            for char, (col, row) in self.GLYPH_SHEET_CELLS.items():
                 rect = pygame.Rect(
-                    col * CELL_SIZE,
-                    (block_row + row) * CELL_SIZE,
-                    CELL_SIZE,
-                    CELL_SIZE,
+                    col * self.CELL_SIZE,
+                    (block_row + row) * self.CELL_SIZE,
+                    self.CELL_SIZE,
+                    self.CELL_SIZE,
                 )
                 glyphs[char] = sheet.subsurface(rect).copy()
             self._glyphs_by_color[color] = glyphs
@@ -97,6 +92,16 @@ class ArcadeFontAtlas:
 
 class ArcadeTextRenderer:
     """Arcade text rendering with injected atlas and bounded caches."""
+
+    RENDER_CACHE_MAX: ClassVar[int] = 128
+    SCALED_GLYPH_CACHE_MAX: ClassVar[int] = 256
+    SCREEN_BACKDROP: ClassVar[tuple[int, int, int]] = (0, 0, 0)
+    MENU_ROW_HIGHLIGHT_COLOR: ClassVar[tuple[int, int, int, int]] = (
+        40,
+        40,
+        80,
+        120,
+    )
 
     __slots__ = ("_atlas", "_render_cache", "_scaled_glyph_cache")
 
@@ -123,7 +128,7 @@ class ArcadeTextRenderer:
 
     def draw_screen_backdrop(self, surface: Surface) -> None:
         """Fill screen to hide states beneath on the scene stack."""
-        surface.fill(SCREEN_BACKDROP)
+        surface.fill(self.SCREEN_BACKDROP)
 
     def draw_centered_arcade_text(
         self,
@@ -190,7 +195,7 @@ class ArcadeTextRenderer:
         """Store rendered text with bounded LRU eviction."""
         self._render_cache[cache_key] = surface
         self._render_cache.move_to_end(cache_key)
-        while len(self._render_cache) > _RENDER_CACHE_MAX:
+        while len(self._render_cache) > self.RENDER_CACHE_MAX:
             self._render_cache.popitem(last=False)
 
     def _scaled_glyph(
@@ -209,10 +214,11 @@ class ArcadeTextRenderer:
         cached = self._scaled_glyph_cache.get(key)
         if cached is not None:
             return cached
-        size = (CELL_SIZE * scale, CELL_SIZE * scale)
+        cell_size = ArcadeFontAtlas.CELL_SIZE
+        size = (cell_size * scale, cell_size * scale)
         scaled = pygame.transform.scale(glyph, size)
         self._scaled_glyph_cache[key] = scaled
-        while len(self._scaled_glyph_cache) > _SCALED_GLYPH_CACHE_MAX:
+        while len(self._scaled_glyph_cache) > self.SCALED_GLYPH_CACHE_MAX:
             self._scaled_glyph_cache.pop(next(iter(self._scaled_glyph_cache)))
         return scaled
 
@@ -234,7 +240,7 @@ class ArcadeFont:
 
     def advance(self) -> int:
         """Return fixed monospace advance for one glyph cell."""
-        return CELL_SIZE * self._scale
+        return ArcadeFontAtlas.CELL_SIZE * self._scale
 
     def line_height(self) -> int:
         """Return rendered line height."""
@@ -315,9 +321,11 @@ def draw_menu_row_highlight(
     start_y: int,
     line_height: int,
     *,
-    color: tuple[int, int, int, int] = MENU_ROW_HIGHLIGHT_COLOR,
+    color: tuple[int, int, int, int] | None = None,
 ) -> None:
     """Draw semi-transparent highlight band behind a menu row."""
+    if color is None:
+        color = ArcadeTextRenderer.MENU_ROW_HIGHLIGHT_COLOR
     row = menu_row_rect(surface, index, start_y, line_height)
     highlight = pygame.Surface(row.size, pygame.SRCALPHA)
     highlight.fill(color)

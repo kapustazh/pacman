@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 import pygame
 from pygame.sprite import Group, LayeredUpdates, spritecollide
 from pygame.surface import Surface
@@ -12,12 +14,18 @@ from game.entity_factory import EntityFactory
 from game.level import CellPos, CellType, LevelLayout
 from sprites.sprite_types import Direction
 
-PLAYER_STEP_MS = 120
-DEFAULT_TRAVEL_DIRECTION = Direction.RIGHT
-
 
 class GameWorld:
     """Owns runtime gameplay entities, groups, and collision state."""
+
+    PLAYER_STEP_MS: ClassVar[int] = 120
+    DEFAULT_TRAVEL_DIRECTION: ClassVar[Direction] = Direction.RIGHT
+    _DIRECTION_DELTA: ClassVar[dict[Direction, tuple[int, int]]] = {
+        Direction.UP: (-1, 0),
+        Direction.DOWN: (1, 0),
+        Direction.LEFT: (0, -1),
+        Direction.RIGHT: (0, 1),
+    }
 
     __slots__ = (
         "_factory",
@@ -51,7 +59,7 @@ class GameWorld:
         self._score: int = initial_score
         self._frozen: bool = False
         self._step_accumulator_ms: float = 0.0
-        self._travel_direction: Direction = DEFAULT_TRAVEL_DIRECTION
+        self._travel_direction: Direction = self.DEFAULT_TRAVEL_DIRECTION
         self._requested_direction: Direction | None = None
         self._spawn_from_layout()
 
@@ -98,7 +106,7 @@ class GameWorld:
 
     def start_auto_movement(self) -> None:
         """Begin classic auto-walk after READY clears."""
-        self._travel_direction = DEFAULT_TRAVEL_DIRECTION
+        self._travel_direction = self.DEFAULT_TRAVEL_DIRECTION
         self._step_accumulator_ms = 0.0
         if self._player is not None:
             self._player.face(self._travel_direction)
@@ -114,8 +122,8 @@ class GameWorld:
         if self._frozen or self._player is None:
             return
         self._step_accumulator_ms += dt_s * 1000.0
-        while self._step_accumulator_ms >= PLAYER_STEP_MS:
-            self._step_accumulator_ms -= PLAYER_STEP_MS
+        while self._step_accumulator_ms >= self.PLAYER_STEP_MS:
+            self._step_accumulator_ms -= self.PLAYER_STEP_MS
             self._auto_step()
 
     def _auto_step(self) -> None:
@@ -192,10 +200,4 @@ class GameWorld:
             hit.kill()
 
     def _direction_delta(self, direction: Direction) -> tuple[int, int]:
-        if direction == Direction.UP:
-            return (-1, 0)
-        if direction == Direction.DOWN:
-            return (1, 0)
-        if direction == Direction.LEFT:
-            return (0, -1)
-        return (0, 1)
+        return self._DIRECTION_DELTA[direction]

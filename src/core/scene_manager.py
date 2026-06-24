@@ -73,30 +73,26 @@ class SceneManager:
         while self._pending:
             transition = self._pending.popleft()
 
-            if transition.kind == "shutdown":
-                while self._stack:
-                    self._leave_top_state(context)
-                self._shutdown_requested = True
-                self._pending.clear()
-                return
-
-            if transition.kind == "pop":
-                self._pop_state(context)
-                continue
-
-            if transition.state is None:
-                raise ValueError("Transition state is required")
-
-            if transition.kind == "change":
-                self._change_state(
-                    context, transition.state, transition.enter_data
-                )
-                continue
-
-            if transition.kind == "push":
-                self._push_state(
-                    context, transition.state, transition.enter_data
-                )
+            match transition.kind:
+                case "shutdown":
+                    while self._stack:
+                        self._leave_top_state(context)
+                    self._shutdown_requested = True
+                    self._pending.clear()
+                    return
+                case "pop":
+                    self._pop_state(context)
+                case "change" | "push":
+                    if transition.state is None:
+                        raise ValueError("Transition state is required")
+                    if transition.kind == "change":
+                        self._change_state(
+                            context, transition.state, transition.enter_data
+                        )
+                    else:
+                        self._push_state(
+                            context, transition.state, transition.enter_data
+                        )
 
     def _enqueue(self, transition: Transition) -> None:
         """Queue a transition for the next flush."""

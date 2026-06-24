@@ -1,18 +1,20 @@
+from typing import ClassVar
+
 from core.resources import AssetCatalog
 from entities.pellet_entity import PelletEntity
 from entities.player_entity import PlayerEntity
 from entities.wall_tile_entity import WallTileEntity
 from game.level import CellPos, LevelLayout
 from game.render_config import WorldRenderConfig
-from game.wall_tile_picker import pick_wall_tile
+from game.wall_tile_picker import WallTilePicker
 from sprites.sprite_types import Direction
-
-PELLET_POINTS = 10
-POWER_PELLET_POINTS = 50
 
 
 class EntityFactory:
     """Create pygame entities from immutable level data and loaded assets."""
+
+    PELLET_POINTS: ClassVar[int] = 10
+    POWER_PELLET_POINTS: ClassVar[int] = 50
 
     __slots__ = ("_catalog", "_layout", "_render_config")
 
@@ -36,7 +38,7 @@ class EntityFactory:
 
     def create_wall(self, cell: CellPos) -> WallTileEntity:
         """Create wall tile entity with neighbor-aware sprite selection."""
-        tile_kind = pick_wall_tile(self._layout, cell)
+        tile_kind = WallTilePicker.pick(self._layout, cell)
         surface = self._catalog.maze.tiles[tile_kind].surface
         return WallTileEntity(surface, cell, self.cell_center(cell))
 
@@ -47,7 +49,7 @@ class EntityFactory:
             surface,
             cell,
             self.cell_center(cell),
-            PELLET_POINTS,
+            self.PELLET_POINTS,
         )
 
     def create_power_pellet(self, cell: CellPos) -> PelletEntity:
@@ -57,7 +59,7 @@ class EntityFactory:
             surface,
             cell,
             self.cell_center(cell),
-            POWER_PELLET_POINTS,
+            self.POWER_PELLET_POINTS,
         )
 
     def create_player(self, cell: CellPos) -> PlayerEntity:

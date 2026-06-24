@@ -6,14 +6,7 @@ from pygame.surface import Surface
 from core.context import GameContext
 from core.state import GameState, StateEnterData
 from game.entity_factory import EntityFactory
-from game.game_session import (
-    GAME_OVER_DURATION_MS,
-    LIFE_LOST_DURATION_MS,
-    LEVEL_COMPLETE_DURATION_MS,
-    READY_DURATION_MS,
-    GameplayPhase,
-    GameSession,
-)
+from game.game_session import GameplayPhase, GameSession
 from game.game_world import GameWorld
 from game.level import load_smoke_level
 from game.render_config import MazeViewport, WorldRenderConfig
@@ -93,49 +86,79 @@ class PlayState(GameState):
         if self._session is None or self._world is None:
             return
 
-        phase = self._session.phase
-        if phase == GameplayPhase.READY:
-            if self._session.phase_elapsed_ms(now_ms) >= READY_DURATION_MS:
-                self._session.begin_play(now_ms)
-                self._world.start_auto_movement()
+        match self._session.phase:
+            case GameplayPhase.READY:
+                self._update_ready(dt, now_ms)
+            case GameplayPhase.PLAYING:
+                self._update_playing(dt, now_ms)
+            case GameplayPhase.LIFE_LOST:
+                self._update_life_lost(now_ms)
+            case GameplayPhase.LEVEL_COMPLETE:
+                self._update_level_complete(dt, now_ms, context)
+            case GameplayPhase.GAME_OVER:
+                self._update_game_over(now_ms, context)
+            case GameplayPhase.VICTORY:
+                pass
+
+    def _update_ready(self, dt: float, now_ms: int) -> None:
+        assert self._session is not None
+        assert self._world is not None
+        if (
+            self._session.phase_elapsed_ms(now_ms)
+            >= GameSession.READY_DURATION_MS
+        ):
+            self._session.begin_play(now_ms)
+            self._world.start_auto_movement()
+        self._world.update(dt, now_ms)
+
+    def _update_playing(self, dt: float, now_ms: int) -> None:
+        assert self._session is not None
+        assert self._world is not None
+        if not self._world.is_frozen:
+            timer_expired = self._session.tick_timer(dt)
+            self._world.update_player_movement(dt)
             self._world.update(dt, now_ms)
-            return
-
-        if phase == GameplayPhase.PLAYING:
-            if not self._world.is_frozen:
-                timer_expired = self._session.tick_timer(dt)
-                self._world.update_player_movement(dt)
-                self._world.update(dt, now_ms)
-                if timer_expired:
-                    self._handle_life_lost(now_ms)
-                elif self._world.all_consumables_cleared:
-                    self._session.sync_score(self._world.score)
-                    self._world.freeze_gameplay()
-                    self._session.enter_level_complete(now_ms)
-            else:
-                self._world.update(dt, now_ms)
-            return
-
-        if phase == GameplayPhase.LIFE_LOST:
-            if self._session.phase_elapsed_ms(now_ms) >= LIFE_LOST_DURATION_MS:
-                self._finish_life_lost(now_ms)
-            return
-
-        if phase == GameplayPhase.LEVEL_COMPLETE:
+            if timer_expired:
+                self._handle_life_lost(now_ms)
+            elif self._world.all_consumables_cleared:
+                self._session.sync_score(self._world.score)
+                self._world.freeze_gameplay()
+                self._session.enter_level_complete(now_ms)
+        else:
             self._world.update(dt, now_ms)
-            if (
-                self._session.phase_elapsed_ms(now_ms)
-                >= LEVEL_COMPLETE_DURATION_MS
-            ):
-                self._session.advance_level()
-                self._reload_world(context)
-                self._session.enter_ready(now_ms)
-            return
 
-        if phase == GameplayPhase.GAME_OVER:
-            if self._session.phase_elapsed_ms(now_ms) >= GAME_OVER_DURATION_MS:
-                self._open_game_over(context)
-            return
+    def _update_life_lost(self, now_ms: int) -> None:
+        assert self._session is not None
+        if (
+            self._session.phase_elapsed_ms(now_ms)
+            >= GameSession.LIFE_LOST_DURATION_MS
+        ):
+            self._finish_life_lost(now_ms)
+
+    def _update_level_complete(
+        self,
+        dt: float,
+        now_ms: int,
+        context: GameContext,
+    ) -> None:
+        assert self._session is not None
+        assert self._world is not None
+        self._world.update(dt, now_ms)
+        if (
+            self._session.phase_elapsed_ms(now_ms)
+            >= GameSession.LEVEL_COMPLETE_DURATION_MS
+        ):
+            self._session.advance_level()
+            self._reload_world(context)
+            self._session.enter_ready(now_ms)
+
+    def _update_game_over(self, now_ms: int, context: GameContext) -> None:
+        assert self._session is not None
+        if (
+            self._session.phase_elapsed_ms(now_ms)
+            >= GameSession.GAME_OVER_DURATION_MS
+        ):
+            self._open_game_over(context)
 
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw world, classic HUD bands, and phase message."""
@@ -148,13 +171,17 @@ class PlayState(GameState):
             return
         self._world.draw(surface)
         if self._session.phase == GameplayPhase.LEVEL_COMPLETE:
-            elapsed_ms = self._session.phase_elapsed_ms(pygame.time.get_ticks())
+            elapsed_ms = self._session.phase_elapsed_ms(
+                pygame.time.get_ticks()
+            )
             overlay = self._level_clear_effect.surface_for(
                 self._maze_viewport,
                 elapsed_ms,
             )
             if overlay is not None:
-                surface.blit(overlay, (self._maze_viewport.x, self._maze_viewport.y))
+                surface.blit(
+                    overlay, (self._maze_viewport.x, self._maze_viewport.y)
+                )
         world_score = self._world.score
         snapshot = self._session.snapshot(score=world_score)
         self._hud.draw(surface, snapshot, self._maze_viewport)
@@ -207,13 +234,17 @@ class PlayState(GameState):
         context.scene_manager.change(GameOverState(), {"score": score})
 
 
+_KEY_TO_DIRECTION: dict[int, Direction] = {
+    pygame.K_UP: Direction.UP,
+    pygame.K_w: Direction.UP,
+    pygame.K_DOWN: Direction.DOWN,
+    pygame.K_s: Direction.DOWN,
+    pygame.K_LEFT: Direction.LEFT,
+    pygame.K_a: Direction.LEFT,
+    pygame.K_RIGHT: Direction.RIGHT,
+    pygame.K_d: Direction.RIGHT,
+}
+
+
 def _direction_from_key(key: int) -> Direction | None:
-    if key in (pygame.K_UP, pygame.K_w):
-        return Direction.UP
-    if key in (pygame.K_DOWN, pygame.K_s):
-        return Direction.DOWN
-    if key in (pygame.K_LEFT, pygame.K_a):
-        return Direction.LEFT
-    if key in (pygame.K_RIGHT, pygame.K_d):
-        return Direction.RIGHT
-    return None
+    return _KEY_TO_DIRECTION.get(key)
