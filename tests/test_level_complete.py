@@ -14,6 +14,7 @@ sys.path.insert(0, str(SRC_ROOT))
 
 import pygame  # noqa: E402
 
+from entities.wall_tile_entity import WallTileEntity  # noqa: E402
 from game.entity_factory import EntityFactory  # noqa: E402
 from game.game_session import GameSession  # noqa: E402
 from game.game_world import GameWorld  # noqa: E402
@@ -21,6 +22,7 @@ from game.level import load_smoke_level  # noqa: E402
 from game.render_config import WorldRenderConfig  # noqa: E402
 from rendering.level_clear_effect import LevelClearEffect  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
+from sprites.sprite_types import TileKind  # noqa: E402
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -94,24 +96,33 @@ def test_sync_score_keeps_highest_value() -> None:
     assert session.score == 250
 
 
-def test_level_clear_effect_blinks() -> None:
-    layout = load_smoke_level()
-    viewport = WorldRenderConfig.centered(layout, (800, 600)).viewport_for(
-        layout
-    )
+def test_level_clear_effect_white_phase_timing() -> None:
     effect = LevelClearEffect()
-    assert effect.surface_for(viewport, 0) is not None
-    assert effect.surface_for(viewport, 250) is None
-    assert effect.surface_for(viewport, 400) is not None
+    assert effect.is_white_phase(0)
+    assert effect.is_white_phase(199)
+    assert not effect.is_white_phase(250)
+    assert effect.is_white_phase(400)
 
 
-def test_level_clear_effect_reuses_overlay_surface() -> None:
-    layout = load_smoke_level()
-    viewport = WorldRenderConfig.centered(layout, (800, 600)).viewport_for(
-        layout
-    )
-    effect = LevelClearEffect()
-    first = effect.surface_for(viewport, 0)
-    second = effect.surface_for(viewport, 0)
-    assert first is not None
-    assert first is second
+def test_maze_white_tiles_loaded_for_all_tile_kinds() -> None:
+    assets = Assets()
+    assets.load()
+    for tile_kind in TileKind:
+        assert tile_kind in assets.maze.tiles
+        assert tile_kind in assets.maze.white_tiles
+        blue = assets.maze.tiles[tile_kind].surface
+        white = assets.maze.white_tiles[tile_kind].surface
+        assert blue is not white
+
+
+def test_set_wall_flash_swaps_wall_surfaces(game_world: GameWorld) -> None:
+    wall_sprite = game_world._wall_sprites[0]
+    wall = wall_sprite.entity
+    assert isinstance(wall, WallTileEntity)
+    blue_surface = wall.image
+
+    game_world.set_wall_flash(True)
+    assert wall.image is not blue_surface
+
+    game_world.set_wall_flash(False)
+    assert wall.image is blue_surface

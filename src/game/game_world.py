@@ -38,6 +38,8 @@ class GameWorld:
         "_remaining_consumables",
         "_score",
         "_frozen",
+        "_wall_flash_white",
+        "_wall_sprites",
         "all_sprites",
         "consumables",
     )
@@ -58,6 +60,8 @@ class GameWorld:
         self._player_sprite: EntitySprite | None = None
         self._score: int = initial_score
         self._frozen: bool = False
+        self._wall_flash_white: bool = False
+        self._wall_sprites: list[EntitySprite] = []
         self._step_accumulator_ms: float = 0.0
         self._travel_direction: Direction = self.DEFAULT_TRAVEL_DIRECTION
         self._requested_direction: Direction | None = None
@@ -77,6 +81,18 @@ class GameWorld:
     def is_frozen(self) -> bool:
         """Return True when movement and input are paused."""
         return self._frozen
+
+    def set_wall_flash(self, white: bool) -> None:
+        """Toggle wall tiles between blue and white maze sprites."""
+        if self._wall_flash_white == white:
+            return
+        self._wall_flash_white = white
+        for sprite in self._wall_sprites:
+            entity = sprite.entity
+            if not isinstance(entity, WallTileEntity):
+                continue
+            entity.set_flash_white(white)
+            sprite.sync_from_entity()
 
     def freeze_gameplay(self) -> None:
         """Stop movement and buffered turns while sprite animation continues."""
@@ -152,6 +168,8 @@ class GameWorld:
         self._player_sprite = None
         self._remaining_consumables.clear()
         self._frozen = False
+        self._wall_flash_white = False
+        self._wall_sprites.clear()
 
     def _spawn_from_layout(self) -> None:
         for row_index, row in enumerate(self._layout.cells):
@@ -172,6 +190,7 @@ class GameWorld:
 
     def _register_wall(self, wall: WallTileEntity) -> None:
         sprite = EntitySprite(wall)
+        self._wall_sprites.append(sprite)
         self.all_sprites.add(sprite, layer=wall.layer)
 
     def _register_consumable(self, pellet: PelletEntity) -> None:

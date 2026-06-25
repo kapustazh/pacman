@@ -32,7 +32,7 @@ class PlayState(GameState):
     ) -> None:
         """Create a fresh world from smoke level boilerplate."""
         catalog = context.resources.get_asset_catalog()
-        life_icon = catalog.pacman[Direction.RIGHT].frames[0]
+        life_icon = catalog.pacman[Direction.LEFT].frames[1]
         self._hud = HudOverlay(
             context.resources.get_text_renderer(),
             life_icon=life_icon,
@@ -144,10 +144,11 @@ class PlayState(GameState):
         assert self._session is not None
         assert self._world is not None
         self._world.update(dt, now_ms)
-        if (
-            self._session.phase_elapsed_ms(now_ms)
-            >= GameSession.LEVEL_COMPLETE_DURATION_MS
-        ):
+        elapsed_ms = self._session.phase_elapsed_ms(now_ms)
+        self._world.set_wall_flash(
+            self._level_clear_effect.is_white_phase(elapsed_ms),
+        )
+        if elapsed_ms >= GameSession.LEVEL_COMPLETE_DURATION_MS:
             self._session.advance_level()
             self._reload_world(context)
             self._session.enter_ready(now_ms)
@@ -170,18 +171,6 @@ class PlayState(GameState):
         ):
             return
         self._world.draw(surface)
-        if self._session.phase == GameplayPhase.LEVEL_COMPLETE:
-            elapsed_ms = self._session.phase_elapsed_ms(
-                pygame.time.get_ticks()
-            )
-            overlay = self._level_clear_effect.surface_for(
-                self._maze_viewport,
-                elapsed_ms,
-            )
-            if overlay is not None:
-                surface.blit(
-                    overlay, (self._maze_viewport.x, self._maze_viewport.y)
-                )
         world_score = self._world.score
         snapshot = self._session.snapshot(score=world_score)
         self._hud.draw(surface, snapshot, self._maze_viewport)

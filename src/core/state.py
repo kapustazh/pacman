@@ -10,9 +10,10 @@ from core.context import GameContext
 StateEnterData = dict[str, object]
 
 
-# BOILERPLATE: all scenes implement this FSM lifecycle.
 class GameState(ABC):
-    """BOILERPLATE: base interface for all scenes managed by SceneManager."""
+    """
+    Base interface for all scenes managed by SceneManager.
+    """
 
     @abstractmethod
     def enter(

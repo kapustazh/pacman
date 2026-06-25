@@ -39,8 +39,15 @@ class EntityFactory:
     def create_wall(self, cell: CellPos) -> WallTileEntity:
         """Create wall tile entity with neighbor-aware sprite selection."""
         tile_kind = WallTilePicker.pick(self._layout, cell)
-        surface = self._catalog.maze.tiles[tile_kind].surface
-        return WallTileEntity(surface, cell, self.cell_center(cell))
+        blue_surface = self._catalog.maze.tiles[tile_kind].surface
+        white_surface = self._catalog.maze.white_tiles[tile_kind].surface
+        return WallTileEntity(
+            blue_surface,
+            white_surface,
+            tile_kind,
+            cell,
+            self.cell_center(cell),
+        )
 
     def create_pellet(self, cell: CellPos) -> PelletEntity:
         """Create normal pellet entity."""

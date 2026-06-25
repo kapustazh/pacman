@@ -21,7 +21,7 @@ class CellPos:
     col: int
 
 
-# BOILERPLATE: frozen map snapshot; replace loader source, not this contract.
+# BOILERPLATE: frozen map snapshot; replace loader source, not this.
 @dataclass(frozen=True, slots=True)
 class LevelLayout:
     """BOILERPLATE: immutable snapshot used to spawn GameWorld."""
@@ -58,16 +58,16 @@ def load_smoke_level() -> LevelLayout:
     # TODO: replace with load_level_from_config() when maze generation lands.
     grid = (
         "###################",
-        "#o...............o#",
-        "#.###.###.###.###.#",
+        "#o               o#",
+        "#.###.###.#####   #",
         "#.#...#.....#...#.#",
         "#.#.#.#.###.#.#.#.#",
         "#.#...#.....#...#.#",
         "#.#####.###.#####.#",
-        "#.................#",
+        "#                 #",
         "#.###.###.###.###.#",
-        "#.#.............#.#",
-        "#o.......#.......o#",
+        "#.#             #.#",
+        "#o              o #",
         "###################",
     )
     cells: list[tuple[CellType, ...]] = []

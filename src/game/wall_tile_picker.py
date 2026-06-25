@@ -61,7 +61,10 @@ class WallTilePicker:
         """Return True only for in-bounds wall cells (OOB is open for tile art)."""
         if pos.row < 0 or pos.col < 0:
             return False
-        if pos.row >= layout.height or pos.col >= layout.width:
+        if pos.row >= layout.height:
             return False
-        cell_type = cast(CellType, layout.cells[pos.row][pos.col])
+        row = layout.cells[pos.row]
+        if pos.col >= len(row):
+            return False
+        cell_type = cast(CellType, row[pos.col])
         return bool(cell_type == CellType.WALL)

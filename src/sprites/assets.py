@@ -33,6 +33,7 @@ class ItemSprites:
 @dataclass(slots=True)
 class MazeSprites:
     tiles: dict[TileKind, AssetSprite] = field(default_factory=dict)
+    white_tiles: dict[TileKind, AssetSprite] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -85,7 +86,7 @@ class Assets:
     DOT_COORD: ClassVar[tuple[int, int]] = (10, 1)
     POWER_PELLET_COORD: ClassVar[tuple[int, int]] = (26, 3)
 
-    # Isolated wall catalog on general_sprites rows 2-4 (not mini-maze row 0).
+    # Blue walls from general_sprites isolated catalog (rows 2-4).
     TILE_KIND_COORDS: ClassVar[dict[TileKind, tuple[int, int]]] = {
         TileKind.WALL: (23, 2),
         TileKind.HORIZONTAL: (23, 2),
@@ -96,9 +97,23 @@ class Assets:
         TileKind.CORNER_BR: (5, 4),
     }
 
+    # White flash tiles from maze_parts catalog strip (cols 28+, rows 4-5).
+    MAZE_PARTS_WHITE_TILE_KIND_COORDS: ClassVar[
+        dict[TileKind, tuple[int, int]]
+    ] = {
+        TileKind.WALL: (30, 5),
+        TileKind.HORIZONTAL: (30, 5),
+        TileKind.VERTICAL: (31, 4),
+        TileKind.CORNER_TL: (32, 4),
+        TileKind.CORNER_TR: (33, 4),
+        TileKind.CORNER_BL: (32, 5),
+        TileKind.CORNER_BR: (33, 5),
+    }
+
     __slots__ = (
         "_fruits_loaded",
         "_general_sheet",
+        "_maze_sheet",
         "_ghosts_loaded",
         "_loaded",
         "fruits",
@@ -117,6 +132,7 @@ class Assets:
         self.fruits: dict[FruitKind, AssetSprite] = {}
         self.maze = MazeSprites()
         self._general_sheet: Surface | None = None
+        self._maze_sheet: Surface | None = None
         self._loaded = False
         self._ghosts_loaded = False
         self._fruits_loaded = False
@@ -229,19 +245,54 @@ class Assets:
         for kind, coord in self.FRUIT_COORDS.items():
             self.fruits[kind] = self._load_sprite(coord)
 
+    def _slice_maze_cells(
+        self,
+        col: int,
+        row: int,
+        width_cells: int = 1,
+        height_cells: int = 1,
+    ) -> Surface:
+        if self._maze_sheet is None:
+            raise AssetError("Maze parts sheet not loaded")
+        rect = pygame.Rect(
+            col * self.CELL_SIZE,
+            row * self.CELL_SIZE,
+            width_cells * self.CELL_SIZE,
+            height_cells * self.CELL_SIZE,
+        )
+        surface = self._maze_sheet.subsurface(rect).copy()
+        if (
+            surface.get_width() != self.DISPLAY_TILE_SIZE
+            or surface.get_height() != self.DISPLAY_TILE_SIZE
+        ):
+            surface = pygame.transform.scale(
+                surface, (self.DISPLAY_TILE_SIZE, self.DISPLAY_TILE_SIZE)
+            )
+        return surface
+
+    @staticmethod
+    def _make_white_tile(surface: Surface) -> Surface:
+        """Tint every non-black pixel to pure white for level-clear flash."""
+        result = surface.copy()
+        for x in range(result.get_width()):
+            for y in range(result.get_height()):
+                r, g, b, a = result.get_at((x, y))
+                if r + g + b > 20:
+                    result.set_at((x, y), (255, 255, 255, a))
+        return result
+
     def _load_maze_tiles(self, load_image: Callable[..., Surface]) -> None:
-        del load_image  # wall catalog lives on general_sprites rows 2-4.
         if self._general_sheet is None:
             raise AssetError("General sprites sheet not loaded")
+        self._maze_sheet = load_image("maze", "maze_parts.png")
         for tile_kind, coords in self.TILE_KIND_COORDS.items():
             col, row = coords
-            source = self._slice_cells(
-                col,
-                row,
-                width_cells=1,
-                height_cells=1,
+            self.maze.tiles[tile_kind] = AssetSprite(
+                self._slice_cells(col, row, width_cells=1, height_cells=1),
             )
-            tile_surface = pygame.transform.scale(
-                source, (self.DISPLAY_TILE_SIZE, self.DISPLAY_TILE_SIZE)
+        for tile_kind, coords in self.MAZE_PARTS_WHITE_TILE_KIND_COORDS.items():
+            col, row = coords
+            white_surface = self._make_white_tile(
+                self._slice_maze_cells(col, row),
             )
-            self.maze.tiles[tile_kind] = AssetSprite(tile_surface)
+            self.maze.white_tiles[tile_kind] = AssetSprite(white_surface)
