@@ -15,7 +15,6 @@ def main() -> int:
     config = load_config(sys.argv[1])
     game = GameState(config)
     game.start()
-    # print(config)
 
     return 0
 

@@ -91,7 +91,7 @@ def get_string(data: dict[str, Any], key: str, default: str) -> str:
 def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
     """Read level definitions from config."""
     default_levels = [{"width": 21, "height": 21}]
-    value = data.get("levels", default_levels)  # ???
+    value = data.get("levels", default_levels)
 
     if not isinstance(value, list) or not value:
         print("Warning: invalid levels, using default level.")

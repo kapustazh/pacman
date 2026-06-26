@@ -23,6 +23,7 @@ class HighscoreManager:
             return
         except json.JSONDecodeError:
             self.highscores = []
+            return
 
     def save(self) -> None:
         """Save highscores to file."""

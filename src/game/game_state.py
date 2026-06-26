@@ -104,6 +104,9 @@ class GameState:
 
     def handle_input(self, command: str) -> None:
         """Handle keyboard input."""
+        if command == "p":
+            self.pause_game()
+            return
         if command == "i":
             self.invincible = not self.invincible
             return
@@ -162,7 +165,7 @@ class GameState:
         self.handle_ghost_collisions()
 
         if not self.is_running:
-            return
+            return  # h_g_c => lives <=0 => is_run false
 
         self.move_ghosts()
         self.handle_ghost_collisions()

@@ -222,7 +222,7 @@ class Ghost:
         self.respawn_turns = delay_turns
         self.row = self.spawn_row
         self.col = self.spawn_col
-        self.last_row = self.spawn_row
+        self.last_row = self.spawn_row  # last round should also be spawn place
         self.last_col = self.spawn_col
 
     def tick_respawn(self) -> None:

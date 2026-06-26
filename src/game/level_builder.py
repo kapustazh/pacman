@@ -85,7 +85,7 @@ class LevelBuilder:
                 grid,
                 target_row,
                 target_col,
-                set(positions),
+                set(positions),  # exclude added ghost respawn spots
             )
             positions.append(position)
         return positions
@@ -139,7 +139,7 @@ class LevelBuilder:
 
         return positions
 
-# MazeAdapter: 造基础地图
-# LevelBuilder: 初始化 items + spawn positions
-# MapData: 保存当前地图/item状态
-# Player/Ghost: 保存当前角色状态
+# MazeAdapter: 生成基础迷宫（WALL / EMPTY）
+# LevelBuilder: 选择玩家和鬼出生点，并放置 Pacgums、Super Pacgums
+# MapData: 保存当前地图和所有物品状态
+# Player/Ghost: 保存角色当前位置和状态
