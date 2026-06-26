@@ -7,6 +7,7 @@ from core.context import GameContext
 from core.state import GameState, StateEnterData
 from states.text import ArcadeTextColor
 
+
 class PauseState(GameState):
     """Modal pause overlay over gameplay."""
 
