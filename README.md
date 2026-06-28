@@ -4,14 +4,14 @@
 
 ## Description
 
-Pac-Man is a clone in Python combining procedural maze generation, BFS-based nulti-targeted ghost AI, configurable gameplay settings, persistent highscores, and robust error handling.
+This project recreates Pac-Man using procedural maze generation, BFS-based ghost AI, persistent highscores and modular software architecture.
 
 ### Features
 
 | Feature | Implementation |
 |---------|----------------|
 | Maze generation | Uses the assigned A-Maze-ing package through `MazeAdaptor` |
-| Levels | At least 10 configured levels |
+| Levels | 10+ procedural levels |
 | Level 1 seed | Fixed seed `42` for reproducibility |
 | Later levels | Random seed generated when entering each new level |
 | Level retry | Reuses the current level seed, so retries reload the same maze |
@@ -61,75 +61,51 @@ make re
 ### Controls
 
 | Key | Action |
-|------|---------|
-| W | Move Up |
-| A | Move Left |
-| S | Move Down |
-| D | Move Right |
+|-----|--------|
+| W A S D | Move |
+| P | Pause |
 | Q | Quit |
+| I | Invincibility |
+| F | Freeze ghosts |
+| N | Skip level |
+| L | Add life |
 
-### Cheats
-
-| Key | Action |
-|------|---------|
-| I | Toggle Invincibility |
-| F | Freeze Ghosts |
-| L | Add Life |
-| N | Skip Level |
 
 ---
 
 ## Configuration
 
-The game uses a JSON configuration file.
+The game uses a JSON configuration file with comment lines beginning with `#`.
 
-### Example
+| Key | Type | Default | Description |
+|------|------|---------|-------------|
+| `highscore_filename` | string | `"highscores.json"` | Highscore storage file |
+| `lives` | int | `3` | Initial player lives |
+| `pacgum` | int | `42` | Number of Pacgums generated |
+| `points_per_pacgum` | int | `10` | Score for each Pacgum |
+| `points_per_super_pacgum` | int | `50` | Score for each Super Pacgum |
+| `points_per_ghost` | int | `200` | Score for eating a ghost |
+| `seed` | int | `42` | Seed used for Level 1 |
+| `level_max_time` | int | `10000` | Maximum turns allowed per level |
+| `levels` | list | `10 levels` | Maze size configuration |
 
-```json
-{
-    "lives": 3,
-    "pacgum": 42,
-    "points_per_pacgum": 10,
-    "points_per_super_pacgum": 50,
-    "points_per_ghost": 200,
-    "level_max_time": 90,
-    "highscore_filename": "highscores.json"
-}
-```
-
-### Parameters
-
-| Parameter | Description |
-|------------|------------|
-| lives | Initial player lives |
-| pacgum | Number of pacgums generated |
-| points_per_pacgum | Score gained per pacgum |
-| points_per_super_pacgum | Score gained per super pacgum |
-| points_per_ghost | Score gained when eating a ghost |
-| level_max_time | Maximum time allowed per level |
-| highscore_filename | Highscore storage file |
-
-### Validation
-
-- Unknown keys are ignored
-- Missing values use safe defaults
-- Invalid values are replaced by defaults
-- Configuration errors never crash the game
+- Missing configuration file → load default configuration.
+- Invalid JSON → load default configuration.
+- Unknown keys → ignored.
+- Invalid values → replaced with default values.
+- No Python traceback is shown during gameplay.
 
 ---
 
 ## Highscore
 
 Highscores are stored in JSON format.
-
-### Features
-
+The leaderboard is loaded when the game starts and automatically saved after the game ends.
 - Top 10 leaderboard
-- Automatic loading
-- Automatic saving
-- Input sanitization
+- Automatic descending sort
+- Safe loading and saving
+- Invalid entries ignored
 
-### Validation Rules
 
 | Rule | Value |
 |--------|--------|
@@ -138,21 +114,11 @@ Highscores are stored in JSON format.
 | Allowed Characters | Letters, numbers, spaces |
 | Score Type | Non-negative integer |
 
-### Design Choice
-
-JSON was chosen because it is:
-
-- Human-readable
-- Easy to debug
-- Persistent between sessions
-- Dependency-free
-
 ---
 
 ## Maze Generation
 
 The project uses the assigned A-Maze-ing package to generate procedural mazes.
-
 MazeGenerator produces a wall-code representation where each cell stores wall information using bitmasks.
 
 ### Wall Encoding
@@ -170,86 +136,169 @@ MazeGenerator produces a wall-code representation where each cell stores wall in
 MazeGenerator
       │
       ▼
-MazeAdaptor
+MazeAdapter
       │
       ▼
 TileType Grid
-```
-
-MazeAdaptor converts the generated wall-code maze into the internal TileType representation used by the game.
-
----
-
-## Implementation
-
-### Main Systems
-
-- Maze generation
-- Level construction
-- Player movement
-- Ghost AI
-- Collision handling
-- Time management
-- Highscore persistence
-
-### Ghost AI
-
-Ghosts use Breadth-First Search (BFS) to locate the shortest path toward the player.
-
-When a super-pacgum is eaten, ghosts switch to frightened mode and maximize their Manhattan distance from the player.
-
-### Gameplay Flow
-
-```text
-Start Level
-      │
-      ▼
-Collect Pacgums
-      │
-      ▼
-Avoid Ghosts
-      │
-      ▼
-Clear Map
-      │
-      ▼
-Next Level
-```
-
----
-
-## General Software Architecture
-
-```text
-MazeGenerator
-      │
-      ▼
-MazeAdaptor
       │
       ▼
 LevelBuilder
       │
       ▼
+GameState
+```
+
+MazeAdapter is responsible for
+
+- importing the assigned package
+- generating a maze
+- converting the wall-code representation into the internal grid
+- handling generator failures gracefully
+
+---
+
+## Implementation
+
+### Game Play Flow
+Turn flow:
+
+```text
+Player Input
+    ↓
+Move Player
+    ↓
+Collect Items
+    ↓
+Collision Check
+    ↓
+Move Ghosts
+    ↓
+Collision Check
+    ↓
+Update Timers
+    ↓
+Render
+```
+The player wins a level after collecting all Pacgums.
+Lives and score carry across levels.
+
+### Ghost AI
+
+Unlike many student implementations where every ghost simply follows the player, this
+project assigns each ghost an individual targeting strategy while sharing a common
+Breadth-First Search (BFS) pathfinding algorithm.
+
+| Ghost | Behaviour |
+|--------|-----------|
+| **Blinky** | Directly targets the player's current position. |
+| **Pinky** | Predicts the player's movement and targets tiles ahead. |
+| **Inky** | Uses predictive targeting with a small random offset. |
+| **Clyde** | Switches between chasing the player and returning home based on distance. |
+
+The pathfinding algorithm remains the same for every ghost. Different behaviour is
+achieved by changing the target position rather than the search algorithm.
+
+### Behavior States
+
+```text
+CHASE
+ ↓
+SCATTER
+ ↓
+FRIGHTENED
+ ↓
+RESPAWN
+```
+
+| Chase | Ghosts compute a target and use Breadth-First Search to follow the shortest path |
+| Scatter | Ghosts temporarily return toward their home corner, creating alternating pressure similar to the original Pac-Man |
+| Frightened | Eating a Super Pacgum changes every ghost into frightened mode. Instead of chasing the player they attempt to move away while avoiding immediate
+backtracking whenever possible |
+| Respawn | After being eaten: ghost becomes inactive, respawn timer starts, returns to spawn, re-enters chase mode |
+
+
+---
+
+## Software Architecture
+
+### General Software Architecture
+
+```text
+pac-man.py                     -> Program entry point
+src/
+├── config/
+│   ├── config.py              -> Load and validate JSON configuration
+│   └── defaults.py            -> Default game configuration
+│
+├── game/
+│   ├── game_state.py          -> Main game loop and gameplay coordination
+│   ├── level_builder.py       -> Populate maze with player, ghosts and pacgums
+│   └── level_manager.py       -> Level progression and seed management
+│
+├── maze/
+│   ├── maze_adapter.py        -> Interface to the A-Maze-ing package
+│   └── map_data.py            -> Internal TileType grid representation
+│
+├── entities/
+│   ├── player.py              -> Player movement and scoring
+│   └── ghost.py               -> Ghost AI, BFS pathfinding and behaviours
+│
+├── managers/
+│   └── highscore_manager.py   -> Load, validate and save highscores
+│
+└── ui/
+    └── terminal_renderer.py   -> Terminal rendering and HUD output
+```
+
+### Module Responsibilities
+
+| Module | Responsibility |
+|----------|----------------|
+| `config` | Loads and validates the JSON configuration file. |
+| `maze` | Generates the maze and converts it into the internal TileType grid. |
+| `game` | Controls the game loop, player actions and level progression. |
+| `entities` | Implements the player and ghost behaviours. |
+| `managers` | Handles persistent highscore storage. |
+| `ui` | Displays the current game state in the terminal. |
+
+### Data Flow
+
+```text
+config.json
+      │
+      ▼
+load_config()
+      │
+      ▼
+LevelManager
+      │
+      ▼
+MazeAdapter
+      │
+      ▼
 MapData
       │
       ▼
+LevelBuilder
+      │
+      ▼
+Player + Ghosts
+      │
+      ▼
 GameState
- ├── Player
- ├── Ghost
- ├── LevelManager
- └── HighscoreManager
+      │
+      ▼
+TerminalRenderer
 ```
 
-### Components
+### Class Relationships
 
-| Component | Responsibility |
-|------------|------------|
-| MazeAdaptor | Converts generated mazes into TileType grids |
-| LevelBuilder | Places player, ghosts, pacgums and super-pacgums |
-| MapData | Stores and updates map state |
-| GameState | Coordinates gameplay logic |
-| LevelManager | Handles level progression |
-| HighscoreManager | Loads and saves highscores |
+- `GameState` owns the `Player`, `Ghost`, `MapData`, `LevelManager` and `HighscoreManager`.
+- `LevelManager` provides the current level configuration and maze seed.
+- `MazeAdapter` converts the external maze into the internal `TileType` grid.
+- `LevelBuilder` populates the maze with the player, ghosts and collectibles.
+- `Ghost` queries `MapData` for valid movement and uses BFS to determine the next step.
+- `TerminalRenderer` reads the current game state and renders the board without modifying gameplay logic.
 
 ---
 
@@ -257,29 +306,15 @@ GameState
 
 The project was managed through GitHub branches, pull requests, issue tracking, and team discussions.
 
-Project management documents are available in:
-
-```text
-project_management/
-```
-
-This directory contains planning, task tracking, meeting notes, technical decisions, and project documentation.
+Jira is used for planning, task tracking, meeting notes, technical decisions, and project documentation. (See https://kapustazh.atlassian.net/jira/software/projects/SCRUM/boards/1/timeline?selectedIssue=SCRUM-21)
 
 ---
 
 ## Resources
 
-### References
+Pacman Guide(Chinese): https://www.bilibili.com/video/BV1Jr4y1C7mc/?spm_id_from=333.337.search-card.all.click 
 
-- Python Documentation
-- PEP 8
-- PEP 257
-- flake8 Documentation
-- mypy Documentation
-- Breadth-First Search (BFS)
-- JSON Documentation
-
-### AI Usage
+## AI Usage
 
 AI tools were used for:
 
@@ -289,3 +324,13 @@ AI tools were used for:
 - Documentation drafting
 
 All generated content was reviewed, understood, and adapted before integration into the project.
+
+---
+
+## Future Improvements
+
+- Pygame UI + Audio
+- Real-time-based instead of turn-based
+- Public deployment
+
+---
