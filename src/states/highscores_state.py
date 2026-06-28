@@ -7,6 +7,13 @@ from core.context import GameContext
 from core.state import GameState, StateEnterData
 from states.text import ArcadeTextColor
 
+_BACK_KEYS = (
+    pygame.K_ESCAPE,
+    pygame.K_RETURN,
+    pygame.K_SPACE,
+    pygame.K_BACKSPACE,
+)
+
 
 class HighscoresState(GameState):
     """Placeholder high scores screen."""
@@ -35,12 +42,7 @@ class HighscoresState(GameState):
     ) -> None:
         """Return to menu on back input."""
         for event in events:
-            if event.type == pygame.KEYDOWN and event.key in (
-                pygame.K_ESCAPE,
-                pygame.K_RETURN,
-                pygame.K_SPACE,
-                pygame.K_BACKSPACE,
-            ):
+            if event.type == pygame.KEYDOWN and event.key in _BACK_KEYS:
                 context.scene_manager.pop()
                 return
 
@@ -53,7 +55,7 @@ class HighscoresState(GameState):
 
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw placeholder high scores."""
-        text = context.resources.get_text_renderer()
+        text = context.text
         text.draw_screen_backdrop(surface)
 
         text.draw_centered_arcade_text(

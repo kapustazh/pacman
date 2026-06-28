@@ -8,6 +8,7 @@ class Direction(Enum):
     RIGHT = auto()
 
 
+# TODO: populate when ghost entities are implemented.
 class GhostKind(Enum):
     BLINKY = "blinky"
     PINKY = "pinky"
@@ -15,6 +16,7 @@ class GhostKind(Enum):
     CLYDE = "clyde"
 
 
+# TODO: populate when bonus fruit entities are implemented.
 class FruitKind(Enum):
     CHERRY = "cherry"
     STRAWBERRY = "strawberry"

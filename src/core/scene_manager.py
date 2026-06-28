@@ -1,22 +1,17 @@
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import dataclass
 from typing import Literal
 
 from core.context import GameContext
 from core.state import GameState, StateEnterData
 
 TransitionKind = Literal["change", "push", "pop", "shutdown"]
-
-
-@dataclass(frozen=True, slots=True)
-class Transition:
-    """BOILERPLATE: deferred scene transition applied at frame boundary."""
-
-    kind: TransitionKind
-    state: GameState | None = None
-    enter_data: StateEnterData | None = None
+Transition = tuple[
+    TransitionKind,
+    GameState | None,
+    StateEnterData | None,
+]
 
 
 class SceneManager:
@@ -50,7 +45,7 @@ class SceneManager:
         enter_data: StateEnterData | None = None,
     ) -> None:
         """Replace full stack with a new state."""
-        self._enqueue(Transition("change", state, enter_data))
+        self._enqueue(("change", state, enter_data))
 
     def push(
         self,
@@ -58,45 +53,38 @@ class SceneManager:
         enter_data: StateEnterData | None = None,
     ) -> None:
         """Push modal state on top of current stack."""
-        self._enqueue(Transition("push", state, enter_data))
+        self._enqueue(("push", state, enter_data))
 
     def pop(self) -> None:
         """Pop top state."""
-        self._enqueue(Transition("pop"))
+        self._enqueue(("pop", None, None))
 
     def request_shutdown(self) -> None:
         """Request engine shutdown."""
-        self._enqueue(Transition("shutdown"))
+        self._enqueue(("shutdown", None, None))
 
     def flush(self, context: GameContext) -> None:
         """Apply pending transitions after event/update processing."""
         while self._pending:
             transition = self._pending.popleft()
 
-            if transition.kind == "shutdown":
-                while self._stack:
-                    self._leave_top_state(context)
-                self._shutdown_requested = True
-                self._pending.clear()
-                return
-
-            if transition.kind == "pop":
-                self._pop_state(context)
-                continue
-
-            if transition.state is None:
-                raise ValueError("Transition state is required")
-
-            if transition.kind == "change":
-                self._change_state(
-                    context, transition.state, transition.enter_data
-                )
-                continue
-
-            if transition.kind == "push":
-                self._push_state(
-                    context, transition.state, transition.enter_data
-                )
+            kind, state, enter_data = transition
+            match kind:
+                case "shutdown":
+                    while self._stack:
+                        self._leave_top_state(context)
+                    self._shutdown_requested = True
+                    self._pending.clear()
+                    return
+                case "pop":
+                    self._pop_state(context)
+                case "change" | "push":
+                    if state is None:
+                        raise ValueError("Transition state is required")
+                    if kind == "change":
+                        self._change_state(context, state, enter_data)
+                    else:
+                        self._push_state(context, state, enter_data)
 
     def _enqueue(self, transition: Transition) -> None:
         """Queue a transition for the next flush."""

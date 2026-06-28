@@ -2,15 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-
-DEFAULT_LIVES = 3
-DEFAULT_LEVEL_TIME_S = 90
-
-READY_DURATION_MS = 2000
-LIFE_LOST_DURATION_MS = 2000
-# TODO: use when pellet-clear triggers enter_level_complete().
-LEVEL_COMPLETE_DURATION_MS = 2000
-GAME_OVER_DURATION_MS = 2000
+from typing import ClassVar
 
 
 class GameplayPhase(Enum):
@@ -19,35 +11,31 @@ class GameplayPhase(Enum):
     READY = auto()
     PLAYING = auto()
     LIFE_LOST = auto()
-    # TODO: set via enter_level_complete() when all pellets are cleared.
     LEVEL_COMPLETE = auto()
     GAME_OVER = auto()
-    # TODO: set when final level is cleared or win condition lands.
-    VICTORY = auto()
-
-
-@dataclass(frozen=True, slots=True)
-class HudSnapshot:
-    """Read-only HUD values for one draw frame."""
-
-    score: int
-    high_score: int
-    lives: int
-    spare_lives: int
-    level_number: int
-    remaining_time_s: int
-    phase: GameplayPhase
-    message: str | None
 
 
 @dataclass(slots=True)
 class GameSession:
     """Run-level metadata: lives, level index, timer, and gameplay phase."""
 
+    DEFAULT_LIVES: ClassVar[int] = 3
+    DEFAULT_LEVEL_TIME_S: ClassVar[int] = 90
+    READY_DURATION_MS: ClassVar[int] = 2000
+    LIFE_LOST_DURATION_MS: ClassVar[int] = 2000
+    LEVEL_COMPLETE_DURATION_MS: ClassVar[int] = 2500
+    GAME_OVER_DURATION_MS: ClassVar[int] = 2000
+    PHASE_MESSAGE: ClassVar[dict[GameplayPhase, str | None]] = {
+        GameplayPhase.READY: "READY!",
+        GameplayPhase.LEVEL_COMPLETE: "LEVEL CLEAR",
+        GameplayPhase.GAME_OVER: "GAME OVER",
+    }
+
     level_number: int = 1
     lives: int = DEFAULT_LIVES
     level_time_limit_s: int = DEFAULT_LEVEL_TIME_S
     remaining_time_ms: int = DEFAULT_LEVEL_TIME_S * 1000
+    score: int = 0
     high_score: int = 0
     phase: GameplayPhase = GameplayPhase.READY
     phase_started_at_ms: int = 0
@@ -68,6 +56,10 @@ class GameSession:
         """Track best score seen this session until persistence lands."""
         if score > self.high_score:
             self.high_score = score
+
+    def sync_score(self, world_score: int) -> None:
+        """Persist run score from the active world before teardown."""
+        self.score = max(self.score, world_score)
 
     def tick_timer(self, dt_s: float) -> bool:
         """Subtract play time. Return True when timer hits zero."""
@@ -100,47 +92,15 @@ class GameSession:
         self.phase = GameplayPhase.GAME_OVER
         self.phase_started_at_ms = now_ms
 
-    # TODO: call from GameWorld when _remaining_consumables is empty.
     def enter_level_complete(self, now_ms: int) -> None:
         """Enter level-complete transition phase."""
         self.phase = GameplayPhase.LEVEL_COMPLETE
         self.phase_started_at_ms = now_ms
 
-    # TODO: used by LEVEL_COMPLETE phase handler in PlayState.
     def advance_level(self) -> None:
-        """Increment level index and reset timer for next round."""
+        """Increment level index for the next round."""
         self.level_number += 1
-        self.reset_level_timer()
 
     def phase_elapsed_ms(self, now_ms: int) -> int:
         """Return milliseconds spent in the current phase."""
         return max(0, now_ms - self.phase_started_at_ms)
-
-    def snapshot(self, score: int) -> HudSnapshot:
-        """Build HUD snapshot from current session and score."""
-        self.update_high_score(score)
-        return HudSnapshot(
-            score=score,
-            high_score=self.high_score,
-            lives=self.lives,
-            spare_lives=self.spare_lives(),
-            level_number=self.level_number,
-            remaining_time_s=self.remaining_time_s(),
-            phase=self.phase,
-            message=_phase_message(self.phase),
-        )
-
-
-def _phase_message(phase: GameplayPhase) -> str | None:
-    """Return centered overlay text for a gameplay phase."""
-    if phase == GameplayPhase.READY:
-        return "READY!"
-    # TODO: reachable once enter_level_complete() is wired.
-    if phase == GameplayPhase.LEVEL_COMPLETE:
-        return "LEVEL CLEAR"
-    if phase == GameplayPhase.GAME_OVER:
-        return "GAME OVER"
-    # TODO: reachable once victory condition is implemented.
-    if phase == GameplayPhase.VICTORY:
-        return "YOU WIN"
-    return None

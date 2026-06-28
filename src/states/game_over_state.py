@@ -1,47 +1,47 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
+from typing import ClassVar
 
 import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
-from states.text import ArcadeTextColor, draw_menu_row_highlight
+from core.state import StateEnterData
+from states.selectable_menu_state import MenuEntry, SelectableMenuState
+from states.text import ArcadeTextColor
 
 
-@dataclass(frozen=True, slots=True)
-class GameOverOption:
-    """Single game-over menu entry."""
-
-    label: str
-    action: str
-
-
-GAME_OVER_OPTIONS: tuple[GameOverOption, ...] = (
-    GameOverOption("REPLAY", "replay"),
-    GameOverOption("MAIN MENU", "menu"),
-    GameOverOption("EXIT", "exit"),
-)
-
-
-class GameOverState(GameState):
+class GameOverState(SelectableMenuState):
     """Game-over scene with arcade score display and menu."""
 
-    TITLE_Y = 340
-    SCORE_Y = 430
-    MENU_START_Y = 560
-    MENU_LINE_HEIGHT = 56
-    MENU_SCALE = 3
-    TITLE_SCALE = 5
-    SCORE_SCALE = 4
+    TITLE_Y: ClassVar[int] = 340
+    SCORE_Y: ClassVar[int] = 430
+    MENU_START_Y: ClassVar[int] = 560
+    TITLE_SCALE: ClassVar[int] = 5
+    SCORE_SCALE: ClassVar[int] = 4
+    OPTIONS: ClassVar[tuple[MenuEntry, ...]] = (
+        MenuEntry("REPLAY", "replay"),
+        MenuEntry("MAIN MENU", "menu"),
+        MenuEntry("EXIT", "exit"),
+    )
 
-    __slots__ = ("_score", "_selected_index")
+    __slots__ = ("_score",)
 
     def __init__(self) -> None:
         self._score = 0
-        self._selected_index = 0
+        super().__init__(
+            entries=self.OPTIONS,
+            menu_start_y=self.MENU_START_Y,
+            action_handlers={
+                "replay": self._replay,
+                "menu": self._main_menu,
+                "exit": self._exit_game,
+            },
+            shortcuts={
+                pygame.K_r: (0, "replay"),
+                pygame.K_m: (1, "menu"),
+            },
+        )
 
     def enter(
         self,
@@ -49,30 +49,13 @@ class GameOverState(GameState):
         enter_data: StateEnterData | None = None,
     ) -> None:
         """Apply enter_data and reset menu selection."""
-        self._selected_index = 0
+        super().enter(context, enter_data)
         if enter_data is not None:
             score = enter_data.get("score", 0)
             self._score = score if isinstance(score, int) else 0
 
-    def leave(self, context: GameContext) -> None:
-        """Leave game-over state."""
-
-    def handle_events(
-        self,
-        events: list[pygame.event.Event],
-        context: GameContext,
-    ) -> None:
-        """Navigate game-over menu with keyboard."""
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                self._handle_key(event, context)
-
-    def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """Game-over has no simulation."""
-
-    def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw game-over title, score, and menu."""
-        text = context.resources.get_text_renderer()
+    def draw_header(self, surface: Surface, context: GameContext) -> None:
+        text = context.text
         text.draw_centered_arcade_text(
             surface,
             "GAME OVER",
@@ -87,71 +70,6 @@ class GameOverState(GameState):
             ArcadeTextColor.GOLD,
             self.SCORE_SCALE,
         )
-
-        for index, option in enumerate(GAME_OVER_OPTIONS):
-            y = self.MENU_START_Y + index * self.MENU_LINE_HEIGHT
-            if index == self._selected_index:
-                draw_menu_row_highlight(
-                    surface,
-                    index,
-                    self.MENU_START_Y,
-                    self.MENU_LINE_HEIGHT,
-                )
-            text.draw_centered_menu_line(
-                surface,
-                option.label,
-                y,
-                color=ArcadeTextColor.WHITE,
-                scale=self.MENU_SCALE,
-            )
-
-    def _handle_key(
-        self,
-        event: pygame.event.Event,
-        context: GameContext,
-    ) -> None:
-        if event.key in (pygame.K_UP, pygame.K_w):
-            self._selected_index = (self._selected_index - 1) % len(
-                GAME_OVER_OPTIONS
-            )
-            return
-        if event.key in (pygame.K_DOWN, pygame.K_s):
-            self._selected_index = (self._selected_index + 1) % len(
-                GAME_OVER_OPTIONS
-            )
-            return
-        if event.key == pygame.K_r:
-            self._selected_index = 0
-            self._activate_by_name("replay", context)
-            return
-        if event.key == pygame.K_m:
-            self._selected_index = 1
-            self._activate_by_name("menu", context)
-            return
-        if event.key == pygame.K_ESCAPE:
-            self._activate_by_name("exit", context)
-            return
-        if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-            self._activate(self._selected_index, context)
-            return
-        if pygame.K_1 <= event.key <= pygame.K_3:
-            index = event.key - pygame.K_1
-            self._selected_index = index
-            self._activate(index, context)
-
-    def _activate(self, index: int, context: GameContext) -> None:
-        if 0 <= index < len(GAME_OVER_OPTIONS):
-            self._activate_by_name(GAME_OVER_OPTIONS[index].action, context)
-
-    def _activate_by_name(self, action: str, context: GameContext) -> None:
-        handlers: dict[str, Callable[[GameContext], None]] = {
-            "replay": self._replay,
-            "menu": self._main_menu,
-            "exit": self._exit_game,
-        }
-        handler = handlers.get(action)
-        if handler is not None:
-            handler(context)
 
     def _replay(self, context: GameContext) -> None:
         from states.play_state import PlayState

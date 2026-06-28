@@ -7,18 +7,17 @@ from core.context import GameContext
 from core.state import GameState, StateEnterData
 from states.text import ArcadeTextColor
 
-PAUSE_LINES: tuple[tuple[str, ArcadeTextColor, int], ...] = (
-    ("PAUSED", ArcadeTextColor.YELLOW, 5),
-    ("ESC RESUME", ArcadeTextColor.WHITE, 3),
-    ("M MAIN MENU", ArcadeTextColor.ROSE, 2),
-)
-
 
 class PauseState(GameState):
     """Modal pause overlay over gameplay."""
 
     OVERLAY_COLOR = (0, 0, 0, 180)
     LINE_HEIGHT = 64
+    LINES: tuple[tuple[str, ArcadeTextColor, int], ...] = (
+        ("PAUSED", ArcadeTextColor.YELLOW, 5),
+        ("ESC RESUME", ArcadeTextColor.WHITE, 3),
+        ("M MAIN MENU", ArcadeTextColor.ROSE, 2),
+    )
 
     __slots__ = ("_line_surfaces", "_overlay")
 
@@ -35,14 +34,14 @@ class PauseState(GameState):
         self._overlay = Surface(context.screen.get_size(), pygame.SRCALPHA)
         self._overlay.fill(self.OVERLAY_COLOR)
 
-        total_height = self.LINE_HEIGHT * len(PAUSE_LINES)
+        total_height = self.LINE_HEIGHT * len(self.LINES)
         start_y = (
             context.screen.get_height() - total_height
         ) // 2 + self.LINE_HEIGHT // 2
 
         self._line_surfaces = []
-        text = context.resources.get_text_renderer()
-        for index, (line, color, scale) in enumerate(PAUSE_LINES):
+        text = context.text
+        for index, (line, color, scale) in enumerate(self.LINES):
             y = start_y + index * self.LINE_HEIGHT
             rendered = text.font(color, scale).render(line)
             self._line_surfaces.append((rendered, y))

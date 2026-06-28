@@ -23,13 +23,9 @@ class AnimatedSprite:
     frames: list[Surface] = field(default_factory=list)
     frame_duration_ms: int = 150
 
-    @property
-    def num_frames(self) -> int:
-        return len(self.frames)
-
     def frame_at(self, now_ms: int) -> Surface:
         """Return animation frame for current monotonic pygame time."""
-        if self.num_frames == 0:
+        if not self.frames:
             raise SpriteError("Animated sprite has no frames")
-        frame_index = (now_ms // self.frame_duration_ms) % self.num_frames
+        frame_index = (now_ms // self.frame_duration_ms) % len(self.frames)
         return self.frames[frame_index]

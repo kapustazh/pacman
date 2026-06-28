@@ -1,138 +1,47 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
+from typing import ClassVar
 
-import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
-from states.text import ArcadeTextColor, draw_menu_row_highlight
+from states.selectable_menu_state import MenuEntry, SelectableMenuState
+from states.text import ArcadeTextColor
 
 
-@dataclass(frozen=True, slots=True)
-class MenuOption:
-    """Single main-menu entry."""
-
-    label: str
-    action: str
-
-
-MENU_OPTIONS: tuple[MenuOption, ...] = (
-    MenuOption("START GAME", "start"),
-    MenuOption("HIGH SCORES", "highscores"),
-    MenuOption("INSTRUCTIONS", "instructions"),
-    MenuOption("EXIT", "exit"),
-)
-
-
-class MenuState(GameState):
+class MenuState(SelectableMenuState):
     """Main menu scene with keyboard navigation."""
 
-    TITLE_Y = 280
-    MENU_START_Y = 520
-    MENU_LINE_HEIGHT = 56
-    MENU_SCALE = 3
-    TITLE_SCALE = 5
-
-    __slots__ = ("_selected_index",)
+    TITLE_Y: ClassVar[int] = 280
+    MENU_START_Y: ClassVar[int] = 520
+    TITLE_SCALE: ClassVar[int] = 5
+    OPTIONS: ClassVar[tuple[MenuEntry, ...]] = (
+        MenuEntry("START GAME", "start"),
+        MenuEntry("HIGH SCORES", "highscores"),
+        MenuEntry("INSTRUCTIONS", "instructions"),
+        MenuEntry("EXIT", "exit"),
+    )
 
     def __init__(self) -> None:
-        self._selected_index = 0
+        super().__init__(
+            entries=self.OPTIONS,
+            menu_start_y=self.MENU_START_Y,
+            action_handlers={
+                "start": self._start_game,
+                "highscores": self._open_highscores,
+                "instructions": self._open_instructions,
+                "exit": self._exit_game,
+            },
+        )
 
-    def enter(
-        self,
-        context: GameContext,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
-        """Reset menu selection."""
-        self._selected_index = 0
-
-    def leave(self, context: GameContext) -> None:
-        """Leave menu."""
-
-    def handle_events(
-        self,
-        events: list[pygame.event.Event],
-        context: GameContext,
-    ) -> None:
-        """Handle keyboard menu navigation."""
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                self._handle_key(event, context)
-
-    def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """Menu has no simulation."""
-
-    def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw title and menu options."""
-        text = context.resources.get_text_renderer()
-        text.draw_centered_arcade_text(
+    def draw_header(self, surface: Surface, context: GameContext) -> None:
+        context.text.draw_centered_arcade_text(
             surface,
             "PAC-MAN",
             self.TITLE_Y,
             ArcadeTextColor.YELLOW,
             self.TITLE_SCALE,
         )
-
-        for index, option in enumerate(MENU_OPTIONS):
-            y = self.MENU_START_Y + index * self.MENU_LINE_HEIGHT
-            if index == self._selected_index:
-                draw_menu_row_highlight(
-                    surface,
-                    index,
-                    self.MENU_START_Y,
-                    self.MENU_LINE_HEIGHT,
-                )
-            text.draw_centered_menu_line(
-                surface,
-                option.label,
-                y,
-                color=ArcadeTextColor.WHITE,
-                scale=self.MENU_SCALE,
-            )
-
-    def _handle_key(
-        self,
-        event: pygame.event.Event,
-        context: GameContext,
-    ) -> None:
-        if event.key in (pygame.K_UP, pygame.K_w):
-            self._selected_index = (self._selected_index - 1) % len(
-                MENU_OPTIONS
-            )
-            return
-        if event.key in (pygame.K_DOWN, pygame.K_s):
-            self._selected_index = (self._selected_index + 1) % len(
-                MENU_OPTIONS
-            )
-            return
-        if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-            self._activate(self._selected_index, context)
-            return
-        if event.key == pygame.K_ESCAPE:
-            self._activate_by_name("exit", context)
-            return
-        if pygame.K_1 <= event.key <= pygame.K_4:
-            index = event.key - pygame.K_1
-            self._selected_index = index
-            self._activate(index, context)
-
-    def _activate(self, index: int, context: GameContext) -> None:
-        if 0 <= index < len(MENU_OPTIONS):
-            self._activate_by_name(MENU_OPTIONS[index].action, context)
-
-    def _activate_by_name(self, action: str, context: GameContext) -> None:
-        handlers: dict[str, Callable[[GameContext], None]] = {
-            "start": self._start_game,
-            "highscores": self._open_highscores,
-            "instructions": self._open_instructions,
-            "exit": self._exit_game,
-        }
-        handler = handlers.get(action)
-        if handler is not None:
-            handler(context)
 
     def _start_game(self, context: GameContext) -> None:
         from states.play_state import PlayState

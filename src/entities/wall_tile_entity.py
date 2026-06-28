@@ -1,25 +1,44 @@
+from pygame.sprite import Sprite
 from pygame.surface import Surface
 
-from entities.game_entity import GameEntity
 from entities.sprite_layer import SpriteLayer
 from game.level import CellPos
 
 
-class WallTileEntity(GameEntity):
-    """Static wall tile entity."""
+class WallTileEntity(Sprite):
+    """Static wall tile sprite."""
 
-    __slots__ = ("_image",)
+    __slots__ = (
+        "_blue_surface",
+        "_flash_white",
+        "_white_surface",
+        "cell",
+        "center",
+    )
 
     def __init__(
         self,
-        image: Surface,
+        blue_surface: Surface,
+        white_surface: Surface,
         cell: CellPos,
         center: tuple[int, int],
     ) -> None:
-        super().__init__(cell, center, SpriteLayer.BACKGROUND)
-        self._image = image
+        super().__init__()
+        self.cell = cell
+        self.center = center
+        self._blue_surface = blue_surface
+        self._white_surface = white_surface
+        self._flash_white = False
+        self.image = blue_surface
+        self.rect = blue_surface.get_rect(center=center)
+
+    def set_flash_white(self, white: bool) -> None:
+        """Swap drawable surface between blue and white maze tile variants."""
+        if self._flash_white == white:
+            return
+        self._flash_white = white
+        self.image = self._white_surface if white else self._blue_surface
 
     @property
-    def image(self) -> Surface:
-        """Return wall tile surface."""
-        return self._image
+    def layer(self) -> int:
+        return int(SpriteLayer.BACKGROUND)

@@ -11,9 +11,9 @@ ICON_PATH = Path(__file__).resolve().parent / "assets" / "icon" / "image.png"
 import pygame  # noqa: E402
 
 from core.engine import GameEngine  # noqa: E402
-from core.resources import AssetsResourceManager  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
 from states.menu_state import MenuState  # noqa: E402
+from states.text import ArcadeTextRenderer  # noqa: E402
 
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
@@ -28,9 +28,11 @@ def main() -> None:
     if ICON_PATH.exists():
         pygame.display.set_icon(pygame.image.load(ICON_PATH))
 
-    resources = AssetsResourceManager(Assets())
-    resources.load_all()
-    engine = GameEngine(screen, resources, MenuState())
+    assets = Assets()
+    assets.load()
+    text = ArcadeTextRenderer()
+    text.preload()
+    engine = GameEngine(screen, assets, text, MenuState())
     engine.run()
 
     pygame.quit()

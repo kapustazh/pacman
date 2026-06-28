@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from core.context import GameContext
-from core.resources import ResourceManager
 from core.scene_manager import SceneManager
 from core.state import GameState
 
 import pygame
 from pygame.surface import Surface
+
+from sprites.assets import Assets
+from states.text import ArcadeTextRenderer
 
 
 BG_COLOR = (0, 0, 0)
@@ -20,7 +22,8 @@ class GameEngine:
     def __init__(
         self,
         screen: Surface,
-        resources: ResourceManager,
+        assets: Assets,
+        text: ArcadeTextRenderer,
         initial_state: GameState,
         target_fps: int = 60,
     ) -> None:
@@ -28,7 +31,8 @@ class GameEngine:
         self._scene_manager = SceneManager()
         self._context = GameContext(
             screen=screen,
-            resources=resources,
+            assets=assets,
+            text=text,
             scene_manager=self._scene_manager,
         )
         self._target_fps = target_fps

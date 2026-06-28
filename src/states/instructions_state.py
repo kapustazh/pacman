@@ -7,6 +7,13 @@ from core.context import GameContext
 from core.state import GameState, StateEnterData
 from states.text import ArcadeTextColor
 
+_BACK_KEYS = (
+    pygame.K_ESCAPE,
+    pygame.K_RETURN,
+    pygame.K_SPACE,
+    pygame.K_BACKSPACE,
+)
+
 INSTRUCTION_ROWS: tuple[tuple[str, str], ...] = (
     ("MOVE", "WASD / ARROWS"),
     ("PAUSE", "ESC"),
@@ -43,12 +50,7 @@ class InstructionsState(GameState):
     ) -> None:
         """Return to menu on back input."""
         for event in events:
-            if event.type == pygame.KEYDOWN and event.key in (
-                pygame.K_ESCAPE,
-                pygame.K_RETURN,
-                pygame.K_SPACE,
-                pygame.K_BACKSPACE,
-            ):
+            if event.type == pygame.KEYDOWN and event.key in _BACK_KEYS:
                 context.scene_manager.pop()
                 return
 
@@ -61,7 +63,7 @@ class InstructionsState(GameState):
 
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw aligned control legend."""
-        text = context.resources.get_text_renderer()
+        text = context.text
         text.draw_screen_backdrop(surface)
 
         text.draw_centered_arcade_text(
@@ -73,7 +75,7 @@ class InstructionsState(GameState):
         )
 
         font = text.font(ArcadeTextColor.WHITE, scale=self.ROW_SCALE)
-        row_step = font.line_height() + self.ROW_GAP
+        row_step = font.advance() + self.ROW_GAP
         for index, (label, value) in enumerate(INSTRUCTION_ROWS):
             y = self.ROW_START_Y + index * row_step
             text.draw_arcade_two_column_row(
