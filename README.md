@@ -4,30 +4,32 @@
 
 ## Description
 
-Pac-Man is a terminal-based recreation of the classic arcade game developed as part of the 42 curriculum.
-
-The project combines procedural maze generation, BFS-based ghost AI, configurable gameplay settings, persistent highscores, and robust error handling.
+Pac-Man is a clone in Python combining procedural maze generation, BFS-based nulti-targeted ghost AI, configurable gameplay settings, persistent highscores, and robust error handling.
 
 ### Features
 
-| Feature | Description |
-|----------|----------|
-| Procedural Mazes | Generated using the assigned A-Maze-ing package |
-| Ghost AI | BFS pathfinding with chase and frightened modes |
-| Multiple Levels | Progressive maze sizes and difficulty |
-| Super Pacgums | Temporary frightened mode for ghosts |
-| Highscores | Persistent JSON-based leaderboard |
-| Time Limit | Configurable per-level timer |
-| Cheat Mode | Evaluation and testing utilities |
-| Config System | JSON configuration with validation |
+| Feature | Implementation |
+|---------|----------------|
+| Maze generation | Uses the assigned A-Maze-ing package through `MazeAdaptor` |
+| Levels | At least 10 configured levels |
+| Level 1 seed | Fixed seed `42` for reproducibility |
+| Later levels | Random seed generated when entering each new level |
+| Level retry | Reuses the current level seed, so retries reload the same maze |
+| Player movement | WASD movement through corridors only |
+| Ghost movement | Autonomous grid-based movement |
+| Ghost AI | BFS pathfinding with different chase targets |
+| Frightened mode | Activated by Super Pacgums |
+| Respawn | Eaten ghosts temporarily disappear and return after a delay |
+| Highscores | Persistent JSON leaderboard |
+| Config validation | Missing and invalid values fall back to safe defaults |
+| Cheat mode | Invincibility, freeze ghosts, add life, skip level |
+| Rendering | Terminal-based renderer |
+| Static analysis | `flake8` and `mypy` through Makefile |
+
 
 ---
 
 ## Instructions
-
-### Requirements
-
-- Python 3.10+
 
 ### Installation
 
@@ -40,23 +42,20 @@ make install
 ```bash
 make run
 ```
+or 
+```bash
+python3 pac-man.py config.json
+```
 
-### Debug
+
+### Other commands
 
 ```bash
 make debug
-```
-
-### Lint
-
-```bash
 make lint
-```
-
-### Strict Lint
-
-```bash
 make lint-strict
+make clean
+make re
 ```
 
 ### Controls

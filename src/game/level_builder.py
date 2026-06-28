@@ -78,7 +78,7 @@ class LevelBuilder:
         corner_targets: list[tuple[int, int]],
     ) -> list[tuple[int, int]]:
         """Find four unique walkable positions near the four corners."""
-        positions = []
+        positions: list[tuple[int, int]] = []
 
         for target_row, target_col in corner_targets:
             position = self._nearest_walkable_excluding(

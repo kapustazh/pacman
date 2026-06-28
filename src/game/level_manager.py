@@ -10,17 +10,15 @@ class LevelManager:
         """Initialize level manager."""
         self.config = config
         self.current_level = 0
+        self.current_seed = 42
 
     def get_current_level(self) -> dict[str, Any]:
         """Return current level configuration."""
         return dict(self.config["levels"][self.current_level])
 
     def get_seed(self) -> int:
-        """Return fixed seed for level 1 and random seed after."""
-        if self.current_level == 0:
-            return int(self.config["seed"])
-
-        return random.randint(1, 999999)
+        """Return the current level seed."""
+        return self.current_seed
 
     def has_next_level(self) -> bool:
         """Return True if another level exits."""
@@ -29,3 +27,4 @@ class LevelManager:
     def go_next_level(self) -> None:
         """Move to next level."""
         self.current_level += 1
+        self.current_seed = random.randint(0, 100000)

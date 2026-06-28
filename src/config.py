@@ -2,6 +2,7 @@
 
 import json
 from typing import Any
+from typing import cast
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "highscore_filename": "highscores.json",
@@ -105,7 +106,7 @@ def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
 
     if not isinstance(value, list) or not value:
         print("Warning: invalid levels, using default levels.")
-        return DEFAULT_CONFIG["levels"]
+        return cast(list[dict[str, int]], DEFAULT_CONFIG["levels"])
 
     levels: list[dict[str, int]] = []
 
@@ -125,13 +126,13 @@ def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
 
     if not levels:
         print("Warning: invalid levels, using default levels.")
-        return DEFAULT_CONFIG["levels"]
+        return cast(list[dict[str, int]], DEFAULT_CONFIG["levels"])
 
     if len(levels) < 10:
         print(
             "Warning: less than 10 levels configured. "
             "Using default levels."
         )
-        return DEFAULT_CONFIG["levels"]
+        return cast(list[dict[str, int]], DEFAULT_CONFIG["levels"])
 
     return levels

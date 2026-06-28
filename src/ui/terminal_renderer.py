@@ -28,7 +28,10 @@ class TerminalRenderer:
                         # Print("P")==print("P", end="\n")
             print()
 
-    def _get_ghost(self, row: int, col: int, ghosts: list[Ghost]) -> bool:
+    def _get_ghost(
+        self, row: int, col: int,
+        ghosts: list[Ghost]
+    ) -> Ghost | None:
         """Return True if ghost is on position."""
         for ghost in ghosts:
             if ghost.active and ghost.row == row and ghost.col == col:

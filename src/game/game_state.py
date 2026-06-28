@@ -172,26 +172,26 @@ class GameState:
         self.player.move(row_delta, col_delta)
         self.remaining_time -= 1
 
-        if self.handle_time_limit():
+        if self._handle_time_limit():
             return
 
-        self.handle_tile_eating()
+        self._handle_tile_eating()
 
-        self.handle_ghost_collisions()
+        self._handle_ghost_collisions()
         if not self.is_running:
             return  # h_g_c => lives <=0 => is_run false
 
-        self.move_ghosts()
-        self.handle_ghost_collisions()
+        self._move_ghosts()
+        self._handle_ghost_collisions()
         if not self.is_running:
             return
 
-        self.update_timer()
+        self._update_timer()
 
         if not self.map_data.check_pacgum_left():
             self.complete_level()
 
-    def handle_tile_eating(self) -> None:
+    def _handle_tile_eating(self) -> None:
         """Eat current tile and apply score or frightened mode effects."""
         gained_score = self.map_data.eat_tile(
             self.player.row,
@@ -207,7 +207,7 @@ class GameState:
 
         self.player.score += gained_score
 
-    def move_ghosts(self) -> None:
+    def _move_ghosts(self) -> None:
         """Move ghosts according to current mode."""
         if self.freeze_ghost:
             return
@@ -242,7 +242,7 @@ class GameState:
                 self.map_data,
             )
 
-    def update_timer(self) -> None:
+    def _update_timer(self) -> None:
         """Update edible and ghost respawn timers after one turn."""
         for ghost in self.ghosts:
             ghost.tick_respawn()
@@ -260,7 +260,7 @@ class GameState:
         elif self.scatter_turns >= 20:
             self.scatter_mode = True
 
-    def handle_time_limit(self) -> bool:
+    def _handle_time_limit(self) -> bool:
         """Handle level timeout. Return True if level ended."""
         if self.remaining_time > 0:
             return False
@@ -276,7 +276,7 @@ class GameState:
         self.load_current_level(first_load=False)
         return True
 
-    def handle_ghost_collisions(self) -> None:
+    def _handle_ghost_collisions(self) -> None:
         """Handle collisions between player and ghosts."""
         for index, ghost in enumerate(self.ghosts):
             if ghost.row != self.player.row or ghost.col != self.player.col:

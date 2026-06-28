@@ -17,7 +17,7 @@ class HighscoreManager:
         try:
             with open(self.filename, "r", encoding="utf-8") as file:
                 data = json.load(file)
-                self.highscores = self.validate_highscores(data)
+                self.highscores = self._validate_highscores(data)
         except OSError:
             self.highscores = []
             return
@@ -36,7 +36,7 @@ class HighscoreManager:
     def add_score(self, name: str, score: int) -> None:
         """Add score and keep only top 10."""
         score = max(0, score)
-        clean_name = self.clean_name(name)
+        clean_name = self._clean_name(name)
 
         self.highscores.append(
             {
@@ -52,7 +52,7 @@ class HighscoreManager:
         self.highscores = self.highscores[:10]
         self.save()
 
-    def clean_name(self, name: str) -> str:
+    def _clean_name(self, name: str) -> str:
         """Clean player name."""
         cleaned = ""
 
@@ -65,7 +65,7 @@ class HighscoreManager:
 
         return cleaned[:10]
 
-    def validate_highscores(
+    def _validate_highscores(
         self,
         data: object,
     ) -> list[dict[str, Any]]:
@@ -90,7 +90,7 @@ class HighscoreManager:
                 continue
             valid_scores.append(
                 {
-                    "name": self.clean_name(name),
+                    "name": self._clean_name(name),
                     "score": score,
                 }
             )
