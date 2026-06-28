@@ -210,11 +210,12 @@ FRIGHTENED
 RESPAWN
 ```
 
-| Chase | Ghosts compute a target and use Breadth-First Search to follow the shortest path |
-| Scatter | Ghosts temporarily return toward their home corner, creating alternating pressure similar to the original Pac-Man |
-| Frightened | Eating a Super Pacgum changes every ghost into frightened mode. Instead of chasing the player they attempt to move away while avoiding immediate
-backtracking whenever possible |
-| Respawn | After being eaten: ghost becomes inactive, respawn timer starts, returns to spawn, re-enters chase mode |
+| State | Description |
+|-------|-------------|
+| **Chase** | Ghosts compute a target and use **Breadth-First Search (BFS)** to follow the shortest path. |
+| **Scatter** | Ghosts temporarily return to their home corner, creating alternating pressure similar to the original *Pac-Man*. |
+| **Frightened** | Eating a Super Pacgum changes every ghost into frightened mode. Instead of chasing the player, ghosts attempt to move away while avoiding immediate backtracking whenever possible. |
+| **Respawn** | After being eaten, a ghost becomes inactive, waits for a respawn delay, returns to its spawn location, and resumes normal behaviour. |
 
 
 ---
@@ -304,15 +305,16 @@ TerminalRenderer
 
 ## Project Management
 
-The project was managed through GitHub branches, pull requests, issue tracking, and team discussions.
+- The project was managed through GitHub branches, pull requests, issue tracking, and team discussions.
 
-Jira is used for planning, task tracking, meeting notes, technical decisions, and project documentation. (See https://kapustazh.atlassian.net/jira/software/projects/SCRUM/boards/1/timeline?selectedIssue=SCRUM-21)
+- Jira is used for planning, task tracking, meeting notes, technical decisions, and project documentation.
+(https://kapustazh.atlassian.net/jira/software/projects/SCRUM/boards/1/timeline?selectedIssue=SCRUM-21)
 
 ---
 
 ## Resources
 
-Pacman Guide(Chinese): https://www.bilibili.com/video/BV1Jr4y1C7mc/?spm_id_from=333.337.search-card.all.click 
+- Pacman Guide (Chinese): https://www.bilibili.com/video/BV1Jr4y1C7mc/?spm_id_from=333.337.search-card.all.click 
 
 ## AI Usage
 
