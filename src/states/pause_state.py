@@ -40,7 +40,7 @@ class PauseState(GameState):
         ) // 2 + self.LINE_HEIGHT // 2
 
         self._line_surfaces = []
-        text = context.resources.get_text_renderer()
+        text = context.text
         for index, (line, color, scale) in enumerate(self.LINES):
             y = start_y + index * self.LINE_HEIGHT
             rendered = text.font(color, scale).render(line)

@@ -15,12 +15,10 @@ sys.path.insert(0, str(SRC_ROOT))
 import pygame  # noqa: E402
 
 from entities.wall_tile_entity import WallTileEntity  # noqa: E402
-from game.entity_factory import EntityFactory  # noqa: E402
 from game.game_session import GameSession  # noqa: E402
 from game.game_world import GameWorld  # noqa: E402
 from game.level import load_smoke_level  # noqa: E402
 from game.render_config import WorldRenderConfig  # noqa: E402
-from rendering.level_clear_effect import LevelClearEffect  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
 from sprites.sprite_types import TileKind  # noqa: E402
 
@@ -41,8 +39,7 @@ def game_world() -> GameWorld:
     assets.load()
     layout = load_smoke_level()
     render_config = WorldRenderConfig.centered(layout, (1920, 1080))
-    factory = EntityFactory(assets, render_config, layout)
-    return GameWorld(layout, factory)
+    return GameWorld(layout, assets, render_config)
 
 
 def test_all_consumables_cleared_false_with_pellets(
@@ -73,8 +70,7 @@ def test_initial_score_carried_into_world() -> None:
     assets.load()
     layout = load_smoke_level()
     render_config = WorldRenderConfig.centered(layout, (1920, 1080))
-    factory = EntityFactory(assets, render_config, layout)
-    world = GameWorld(layout, factory, initial_score=420)
+    world = GameWorld(layout, assets, render_config, initial_score=420)
     assert world.score == 420
 
 
@@ -96,28 +92,50 @@ def test_sync_score_keeps_highest_value() -> None:
     assert session.score == 250
 
 
-def test_level_clear_effect_white_phase_timing() -> None:
-    effect = LevelClearEffect()
-    assert effect.is_white_phase(0)
-    assert effect.is_white_phase(199)
-    assert not effect.is_white_phase(250)
-    assert effect.is_white_phase(400)
+def test_wall_flash_white_phase_timing() -> None:
+    def wall_flash_white(elapsed_ms: int) -> bool:
+        return elapsed_ms % 400 < 200
+
+    assert wall_flash_white(0)
+    assert wall_flash_white(199)
+    assert not wall_flash_white(250)
+    assert wall_flash_white(400)
 
 
 def test_maze_white_tiles_loaded_for_all_tile_kinds() -> None:
     assets = Assets()
     assets.load()
     for tile_kind in TileKind:
-        assert tile_kind in assets.maze.tiles
-        assert tile_kind in assets.maze.white_tiles
-        blue = assets.maze.tiles[tile_kind].surface
-        white = assets.maze.white_tiles[tile_kind].surface
+        assert tile_kind in assets.maze_tiles
+        assert tile_kind in assets.maze_white_tiles
+        blue = assets.maze_tiles[tile_kind]
+        white = assets.maze_white_tiles[tile_kind]
         assert blue is not white
 
 
+def test_white_tiles_use_maze_parts_coords_not_tile_kind_coords() -> None:
+    """White flash must slice maze_parts with MAZE_PARTS_WHITE_KIND_COORDS."""
+    assets = Assets()
+    assets.load()
+    for tile_kind in (TileKind.CORNER_TL, TileKind.CORNER_BL):
+        assert (
+            Assets.TILE_KIND_COORDS[tile_kind]
+            != Assets.MAZE_PARTS_WHITE_KIND_COORDS[tile_kind]
+        )
+        loaded = assets.maze_white_tiles[tile_kind]
+        wrong = Assets._make_white_tile(
+            assets._slice_maze_cells(*Assets.TILE_KIND_COORDS[tile_kind])
+        )
+        w, h = loaded.get_size()
+        assert any(
+            loaded.get_at((x, y)) != wrong.get_at((x, y))
+            for x in range(w)
+            for y in range(h)
+        )
+
+
 def test_set_wall_flash_swaps_wall_surfaces(game_world: GameWorld) -> None:
-    wall_sprite = game_world._wall_sprites[0]
-    wall = wall_sprite.entity
+    wall = game_world._wall_sprites[0]
     assert isinstance(wall, WallTileEntity)
     blue_surface = wall.image
 

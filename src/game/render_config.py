@@ -6,7 +6,7 @@ from game.level import LevelLayout
 
 
 @dataclass(frozen=True, slots=True)
-class MazeViewport:
+class MazeBounds:
     """Screen-space bounds for the centered maze playfield."""
 
     x: int
@@ -16,12 +16,12 @@ class MazeViewport:
 
     @property
     def center(self) -> tuple[int, int]:
-        """Return pixel center of the maze viewport."""
+        """Return pixel center of the maze playfield."""
         return (self.x + self.width // 2, self.y + self.height // 2)
 
     @property
     def bottom(self) -> int:
-        """Return bottom edge of the maze viewport."""
+        """Return bottom edge of the maze playfield."""
         return self.y + self.height
 
 
@@ -33,6 +33,15 @@ class WorldRenderConfig:
     origin_x: int = 0
     origin_y: int = 0
 
+    def maze_bounds(self, layout: LevelLayout) -> MazeBounds:
+        """Return screen-space bounds for this config and layout."""
+        return MazeBounds(
+            x=self.origin_x,
+            y=self.origin_y,
+            width=layout.width * self.tile_px,
+            height=layout.height * self.tile_px,
+        )
+
     @classmethod
     def centered(
         cls,
@@ -40,7 +49,7 @@ class WorldRenderConfig:
         screen_size: tuple[int, int],
         tile_px: int = 16,
     ) -> WorldRenderConfig:
-        """Build config that centers the level grid on screen."""
+        """Build centered config for a layout on screen."""
         width_px = layout.width * tile_px
         height_px = layout.height * tile_px
         screen_w, screen_h = screen_size
@@ -48,13 +57,4 @@ class WorldRenderConfig:
             tile_px=tile_px,
             origin_x=(screen_w - width_px) // 2,
             origin_y=(screen_h - height_px) // 2,
-        )
-
-    def viewport_for(self, layout: LevelLayout) -> MazeViewport:
-        """Return screen-space bounds for the configured layout."""
-        return MazeViewport(
-            x=self.origin_x,
-            y=self.origin_y,
-            width=layout.width * self.tile_px,
-            height=layout.height * self.tile_px,
         )

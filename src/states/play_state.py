@@ -5,13 +5,11 @@ from pygame.surface import Surface
 
 from core.context import GameContext
 from core.state import GameState, StateEnterData
-from game.entity_factory import EntityFactory
 from game.game_session import GameplayPhase, GameSession
 from game.game_world import GameWorld
 from game.level import load_smoke_level
-from game.render_config import MazeViewport, WorldRenderConfig
+from game.render_config import MazeBounds, WorldRenderConfig
 from rendering.hud_overlay import HudOverlay
-from rendering.level_clear_effect import LevelClearEffect
 from sprites.sprite_types import Direction
 
 
@@ -22,8 +20,7 @@ class PlayState(GameState):
         self._world: GameWorld | None = None
         self._session: GameSession | None = None
         self._hud: HudOverlay | None = None
-        self._maze_viewport: MazeViewport | None = None
-        self._level_clear_effect = LevelClearEffect()
+        self._maze_bounds: MazeBounds | None = None
 
     def enter(
         self,
@@ -31,10 +28,10 @@ class PlayState(GameState):
         enter_data: StateEnterData | None = None,
     ) -> None:
         """Create a fresh world from smoke level boilerplate."""
-        catalog = context.resources.get_asset_catalog()
+        catalog = context.assets
         life_icon = catalog.pacman[Direction.LEFT].frames[1]
         self._hud = HudOverlay(
-            context.resources.get_text_renderer(),
+            context.text,
             life_icon=life_icon,
         )
 
@@ -50,7 +47,7 @@ class PlayState(GameState):
             self._world = None
         self._session = None
         self._hud = None
-        self._maze_viewport = None
+        self._maze_bounds = None
 
     def handle_events(
         self,
@@ -97,8 +94,6 @@ class PlayState(GameState):
                 self._update_level_complete(dt, now_ms, context)
             case GameplayPhase.GAME_OVER:
                 self._update_game_over(now_ms, context)
-            case GameplayPhase.VICTORY:
-                pass
 
     def _update_ready(self, dt: float, now_ms: int) -> None:
         assert self._session is not None
@@ -145,9 +140,8 @@ class PlayState(GameState):
         assert self._world is not None
         self._world.update(dt, now_ms)
         elapsed_ms = self._session.phase_elapsed_ms(now_ms)
-        self._world.set_wall_flash(
-            self._level_clear_effect.is_white_phase(elapsed_ms),
-        )
+        cycle_ms = elapsed_ms % 400
+        self._world.set_wall_flash(cycle_ms < 200)
         if elapsed_ms >= GameSession.LEVEL_COMPLETE_DURATION_MS:
             self._session.advance_level()
             self._reload_world(context)
@@ -167,26 +161,27 @@ class PlayState(GameState):
             self._world is None
             or self._session is None
             or self._hud is None
-            or self._maze_viewport is None
+            or self._maze_bounds is None
         ):
             return
         self._world.draw(surface)
-        world_score = self._world.score
-        snapshot = self._session.snapshot(score=world_score)
-        self._hud.draw(surface, snapshot, self._maze_viewport)
+        self._session.sync_score(self._world.score)
+        self._session.update_high_score(self._session.score)
+        self._hud.draw(surface, self._session, self._maze_bounds)
 
     def _build_world(self, context: GameContext) -> None:
         """Load smoke level and spawn a fresh GameWorld."""
-        catalog = context.resources.get_asset_catalog()
+        catalog = context.assets
         layout = load_smoke_level()
         render_config = WorldRenderConfig.centered(
             layout,
             context.screen.get_size(),
         )
-        factory = EntityFactory(catalog, render_config, layout)
+        self._maze_bounds = render_config.maze_bounds(layout)
         initial_score = self._session.score if self._session is not None else 0
-        self._world = GameWorld(layout, factory, initial_score=initial_score)
-        self._maze_viewport = render_config.viewport_for(layout)
+        self._world = GameWorld(
+            layout, catalog, render_config, initial_score=initial_score
+        )
 
     def _reload_world(self, context: GameContext) -> None:
         """Tear down the active world and build a new one for the next level."""

@@ -13,22 +13,6 @@ class GameplayPhase(Enum):
     LIFE_LOST = auto()
     LEVEL_COMPLETE = auto()
     GAME_OVER = auto()
-    # TODO: set when final level is cleared or win condition lands.
-    VICTORY = auto()
-
-
-@dataclass(frozen=True, slots=True)
-class HudSnapshot:
-    """Read-only HUD values for one draw frame."""
-
-    score: int
-    high_score: int
-    lives: int
-    spare_lives: int
-    level_number: int
-    remaining_time_s: int
-    phase: GameplayPhase
-    message: str | None
 
 
 @dataclass(slots=True)
@@ -45,7 +29,6 @@ class GameSession:
         GameplayPhase.READY: "READY!",
         GameplayPhase.LEVEL_COMPLETE: "LEVEL CLEAR",
         GameplayPhase.GAME_OVER: "GAME OVER",
-        GameplayPhase.VICTORY: "YOU WIN",
     }
 
     level_number: int = 1
@@ -121,18 +104,3 @@ class GameSession:
     def phase_elapsed_ms(self, now_ms: int) -> int:
         """Return milliseconds spent in the current phase."""
         return max(0, now_ms - self.phase_started_at_ms)
-
-    def snapshot(self, score: int) -> HudSnapshot:
-        """Build HUD snapshot from current session and score."""
-        effective_score = max(self.score, score)
-        self.update_high_score(effective_score)
-        return HudSnapshot(
-            score=effective_score,
-            high_score=self.high_score,
-            lives=self.lives,
-            spare_lives=self.spare_lives(),
-            level_number=self.level_number,
-            remaining_time_s=self.remaining_time_s(),
-            phase=self.phase,
-            message=self.PHASE_MESSAGE.get(self.phase),
-        )

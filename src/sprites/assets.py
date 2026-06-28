@@ -20,22 +20,6 @@ class AssetError(Exception):
 
 
 @dataclass(slots=True)
-class ItemSprites:
-    dot: AssetSprite = field(
-        default_factory=lambda: AssetSprite(pygame.Surface((1, 1))),
-    )
-    power_pellet: AssetSprite = field(
-        default_factory=lambda: AssetSprite(pygame.Surface((1, 1))),
-    )
-
-
-@dataclass(slots=True)
-class MazeSprites:
-    tiles: dict[TileKind, AssetSprite] = field(default_factory=dict)
-    white_tiles: dict[TileKind, AssetSprite] = field(default_factory=dict)
-
-
-@dataclass(slots=True)
 class GhostSprites:
     by_kind: dict[GhostKind, AnimatedSprite] = field(default_factory=dict)
     frightened: AnimatedSprite = field(
@@ -46,9 +30,7 @@ class GhostSprites:
 class Assets:
     """Sprite sheet loader and gameplay asset catalog."""
 
-    ASSETS_ROOT: ClassVar[Path] = (
-        Path(__file__).resolve().parents[2] / "assets"
-    )
+    ASSETS_ROOT: ClassVar[Path] = Path(__file__).resolve().parents[2] / "assets"
     CELL_SIZE: ClassVar[int] = 8
     SPRITE_CELLS: ClassVar[int] = 2
     DISPLAY_TILE_SIZE: ClassVar[int] = 16
@@ -96,12 +78,9 @@ class Assets:
         TileKind.CORNER_BR: (5, 4),
     }
 
-    # White flash tiles from maze_parts.png using the same grid as TILE_KIND_COORDS.
-    # maze_parts mirrors general_sprites at (23,2), (22,3), (25,2), (5,4) exactly.
-    # TL/BL TILE_KIND cells are solid on maze_parts; use nearest matching cells.
-    MAZE_PARTS_WHITE_TILE_KIND_COORDS: ClassVar[
-        dict[TileKind, tuple[int, int]]
-    ] = {
+    # White flash: maze_parts.png uses its own cell grid (not general_sprites).
+    # TL/BL corners need different cells than TILE_KIND_COORDS — do not reuse.
+    MAZE_PARTS_WHITE_KIND_COORDS: ClassVar[dict[TileKind, tuple[int, int]]] = {
         TileKind.WALL: (23, 2),
         TileKind.HORIZONTAL: (23, 2),
         TileKind.VERTICAL: (22, 3),
@@ -117,11 +96,13 @@ class Assets:
         "_maze_sheet",
         "_ghosts_loaded",
         "_loaded",
+        "dot_surface",
         "fruits",
         "ghosts",
-        "items",
-        "maze",
+        "maze_tiles",
+        "maze_white_tiles",
         "pacman",
+        "power_pellet_surface",
         "root",
     )
 
@@ -129,9 +110,11 @@ class Assets:
         self.root = root or self.ASSETS_ROOT
         self.pacman: dict[Direction, AnimatedSprite] = {}
         self.ghosts = GhostSprites()
-        self.items = ItemSprites()
+        self.dot_surface = pygame.Surface((1, 1))
+        self.power_pellet_surface = pygame.Surface((1, 1))
+        self.maze_tiles: dict[TileKind, Surface] = {}
+        self.maze_white_tiles: dict[TileKind, Surface] = {}
         self.fruits: dict[FruitKind, AssetSprite] = {}
-        self.maze = MazeSprites()
         self._general_sheet: Surface | None = None
         self._maze_sheet: Surface | None = None
         self._loaded = False
@@ -225,14 +208,12 @@ class Assets:
             width_cells=1,
             height_cells=1,
         )
-        self.items.dot = AssetSprite(dot_surface)
-        self.items.power_pellet = AssetSprite(
-            self._slice_cells(
-                self.POWER_PELLET_COORD[0],
-                self.POWER_PELLET_COORD[1],
-                width_cells=1,
-                height_cells=1,
-            )
+        self.dot_surface = dot_surface
+        self.power_pellet_surface = self._slice_cells(
+            self.POWER_PELLET_COORD[0],
+            self.POWER_PELLET_COORD[1],
+            width_cells=1,
+            height_cells=1,
         )
 
     # TODO: invoked by load_ghosts() when ghost entities land.
@@ -294,9 +275,10 @@ class Assets:
             blue_surface = self._slice_cells(
                 col, row, width_cells=1, height_cells=1
             )
-            self.maze.tiles[tile_kind] = AssetSprite(blue_surface)
-        for tile_kind, coords in self.MAZE_PARTS_WHITE_TILE_KIND_COORDS.items():
+            self.maze_tiles[tile_kind] = blue_surface
+        for tile_kind, coords in self.MAZE_PARTS_WHITE_KIND_COORDS.items():
             col, row = coords
             sheet_surface = self._slice_maze_cells(col, row)
-            white_surface = self._make_white_tile(sheet_surface)
-            self.maze.white_tiles[tile_kind] = AssetSprite(white_surface)
+            self.maze_white_tiles[tile_kind] = self._make_white_tile(
+                sheet_surface
+            )

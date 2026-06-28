@@ -8,5 +8,3 @@ class SpriteLayer(IntEnum):
     BACKGROUND = auto()
     CONSUMABLES = auto()
     ACTORS = auto()
-    # TODO: add score popups and short-lived effects when gameplay events land.
-    EFFECTS = auto()

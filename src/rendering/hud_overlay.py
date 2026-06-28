@@ -4,8 +4,8 @@ from typing import ClassVar
 
 from pygame.surface import Surface
 
-from game.game_session import GameplayPhase, HudSnapshot
-from game.render_config import MazeViewport
+from game.game_session import GameSession, GameplayPhase
+from game.render_config import MazeBounds
 from states.text import ArcadeTextColor, ArcadeTextRenderer
 
 
@@ -14,24 +14,24 @@ class HudOverlay:
 
     TOP_LABEL_Y: ClassVar[int] = 8
     TOP_VALUE_Y: ClassVar[int] = 28
-    BOTTOM_MARGIN: ClassVar[int] = 16
+    BOTTOM_EDGE: ClassVar[int] = 16
     HUD_SCALE: ClassVar[int] = 2
     SIDE_MARGIN: ClassVar[int] = 48
     LIFE_ICON_GAP: ClassVar[int] = 4
     MESSAGE_SCALE: ClassVar[int] = 3
+    STATIC_LABELS: ClassVar[tuple[str, ...]] = ("1UP", "HIGH SCORE", "TIME")
     PHASE_TEXT_COLOR: ClassVar[dict[GameplayPhase, ArcadeTextColor]] = {
         GameplayPhase.GAME_OVER: ArcadeTextColor.RED,
         GameplayPhase.READY: ArcadeTextColor.YELLOW,
         GameplayPhase.LEVEL_COMPLETE: ArcadeTextColor.YELLOW,
-        GameplayPhase.VICTORY: ArcadeTextColor.GOLD,
     }
 
     __slots__ = (
         "_font",
-        "_label_cache",
+        "_label_surfaces",
         "_level_surface_cache",
         "_life_icon",
-        "_phase_message_cache",
+        "_phase_message_surfaces",
         "_text",
     )
 
@@ -42,60 +42,70 @@ class HudOverlay:
     ) -> None:
         self._text = text
         self._font = text.font(ArcadeTextColor.WHITE, self.HUD_SCALE)
-        self._label_cache: dict[str, Surface] = {}
-        self._phase_message_cache: dict[GameplayPhase, Surface] = {}
+        self._label_surfaces = {
+            label: self._font.render(label) for label in self.STATIC_LABELS
+        }
+        self._phase_message_surfaces: dict[GameplayPhase, Surface] = {}
+        for phase, message in GameSession.PHASE_MESSAGE.items():
+            if message is None:
+                continue
+            color = self.PHASE_TEXT_COLOR.get(phase, ArcadeTextColor.WHITE)
+            self._phase_message_surfaces[phase] = text.font(
+                color, self.MESSAGE_SCALE
+            ).render(message)
         self._level_surface_cache: dict[int, Surface] = {}
         self._life_icon = life_icon
 
     def draw(
         self,
         surface: Surface,
-        snapshot: HudSnapshot,
-        viewport: MazeViewport,
+        session: GameSession,
+        maze_bounds: MazeBounds,
     ) -> None:
         """Draw top score band, bottom status band, and phase message."""
-        self._draw_top_band(surface, snapshot)
-        self._draw_bottom_band(surface, snapshot, viewport)
-        if snapshot.message is not None:
-            self._draw_phase_message(surface, snapshot, viewport)
+        self._draw_top_band(surface, session)
+        self._draw_bottom_band(surface, session, maze_bounds)
+        message = GameSession.PHASE_MESSAGE.get(session.phase)
+        if message is not None:
+            self._draw_phase_message(surface, session, maze_bounds, message)
 
-    def _draw_top_band(self, surface: Surface, snapshot: HudSnapshot) -> None:
+    def _draw_top_band(self, surface: Surface, session: GameSession) -> None:
         """Draw 1UP, HIGH SCORE, and TIME across the top."""
         self._draw_score_column(
             surface,
             x=self.SIDE_MARGIN,
             label="1UP",
-            value=_format_score(snapshot.score),
+            value=_format_score(session.score),
         )
         self._draw_score_column(
             surface,
             x=surface.get_width() // 2,
             label="HIGH SCORE",
-            value=_format_score(snapshot.high_score),
+            value=_format_score(session.high_score),
             centered=True,
         )
         self._draw_score_column(
             surface,
             x=surface.get_width() - self.SIDE_MARGIN,
             label="TIME",
-            value=_format_time(snapshot.remaining_time_s),
+            value=_format_time(session.remaining_time_s()),
             right_aligned=True,
         )
 
     def _draw_bottom_band(
         self,
         surface: Surface,
-        snapshot: HudSnapshot,
-        viewport: MazeViewport,
+        session: GameSession,
+        maze_bounds: MazeBounds,
     ) -> None:
         """Draw spare life icons and current level below the maze."""
-        bottom_y = viewport.bottom + self.BOTTOM_MARGIN
+        bottom_y = maze_bounds.bottom + self.BOTTOM_EDGE
         self._draw_life_icons(
-            surface, snapshot.spare_lives, viewport.x, bottom_y
+            surface, session.spare_lives(), maze_bounds.x, bottom_y
         )
-        level_surface = self._cached_level_surface(snapshot.level_number)
+        level_surface = self._cached_level_surface(session.level_number)
         level_rect = level_surface.get_rect(
-            midright=(viewport.x + viewport.width, bottom_y),
+            midright=(maze_bounds.x + maze_bounds.width, bottom_y),
         )
         surface.blit(level_surface, level_rect)
 
@@ -110,7 +120,7 @@ class HudOverlay:
         right_aligned: bool = False,
     ) -> None:
         """Draw one label/value HUD column."""
-        label_surface = self._cached_label(label)
+        label_surface = self._label_surfaces[label]
         value_surface = self._font.render_uncached(value)
 
         if centered:
@@ -146,38 +156,16 @@ class HudOverlay:
     def _draw_phase_message(
         self,
         surface: Surface,
-        snapshot: HudSnapshot,
-        viewport: MazeViewport,
+        session: GameSession,
+        maze_bounds: MazeBounds,
+        message: str,
     ) -> None:
         """Draw centered phase overlay over the maze."""
-        if snapshot.message is None:
+        rendered = self._phase_message_surfaces.get(session.phase)
+        if rendered is None:
             return
-        rendered = self._cached_phase_message(snapshot.phase, snapshot.message)
-        rect = rendered.get_rect(center=viewport.center)
+        rect = rendered.get_rect(center=maze_bounds.center)
         surface.blit(rendered, rect)
-
-    def _cached_label(self, label: str) -> Surface:
-        """Return cached static label surface."""
-        cached = self._label_cache.get(label)
-        if cached is not None:
-            return cached
-        rendered: Surface = self._font.render(label)
-        self._label_cache[label] = rendered
-        return rendered
-
-    def _cached_phase_message(
-        self,
-        phase: GameplayPhase,
-        message: str,
-    ) -> Surface:
-        """Return cached phase overlay text surface."""
-        cached = self._phase_message_cache.get(phase)
-        if cached is not None:
-            return cached
-        color = self.PHASE_TEXT_COLOR.get(phase, ArcadeTextColor.WHITE)
-        rendered = self._text.font(color, self.MESSAGE_SCALE).render(message)
-        self._phase_message_cache[phase] = rendered
-        return rendered
 
     def _cached_level_surface(self, level_number: int) -> Surface:
         """Return cached level label surface."""

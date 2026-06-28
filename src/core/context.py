@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 from pygame.surface import Surface
 
-from core.resources import ResourceManager
+from sprites.assets import Assets
+from states.text import ArcadeTextRenderer
 
 if TYPE_CHECKING:
     from core.scene_manager import SceneManager
@@ -16,5 +17,6 @@ class GameContext:
     """Shared runtime services passed into states."""
 
     screen: Surface
-    resources: ResourceManager
+    assets: Assets
+    text: ArcadeTextRenderer
     scene_manager: SceneManager
