@@ -28,6 +28,9 @@ class GameState:
         self.edible_turns = 0
         self.remaining_time = int(self.config["level_max_time"])
 
+        self.scatter_mode = False
+        self.scatter_turns = 0
+
         self.renderer = TerminalRenderer()
 
         self.highscore_manager = HighscoreManager(
@@ -41,6 +44,9 @@ class GameState:
         """Load current level."""
         self.remaining_time = int(self.config["level_max_time"])
         self.edible_turns = 0
+
+        self.scatter_mode = False
+        self.scatter_turns = 0
 
         level = self.level_manager.get_current_level()
         grid = MazeAdaptor().generate(
@@ -72,7 +78,10 @@ class GameState:
         """Start the game loop."""
         while self.is_running:
             self.print_state()
-            command = input("Move with WASD,  Q to quit: ").lower()
+            command = input(
+                "WASD move | P pause | I invincible | F freeze | "
+                "L life | N next level | Q quit: "
+            ).lower()
             # input read from keybaord, return str
 
             if command == "q":
@@ -95,6 +104,10 @@ class GameState:
         print(f"Level: {self.level_manager.current_level + 1}")
         print(f"Edible turns: {self.edible_turns}")
         print(f"Time left: {self.remaining_time}")
+        print(
+            "Mode:",
+            "Scatter" if self.scatter_mode else "Chase",
+        )
         self.renderer.print_map(
             self.map_data,
             self.player.row,
@@ -119,6 +132,8 @@ class GameState:
         if command == "n":
             self.complete_level()
             return
+
+        # speed is in lack
 
         moves = {
             "w": (-1, 0),
@@ -163,12 +178,13 @@ class GameState:
         self.handle_tile_eating()
 
         self.handle_ghost_collisions()
-
         if not self.is_running:
             return  # h_g_c => lives <=0 => is_run false
 
         self.move_ghosts()
         self.handle_ghost_collisions()
+        if not self.is_running:
+            return
 
         self.update_timer()
 
@@ -199,31 +215,50 @@ class GameState:
         for ghost in self.ghosts:
             if not ghost.active:
                 continue
+
             if self.edible_turns > 0:
                 ghost.move_away(
                     self.player.row,
                     self.player.col,
                     self.map_data,
                 )
+                continue
+
+            if self.scatter_mode:
+                target_row = ghost.spawn_row
+                target_col = ghost.spawn_col
+
             else:
-                ghost.move_towards(
-                    self.player.row,
-                    self.player.col,
-                    self.map_data,
+                target_row, target_col = (
+                    ghost.get_chase_target(
+                        self.player,
+                        self.map_data,
+                    )
                 )
+
+            ghost.move_towards(
+                target_row,
+                target_col,
+                self.map_data,
+            )
 
     def update_timer(self) -> None:
         """Update edible and ghost respawn timers after one turn."""
         for ghost in self.ghosts:
             ghost.tick_respawn()
 
-        if self.edible_turns <= 0:
-            return
+        if self.edible_turns > 0:
+            self.edible_turns -= 1
+            if self.edible_turns == 0:
+                for ghost in self.ghosts:
+                    ghost.edible = False
 
-        self.edible_turns -= 1
-        if self.edible_turns == 0:
-            for ghost in self.ghosts:
-                ghost.edible = False
+        self.scatter_turns += 1
+        if self.scatter_turns >= 40:
+            self.scatter_turns = 0
+            self.scatter_mode = False
+        elif self.scatter_turns >= 20:
+            self.scatter_mode = True
 
     def handle_time_limit(self) -> bool:
         """Handle level timeout. Return True if level ended."""
@@ -250,8 +285,7 @@ class GameState:
             if ghost.edible:
                 self.player.score += int(self.config["points_per_ghost"])
                 print(f"You eat {ghost.name}!")
-                ghost.row, ghost.col = self.ghost_starts[index]
-                ghost.edible = False
+                ghost.start_respawn(self.GHOST_RESPAWN_DELAY)
                 continue
 
             if not self.invincible:
@@ -259,10 +293,9 @@ class GameState:
                 print("Ghost caught you!")
 
                 self.player.row, self.player.col = self.player_start
-                for ghost_index, current_ghost in enumerate(self.ghosts):
-                    current_ghost.row, current_ghost.col = (
-                        self.ghost_starts[ghost_index]
-                    )
+
+                for current_ghost in self.ghosts:
+                    current_ghost.reset_to_spawn()
 
                 if self.player.lives <= 0:
                     print("Game over!")

@@ -1,5 +1,9 @@
 [
   {
+    "name": "d",
+    "score": 1840
+  },
+  {
     "name": "df",
     "score": 1740
   },
@@ -34,9 +38,5 @@
   {
     "name": "ma",
     "score": 610
-  },
-  {
-    "name": "dsfd",
-    "score": 590
   }
 ]

@@ -35,6 +35,7 @@ class HighscoreManager:
 
     def add_score(self, name: str, score: int) -> None:
         """Add score and keep only top 10."""
+        score = max(0, score)
         clean_name = self.clean_name(name)
 
         self.highscores.append(

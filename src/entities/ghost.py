@@ -4,6 +4,7 @@ from collections import deque
 import random
 
 from src.maze.map_data import MapData
+from src.entities.player import Player
 
 
 class Ghost:
@@ -91,11 +92,8 @@ class Ghost:
         if not self.active:
             return
 
-        chase_row, chase_col = self.get_chase_target(
-            target_row, target_col, map_data
-        )
         path = self.find_path_bfs(
-            self.row, self.col, chase_row, chase_col, map_data)
+            self.row, self.col, target_row, target_col, map_data)
 
         if len(path) >= 2:
             self.last_row = self.row
@@ -251,35 +249,40 @@ class Ghost:
 
     def get_chase_target(
         self,
-        player_row: int,
-        player_col: int,
+        player: Player,
         map_data: MapData,
     ) -> tuple[int, int]:
         """Return a different chase target based on ghost name."""
         if self.name == "Blinky":
-            target = (player_row, player_col)
+            target = (player.row, player.col)
         elif self.name == "Pinky":
-            target = (player_row - 4, player_col)
+            target = (
+                player.row + player.last_row_delta * 4,
+                player.col + player.last_col_delta * 4,
+            )
         elif self.name == "Inky":
-            target = (player_row + 2, player_col + 2)
+            target = (
+                player.row + player.last_row_delta * 2 + random.randint(-1, 1),
+                player.col + player.last_col_delta * 2 + random.randint(-1, 1),
+            )
         elif self.name == "Clyde":
             distance = self.manhattan_distance(
                 self.row,
                 self.col,
-                player_row,
-                player_col,
+                player.row,
+                player.col,
             )
             if distance > 8:
-                target = (player_row, player_col)
+                target = (player.row, player.col)
             else:
                 target = (self.spawn_row, self.spawn_col)
         else:
-            target = (player_row, player_col)
+            target = (player.row, player.col)
 
         target_row, target_col = target
 
         if map_data.is_wall(target_row, target_col):
-            return player_row, player_col
+            return player.row, player.col
 
         return target
 

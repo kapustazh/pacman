@@ -12,8 +12,19 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "points_per_ghost": 200,
     "seed": 42,
     "level_max_time": 90,
-    "levels": [{"width": 21, "height": 21}],
-}
+    "levels": [
+        {"width": 21, "height": 21},
+        {"width": 21, "height": 21},
+        {"width": 23, "height": 23},
+        {"width": 23, "height": 23},
+        {"width": 25, "height": 25},
+        {"width": 25, "height": 25},
+        {"width": 27, "height": 27},
+        {"width": 27, "height": 27},
+        {"width": 29, "height": 29},
+        {"width": 29, "height": 29}
+        ],
+    }
 
 
 def remove_comments(content: str) -> str:
@@ -90,12 +101,12 @@ def get_string(data: dict[str, Any], key: str, default: str) -> str:
 
 def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
     """Read level definitions from config."""
-    default_levels = [{"width": 21, "height": 21}]
-    value = data.get("levels", default_levels)
+    value = data.get("levels", DEFAULT_CONFIG["levels"])
 
     if not isinstance(value, list) or not value:
-        print("Warning: invalid levels, using default level.")
-        return default_levels
+        print("Warning: invalid levels, using default levels.")
+        return DEFAULT_CONFIG["levels"]
+
     levels: list[dict[str, int]] = []
 
     for level in value:
@@ -113,7 +124,14 @@ def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
         levels.append({"width": width, "height": height})
 
     if not levels:
-        print("Warning: no valid levels, using default level.")
-        return default_levels
+        print("Warning: invalid levels, using default levels.")
+        return DEFAULT_CONFIG["levels"]
+
+    if len(levels) < 10:
+        print(
+            "Warning: less than 10 levels configured. "
+            "Using default levels."
+        )
+        return DEFAULT_CONFIG["levels"]
 
     return levels

@@ -18,18 +18,20 @@ class TerminalRenderer:
         for row_index, row in enumerate(map_data.grid):
             for col_index, tile in enumerate(row):
                 if row_index == player_row and col_index == player_col:
-                    print("P", end="")
-                elif self._has_ghost(row_index, col_index, ghosts):
-                    print("G", end="")
+                    print("▲", end="")
                 else:
-                    print(tile.value, end="")
-                    # Print("P")==print("P", end="\n")
+                    ghost = self._get_ghost(row_index, col_index, ghosts)
+                    if ghost is not None:
+                        print(ghost.name[0], end="")
+                    else:
+                        print(tile.value, end="")
+                        # Print("P")==print("P", end="\n")
             print()
 
-    def _has_ghost(self, row: int, col: int, ghosts: list[Ghost]) -> bool:
+    def _get_ghost(self, row: int, col: int, ghosts: list[Ghost]) -> bool:
         """Return True if ghost is on position."""
         for ghost in ghosts:
             if ghost.active and ghost.row == row and ghost.col == col:
-                return True
+                return ghost
 
-        return False
+        return None
