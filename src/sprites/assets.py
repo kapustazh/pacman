@@ -30,7 +30,7 @@ class GhostSprites:
 class Assets:
     """Sprite sheet loader and gameplay asset catalog."""
 
-    ASSETS_ROOT: ClassVar[Path] = Path(__file__).resolve().parents[2] / "assets"
+    ASSETS: ClassVar[Path] = Path(__file__).resolve().parents[2] / "assets"
     CELL_SIZE: ClassVar[int] = 8
     SPRITE_CELLS: ClassVar[int] = 2
     DISPLAY_TILE_SIZE: ClassVar[int] = 16
@@ -42,9 +42,6 @@ class Assets:
         Direction.UP: [(57, 4), (59, 4), (61, 4)],
         Direction.DOWN: [(57, 6), (59, 6), (61, 6)],
     }
-    # Row 0 cols 57–61 are right-walk chomp; death collapses from col 63 on row 0.
-    # Row 1 cols 63+ split the sprite (gap rows 4–7) — do not use for death frames.
-    # Cols 63–83 step 2: collapse through sparkle; sheet ends — empty frame appended at load.
     DEATH_COORDS: ClassVar[list[tuple[int, int]]] = [
         (63, 0),
         (65, 0),
@@ -124,7 +121,7 @@ class Assets:
     )
 
     def __init__(self, root: Path | None = None) -> None:
-        self.root = root or self.ASSETS_ROOT
+        self.root = root or self.ASSETS
         self.pacman: dict[Direction, AnimatedSprite] = {}
         self.pacman_death = AnimatedSprite(frames=[])
         self.ghosts = GhostSprites()
