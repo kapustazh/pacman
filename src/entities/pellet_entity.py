@@ -21,9 +21,6 @@ class PelletEntity(Sprite):
         self.cell = cell
         self.center = center
         self.points = points
+        self.layer = int(SpriteLayer.CONSUMABLES)
         self.image = image
         self.rect = image.get_rect(center=center)
-
-    @property
-    def layer(self) -> int:
-        return int(SpriteLayer.CONSUMABLES)
