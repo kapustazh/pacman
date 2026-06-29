@@ -33,6 +33,7 @@ class PlayState(GameState):
         self._hud = HudOverlay(
             context.text,
             life_icon=life_icon,
+            fruit_icon=None,
         )
 
         started_at = pygame.time.get_ticks()
@@ -95,9 +96,11 @@ class PlayState(GameState):
             case GameplayPhase.GAME_OVER:
                 self._update_game_over(now_ms, context)
 
+        self._sync_session_score()
+
     def _update_ready(self, dt: float, now_ms: int) -> None:
-        assert self._session is not None
-        assert self._world is not None
+        if self._session is None or self._world is None:
+            return
         if (
             self._session.phase_elapsed_ms(now_ms)
             >= GameSession.READY_DURATION_MS
@@ -107,11 +110,20 @@ class PlayState(GameState):
         self._world.update(dt, now_ms)
 
     def _update_playing(self, dt: float, now_ms: int) -> None:
-        assert self._session is not None
-        assert self._world is not None
+        if self._session is None or self._world is None:
+            return
+        if self._world.player_is_dying:
+            self._world.update(dt, now_ms)
+            if self._world.player_death_finished:
+                self._handle_life_lost(now_ms)
+            return
         if not self._world.is_frozen:
             timer_expired = self._session.tick_timer(dt)
-            self._world.update_player_movement(dt)
+            self._world.update_player_movement(dt, now_ms)
+            self._world.update_fruit_spawns(
+                self._session.level_elapsed_s(),
+                now_ms,
+            )
             self._world.update(dt, now_ms)
             if timer_expired:
                 self._handle_life_lost(now_ms)
@@ -123,7 +135,8 @@ class PlayState(GameState):
             self._world.update(dt, now_ms)
 
     def _update_life_lost(self, now_ms: int) -> None:
-        assert self._session is not None
+        if self._session is None:
+            return
         if (
             self._session.phase_elapsed_ms(now_ms)
             >= GameSession.LIFE_LOST_DURATION_MS
@@ -136,8 +149,8 @@ class PlayState(GameState):
         now_ms: int,
         context: GameContext,
     ) -> None:
-        assert self._session is not None
-        assert self._world is not None
+        if self._session is None or self._world is None:
+            return
         self._world.update(dt, now_ms)
         elapsed_ms = self._session.phase_elapsed_ms(now_ms)
         cycle_ms = elapsed_ms % 400
@@ -145,10 +158,12 @@ class PlayState(GameState):
         if elapsed_ms >= GameSession.LEVEL_COMPLETE_DURATION_MS:
             self._session.advance_level()
             self._reload_world(context)
+            self._session.reset_level_timer()
             self._session.enter_ready(now_ms)
 
     def _update_game_over(self, now_ms: int, context: GameContext) -> None:
-        assert self._session is not None
+        if self._session is None:
+            return
         if (
             self._session.phase_elapsed_ms(now_ms)
             >= GameSession.GAME_OVER_DURATION_MS
@@ -165,9 +180,15 @@ class PlayState(GameState):
         ):
             return
         self._world.draw(surface)
+        self._hud.draw_score_popups(surface, self._world.score_popups)
+        self._hud.draw(surface, self._session, self._maze_bounds)
+
+    def _sync_session_score(self) -> None:
+        """Keep session score/high-score in sync with world during update."""
+        if self._session is None or self._world is None:
+            return
         self._session.sync_score(self._world.score)
         self._session.update_high_score(self._session.score)
-        self._hud.draw(surface, self._session, self._maze_bounds)
 
     def _build_world(self, context: GameContext) -> None:
         """Load smoke level and spawn a fresh GameWorld."""
@@ -179,21 +200,32 @@ class PlayState(GameState):
         )
         self._maze_bounds = render_config.maze_bounds(layout)
         initial_score = self._session.score if self._session is not None else 0
-        self._world = GameWorld(
-            layout, catalog, render_config, initial_score=initial_score
+        level_number = (
+            self._session.level_number if self._session is not None else 1
         )
+        self._world = GameWorld(
+            layout,
+            catalog,
+            render_config,
+            initial_score=initial_score,
+            level_number=level_number,
+        )
+        if self._hud is not None:
+            self._hud.set_fruit_icon(self._world.level_fruit_surface)
 
     def _reload_world(self, context: GameContext) -> None:
-        """Tear down the active world and build a new one for the next level."""
+        """Tear down world and build a new one for the next level."""
         if self._world is not None:
             self._world.teardown()
             self._world = None
         self._build_world(context)
 
     def _handle_life_lost(self, now_ms: int) -> None:
-        """Lose one life when timer expires or collision lands later."""
+        """Lose one life when timer expires or ghost collision."""
         if self._session is None:
             return
+        if self._world is not None:
+            self._world.freeze_gameplay()
         self._session.lose_life(now_ms)
         if self._session.lives == 0:
             self._session.enter_game_over(now_ms)
@@ -205,6 +237,9 @@ class PlayState(GameState):
         if self._session.lives <= 0:
             self._session.enter_game_over(now_ms)
             return
+        if self._world is not None:
+            self._world.respawn_player()
+            self._world.unfreeze_gameplay()
         self._session.reset_level_timer()
         self._session.enter_ready(now_ms)
 

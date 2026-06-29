@@ -48,6 +48,10 @@ class GameSession:
         """Return whole seconds left on the current level."""
         return max(0, self.remaining_time_ms // 1000)
 
+    def level_elapsed_s(self) -> int:
+        """Return whole seconds elapsed in the current level timer."""
+        return max(0, self.level_time_limit_s - self.remaining_time_s())
+
     def reset_level_timer(self) -> None:
         """Reset countdown to full level limit."""
         self.remaining_time_ms = self.level_time_limit_s * 1000
