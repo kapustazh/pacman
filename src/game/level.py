@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, auto
 
+from sprites.sprite_types import GhostKind
+
 
 # BOILERPLATE: logic grid cell types; final maze generator may expand this.
 class CellType(Enum):
@@ -30,8 +32,10 @@ class LevelLayout:
     pellet_cells: frozenset[CellPos]
     power_pellet_cells: frozenset[CellPos]
     player_spawn: CellPos
-    # TODO: populate from level data when ghost entities are implemented.
-    ghost_spawns: tuple[CellPos, ...]
+    ghost_spawns: tuple[
+        tuple[GhostKind, CellPos], ...
+    ]  # TODO: add corner spawn points for ghosts
+    fruit_spawn: CellPos  # TODO: add random spawn points for fruits
 
     @property
     def height(self) -> int:
@@ -74,7 +78,13 @@ def load_smoke_level() -> LevelLayout:
     pellets: set[CellPos] = set()
     power_pellets: set[CellPos] = set()
     player_spawn = CellPos(7, 10)
-    # ghost_spawns = (CellPos(7, 11), CellPos(7, 12))
+    ghost_spawns = (
+        (GhostKind.BLINKY, CellPos(1, 1)),
+        (GhostKind.PINKY, CellPos(1, 17)),
+        (GhostKind.INKY, CellPos(10, 1)),
+        (GhostKind.CLYDE, CellPos(10, 17)),
+    )  # TODO: add corner spawn points for ghosts
+    fruit_spawn = CellPos(7, 9)
 
     for row_index, row in enumerate(grid):
         current_row: list[CellType] = []
@@ -96,5 +106,6 @@ def load_smoke_level() -> LevelLayout:
         pellet_cells=frozenset(pellets),
         power_pellet_cells=frozenset(power_pellets),
         player_spawn=player_spawn,
-        ghost_spawns=(),
+        ghost_spawns=ghost_spawns,
+        fruit_spawn=fruit_spawn,
     )
