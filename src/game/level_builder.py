@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 from src.maze.map_data import TileType
 
+import random
+
 
 @dataclass
 class LevelSetup:
@@ -57,6 +59,8 @@ class LevelBuilder:
         for row, col in self._walkable_positions(grid):
             if (row, col) not in reserved:
                 candidates.append((row, col))
+
+        random.shuffle(candidates)
 
         limit = min(self.pacgum_count, len(candidates))
 

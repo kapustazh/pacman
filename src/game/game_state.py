@@ -279,6 +279,9 @@ class GameState:
     def _handle_ghost_collisions(self) -> None:
         """Handle collisions between player and ghosts."""
         for index, ghost in enumerate(self.ghosts):
+            if not ghost.active:
+                continue
+
             if ghost.row != self.player.row or ghost.col != self.player.col:
                 continue
 

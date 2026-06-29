@@ -2,7 +2,7 @@
 
 import sys
 
-from src.config import load_config
+from src.config.config import load_config
 from src.game.game_state import GameState
 
 
