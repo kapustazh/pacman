@@ -14,6 +14,9 @@ class WallTileEntity(Sprite):
         "_white_surface",
         "cell",
         "center",
+        "image",
+        "layer",
+        "rect",
     )
 
     def __init__(

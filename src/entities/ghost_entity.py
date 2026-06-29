@@ -16,7 +16,10 @@ class GhostEntity(Sprite):
         "_hidden",
         "cell",
         "center",
+        "image",
         "kind",
+        "layer",
+        "rect",
     )
 
     def __init__(

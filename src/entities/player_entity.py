@@ -22,6 +22,9 @@ class PlayerEntity(Sprite):
         "_moved_this_step",
         "cell",
         "center",
+        "image",
+        "layer",
+        "rect",
     )
 
     def __init__(
@@ -78,7 +81,11 @@ class PlayerEntity(Sprite):
             self.image = frame
             self.rect = frame.get_rect(center=self.center)
 
-    def reset_after_death(self, cell: CellPos, center: tuple[int, int]) -> None:
+    def reset_after_death(
+        self,
+        cell: CellPos,
+        center: tuple[int, int],
+    ) -> None:
         """Respawn player at spawn cell after losing a life."""
         self.cell = cell
         self.center = center

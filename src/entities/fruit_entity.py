@@ -5,8 +5,8 @@ from entities.sprite_layer import SpriteLayer
 from game.level import CellPos
 
 
-class PelletEntity(Sprite):
-    """Static consumable sprite."""
+class FruitEntity(Sprite):
+    """Bonus fruit that appears briefly during a level."""
 
     __slots__ = ("cell", "center", "image", "layer", "points", "rect")
 
