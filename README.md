@@ -228,8 +228,8 @@ RESPAWN
 pac-man.py                     -> Program entry point
 src/
 ├── config/
-│   ├── config.py              -> Load and validate JSON configuration
-│   └── defaults.py            -> Default game configuration
+│   └── config.py              -> Load and validate JSON configuration
+│                              -> Default game configuration
 │
 ├── game/
 │   ├── game_state.py          -> Main game loop and gameplay coordination
