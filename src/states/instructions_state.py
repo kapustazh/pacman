@@ -64,8 +64,6 @@ class InstructionsState(GameState):
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw aligned control legend."""
         text = context.text
-        text.draw_screen_backdrop(surface)
-
         text.draw_centered_arcade_text(
             surface,
             "INSTRUCTIONS",
