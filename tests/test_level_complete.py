@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -13,18 +14,20 @@ SRC_ROOT = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC_ROOT))
 
 import pygame  # noqa: E402
+from pygame.surface import Surface  # noqa: E402
 
+from entities.player_entity import PlayerEntity  # noqa: E402
 from entities.wall_tile_entity import WallTileEntity  # noqa: E402
 from game.game_session import GameSession  # noqa: E402
 from game.game_world import GameWorld  # noqa: E402
-from game.level import load_smoke_level  # noqa: E402
+from game.level import CellPos, load_smoke_level  # noqa: E402
 from game.render_config import WorldRenderConfig  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
-from sprites.sprite_types import TileKind  # noqa: E402
+from sprites.sprite_types import Direction, TileKind  # noqa: E402
 
 
 @pytest.fixture(scope="module", autouse=True)
-def pygame_init() -> None:
+def pygame_init() -> Generator[None, None, None]:
     """Initialize pygame once for headless asset loading."""
     pygame.init()
     pygame.display.set_mode((1, 1))
@@ -55,13 +58,112 @@ def test_all_consumables_cleared_true_when_set_empty(
     assert game_world.all_consumables_cleared
 
 
+def test_unfreeze_gameplay_resumes_movement(game_world: GameWorld) -> None:
+    from sprites.sprite_types import Direction
+
+    game_world.freeze_gameplay()
+    assert game_world.is_frozen
+    game_world.unfreeze_gameplay()
+    assert not game_world.is_frozen
+    game_world.request_turn(Direction.LEFT)
+    assert game_world._requested_direction == Direction.LEFT
+
+
+def test_fruit_collection_spawns_score_popup(game_world: GameWorld) -> None:
+    player = game_world._player
+    assert player is not None
+    game_world._spawn_fruit(pygame.time.get_ticks())
+    fruit = game_world._fruit
+    assert fruit is not None
+    player.move_to(fruit.cell, fruit.center)
+    game_world._consume_current_cell()
+    assert game_world._fruit is None
+    assert len(game_world.score_popups) == 1
+    assert game_world.score_popups[0].points == fruit.points
+
+
+def test_death_coords_skip_walk_chomp_frames() -> None:
+    """Death sprites must not reuse right-walk mouth frames on row 0."""
+    assets = Assets()
+    assets.load()
+    walk_frames = assets.pacman[Direction.RIGHT].frames
+    death_frames = assets.pacman_death.frames
+    assert len(assets.DEATH_COORDS) == 11
+    assert len(death_frames) == len(assets.DEATH_COORDS) + 1
+    for walk, death in zip(walk_frames, death_frames, strict=False):
+        assert not _surfaces_equal(walk, death)
+    for col, row in assets.DEATH_COORDS:
+        assert row == 0
+        death_surface = assets._slice_cells(col, row)
+        for walk in walk_frames:
+            assert not _surfaces_equal(walk, death_surface)
+
+
+def test_death_frames_have_no_internal_gaps() -> None:
+    """Each death frame must be one contiguous sprite, not split pieces."""
+    assets = Assets()
+    assets.load()
+    for frame in assets.pacman_death.frames[:-1]:
+        rows = [
+            y
+            for y in range(frame.get_height())
+            if any(
+                frame.get_at((x, y))[3] > 0
+                and sum(frame.get_at((x, y))[:3]) > 30
+                for x in range(frame.get_width())
+            )
+        ]
+        assert rows
+        assert rows == list(range(min(rows), max(rows) + 1))
+
+
+def test_walk_animation_freezes_when_not_moving() -> None:
+    assets = Assets()
+    assets.load()
+    anims = {direction: assets.pacman[direction] for direction in Direction}
+    player = PlayerEntity(
+        anims,
+        CellPos(0, 0),
+        (0, 0),
+        Direction.RIGHT,
+    )
+    frame_before = player.image
+    player.update(0, 200)
+    assert player.image is frame_before
+    player.move_to(CellPos(0, 1), (16, 0))
+    player.update(0, 200)
+    assert player.image is not frame_before
+
+
+def test_death_animation_advances_past_first_frame() -> None:
+    assets = Assets()
+    assets.load()
+    anims = {direction: assets.pacman[direction] for direction in Direction}
+    player = PlayerEntity(
+        anims,
+        CellPos(0, 0),
+        (0, 0),
+        death_animation=assets.pacman_death,
+    )
+    player.start_death(0)
+    player.update(0, 250)
+    assert player.image is assets.pacman_death.frames[1]
+
+
+def _surfaces_equal(a: Surface, b: Surface) -> bool:
+    if a.get_size() != b.get_size():
+        return False
+    w, h = a.get_size()
+    return all(a.get_at((x, y)) == b.get_at((x, y)) for x in range(w) for y in range(h))
+
+
 def test_freeze_gameplay_stops_turn_requests(game_world: GameWorld) -> None:
     from sprites.sprite_types import Direction
 
     game_world.freeze_gameplay()
     assert game_world.is_frozen
     game_world.request_turn(Direction.LEFT)
-    game_world.update_player_movement(1.0)
+    game_world.update_player_movement(1.0, 0)
     assert game_world.is_frozen
 
 
@@ -82,6 +184,41 @@ def test_advance_level_increments_without_resetting_timer() -> None:
     session.advance_level()
     assert session.level_number == 2
     assert session.remaining_time_ms == 12_345
+
+
+def test_level_complete_reload_resets_timer_and_pellets() -> None:
+    """After level advance, session timer and maze consumables must reset."""
+    assets = Assets()
+    assets.load()
+    layout = load_smoke_level()
+    render_config = WorldRenderConfig.centered(layout, (1920, 1080))
+    session = GameSession(remaining_time_ms=1_000)
+    world = GameWorld(
+        layout,
+        assets,
+        render_config,
+        level_number=session.level_number,
+    )
+    world._remaining_consumables.clear()
+    assert world.all_consumables_cleared
+
+    session.advance_level()
+    world.teardown()
+    world = GameWorld(
+        layout,
+        assets,
+        render_config,
+        initial_score=session.score,
+        level_number=session.level_number,
+    )
+    session.reset_level_timer()
+
+    assert session.level_number == 2
+    assert session.remaining_time_ms == session.level_time_limit_s * 1000
+    assert not world.all_consumables_cleared
+    assert len(world.consumables) == len(layout.pellet_cells) + len(
+        layout.power_pellet_cells
+    )
 
 
 def test_sync_score_keeps_highest_value() -> None:
