@@ -50,7 +50,7 @@ class HudOverlay:
         self._font: ArcadeTextFont = text.font(
             ArcadeTextColor.WHITE, self.HUD_SCALE
         )
-        self._label_surfaces = {
+        self._label_surfaces: dict[str, Surface] = {
             label: self._font.render(label) for label in self.STATIC_LABELS
         }
         self._phase_message_surfaces: dict[GameplayPhase, Surface] = {}
@@ -77,9 +77,7 @@ class HudOverlay:
         """Draw floating point values where fruits were eaten."""
         if not popups:
             return
-        font = self._text.font(
-            ArcadeTextColor.WHITE, self.SCORE_POPUP_SCALE
-        )
+        font = self._text.font(ArcadeTextColor.WHITE, self.SCORE_POPUP_SCALE)
         for popup in popups:
             rendered = font.render(str(popup.points))
             rect = rendered.get_rect(midtop=popup.center)
@@ -209,18 +207,18 @@ class HudOverlay:
         cached = self._level_surface_cache.get(level_number)
         if cached is not None:
             return cached
-        rendered = self._font.render(f"LEVEL {level_number}")
-        self._level_surface_cache[level_number] = rendered
-        return rendered
+        surface = self._font.render(f"LEVEL {level_number}")
+        self._level_surface_cache[level_number] = surface
+        return self._level_surface_cache[level_number]
 
     def _cached_value_surface(self, value: str) -> Surface:
         """Return cached HUD value surface keyed by formatted string."""
         cached = self._value_surface_cache.get(value)
         if cached is not None:
             return cached
-        rendered = self._font.render(value)
-        self._value_surface_cache[value] = rendered
-        return rendered
+        surface = self._font.render(value)
+        self._value_surface_cache[value] = surface
+        return self._value_surface_cache[value]
 
 
 def _format_score(score: int) -> str:

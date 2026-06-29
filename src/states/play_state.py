@@ -8,6 +8,8 @@ from core.state import GameState, StateEnterData
 from game.game_session import GameplayPhase, GameSession
 from game.game_world import GameWorld
 from game.level import load_smoke_level
+from game.world_fruit import update_fruit_spawns
+from game.world_player import request_turn, update_player_movement
 from game.render_config import MazeBounds, WorldRenderConfig
 from rendering.hud_overlay import HudOverlay
 from sprites.sprite_types import Direction
@@ -77,7 +79,7 @@ class PlayState(GameState):
                 and self._session.phase
                 in (GameplayPhase.READY, GameplayPhase.PLAYING)
             ):
-                self._world.request_turn(direction)
+                request_turn(self._world, direction)
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
         """Advance gameplay phase, timer, and world animation."""
@@ -119,8 +121,9 @@ class PlayState(GameState):
             return
         if not self._world.is_frozen:
             timer_expired = self._session.tick_timer(dt)
-            self._world.update_player_movement(dt, now_ms)
-            self._world.update_fruit_spawns(
+            update_player_movement(self._world, dt, now_ms)
+            update_fruit_spawns(
+                self._world,
                 self._session.level_elapsed_s(),
                 now_ms,
             )

@@ -128,8 +128,8 @@ class Assets:
         self.pacman: dict[Direction, AnimatedSprite] = {}
         self.pacman_death = AnimatedSprite(frames=[])
         self.ghosts = GhostSprites()
-        self.dot_surface = pygame.Surface((1, 1))
-        self.power_pellet_surface = pygame.Surface((1, 1))
+        self.dot_surface: Surface = Surface((1, 1))
+        self.power_pellet_surface: Surface = Surface((1, 1))
         self.maze_tiles: dict[TileKind, Surface] = {}
         self.maze_white_tiles: dict[TileKind, Surface] = {}
         self.fruits: dict[FruitKind, AssetSprite] = {}
@@ -154,28 +154,14 @@ class Assets:
         try:
             self._general_sheet = load_image("sheets", "general_sprites.png")
             self._load_gameplay_assets()
+            self._load_ghosts()
+            self._load_fruits()
             self._load_maze_tiles()
+            self._ghosts_loaded = True
+            self._fruits_loaded = True
             self._loaded = True
         except pygame.error as exc:
             raise AssetError(str(exc)) from exc
-
-    def load_ghosts(self) -> None:
-        """Load ghost animations for ghost entities."""
-        if self._ghosts_loaded:
-            return
-        if self._general_sheet is None:
-            raise AssetError("General sprites sheet not loaded")
-        self._load_ghosts()
-        self._ghosts_loaded = True
-
-    def load_fruits(self) -> None:
-        """Load fruit sprites for bonus fruit entities."""
-        if self._fruits_loaded:
-            return
-        if self._general_sheet is None:
-            raise AssetError("General sprites sheet not loaded")
-        self._load_fruits()
-        self._fruits_loaded = True
 
     def _slice_cells(
         self,

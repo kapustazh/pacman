@@ -30,9 +30,9 @@ class ArcadeTextFont:
         color: ArcadeTextColor = ArcadeTextColor.WHITE,
         scale: int = 3,
     ) -> None:
-        self._renderer = renderer
-        self._color = color
-        self._scale = scale
+        self._renderer: ArcadeTextRenderer = renderer
+        self._color: ArcadeTextColor = color
+        self._scale: int = scale
 
     def advance(self) -> int:
         """Return fixed monospace advance for one glyph cell."""
@@ -64,7 +64,7 @@ class ArcadeTextFont:
                 width += advance
         width = max(width, 0)
         height = advance
-        surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        surface = Surface((width, height), pygame.SRCALPHA)
 
         x = 0
         for char in upper:
@@ -160,7 +160,7 @@ class ArcadeTextRenderer:
         y: int,
         color: ArcadeTextColor = ArcadeTextColor.WHITE,
         scale: int = 3,
-    ) -> pygame.Rect:
+    ) -> pygame.rect.Rect:
         """Draw horizontally centered arcade text and return its rect."""
         rendered = self.font(color, scale).render(text)
         rect = rendered.get_rect(center=(surface.get_width() // 2, y))

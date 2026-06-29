@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import cast
-
 from game.level import CellPos, CellType, LevelLayout
 from sprites.sprite_types import TileKind
 
@@ -51,5 +49,5 @@ def _has_wall_neighbor(layout: LevelLayout, pos: CellPos) -> bool:
     row = layout.cells[pos.row]
     if pos.col >= len(row):
         return False
-    cell_type = cast(CellType, row[pos.col])
+    cell_type = row[pos.col]
     return bool(cell_type == CellType.WALL)

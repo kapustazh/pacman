@@ -20,6 +20,8 @@ from entities.player_entity import PlayerEntity  # noqa: E402
 from entities.wall_tile_entity import WallTileEntity  # noqa: E402
 from game.game_session import GameSession  # noqa: E402
 from game.game_world import GameWorld  # noqa: E402
+from game.world_fruit import spawn_fruit  # noqa: E402
+from game.world_player import request_turn, update_player_movement  # noqa: E402
 from game.level import CellPos, load_smoke_level  # noqa: E402
 from game.render_config import WorldRenderConfig  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
@@ -65,14 +67,14 @@ def test_unfreeze_gameplay_resumes_movement(game_world: GameWorld) -> None:
     assert game_world.is_frozen
     game_world.unfreeze_gameplay()
     assert not game_world.is_frozen
-    game_world.request_turn(Direction.LEFT)
+    request_turn(game_world, Direction.LEFT)
     assert game_world._requested_direction == Direction.LEFT
 
 
 def test_fruit_collection_spawns_score_popup(game_world: GameWorld) -> None:
     player = game_world._player
     assert player is not None
-    game_world._spawn_fruit(pygame.time.get_ticks())
+    spawn_fruit(game_world, pygame.time.get_ticks())
     fruit = game_world._fruit
     assert fruit is not None
     player.move_to(fruit.cell, fruit.center)
@@ -162,8 +164,8 @@ def test_freeze_gameplay_stops_turn_requests(game_world: GameWorld) -> None:
 
     game_world.freeze_gameplay()
     assert game_world.is_frozen
-    game_world.request_turn(Direction.LEFT)
-    game_world.update_player_movement(1.0, 0)
+    request_turn(game_world, Direction.LEFT)
+    update_player_movement(game_world, 1.0, 0)
     assert game_world.is_frozen
 
 
