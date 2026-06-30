@@ -173,6 +173,10 @@ class PlayState(GameState):
         cycle_ms = elapsed_ms % 400
         self._world.set_wall_flash(cycle_ms < 200)
         if elapsed_ms >= GameSession.LEVEL_COMPLETE_DURATION_MS:
+            levels = context.config.get("levels", [])
+            if self._level_index + 1 >= len(levels):
+                self._open_end_screen(context, won=True)
+                return
             self._level_index += 1
             self._level_seed = random.randint(0, 100000)
             self._session.advance_level()
@@ -187,7 +191,7 @@ class PlayState(GameState):
             self._session.phase_elapsed_ms(now_ms)
             >= GameSession.GAME_OVER_DURATION_MS
         ):
-            self._open_game_over(context)
+            self._open_end_screen(context, won=False)
 
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw world, classic HUD bands, and phase message."""
@@ -267,14 +271,17 @@ class PlayState(GameState):
         self._session.reset_level_timer()
         self._session.enter_ready(now_ms)
 
-    def _open_game_over(self, context: GameContext) -> None:
-        """Transition to game-over screen with final score."""
+    def _open_end_screen(self, context: GameContext, *, won: bool) -> None:
+        """Transition to end screen with final score."""
         from states.game_over_state import GameOverState
 
         score = self._session.score if self._session is not None else 0
         if self._world is not None:
             score = max(score, self._world.score)
-        context.scene_manager.change(GameOverState(), {"score": score})
+        context.scene_manager.change(
+            GameOverState(),
+            {"score": score, "won": won},
+        )
 
 
 _KEY_TO_DIRECTION: dict[int, Direction] = {
