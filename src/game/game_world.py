@@ -242,6 +242,11 @@ class GameWorld:
             ghost.respawn_at(home, center)
             self.all_sprites.add(ghost, layer=ghost.layer)
 
+    def reset_fruit_spawns(self) -> None:
+        """Clear bonus-fruit state so spawn times re-evaluate from level start."""
+        _kill_fruit(self)
+        self._fruit_spawn_index = 0
+
     def teardown(self) -> None:
         """Kill all sprites and empty all groups."""
         for sprite in list(self.all_sprites.sprites()):
