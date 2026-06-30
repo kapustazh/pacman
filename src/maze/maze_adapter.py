@@ -1,6 +1,8 @@
 """Adaptor for the assigned A-Maze-ing package."""
 
-from src.maze.map_data import TileType
+import random
+
+from maze.map_data import TileType
 
 
 class MazeAdaptor:
@@ -19,8 +21,20 @@ class MazeAdaptor:
         try:
             from mazegenerator.mazegenerator import MazeGenerator
 
-            generator = MazeGenerator(size=(width, height),
-                                      perfect=False, seed=seed)
+            class _FastMazeGenerator(MazeGenerator):
+                # ponytail: skip _find_short_path — unused, ~15s on 21x21
+                def generate(self, seed: int = 0) -> None:
+                    random.seed(seed) if seed > 0 else random.seed()
+                    self._seed = seed
+                    self._create_empty_maze()
+                    self._add_42_to_maze()
+                    self._generate_maze(self._entryx, self._entryy, 0)
+
+            generator = _FastMazeGenerator(
+                size=(width, height),
+                perfect=False,
+                seed=seed,
+            )
             return self.convert_maze(generator.maze)
         except Exception as Error:
             print(f"Warning: maze generator failed: {Error}")
@@ -54,16 +68,7 @@ class MazeAdaptor:
         return grid
 
     def fallback_grid(self) -> list[list[TileType]]:
-        """Return a safe fallback grid if generation fails."""
-        return [
-            [TileType.WALL, TileType.WALL, TileType.WALL,
-             TileType.WALL, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.SUPER_PACGUM,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.WALL, TileType.WALL,
-             TileType.WALL, TileType.WALL],
-        ]
+        """Return a minimal fallback grid if generation fails."""
+        grid = [[TileType.WALL] * 5 for _ in range(5)]
+        grid[2][2] = TileType.EMPTY
+        return grid
