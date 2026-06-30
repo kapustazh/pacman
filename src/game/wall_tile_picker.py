@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from game.level import CellPos, CellType, LevelLayout
+from game.level import CellPos, LevelLayout
+from maze.map_data import TileType
 from sprites.sprite_types import TileKind
 
 BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
@@ -50,4 +51,4 @@ def _has_wall_neighbor(layout: LevelLayout, pos: CellPos) -> bool:
     if pos.col >= len(row):
         return False
     cell_type = row[pos.col]
-    return bool(cell_type == CellType.WALL)
+    return bool(cell_type == TileType.WALL)

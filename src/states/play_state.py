@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import random
+
 import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
 from core.state import GameState, StateEnterData
 from game.game_session import GameplayPhase, GameSession
-from game.game_world import GameWorld
-from game.level import load_smoke_level
-from game.world_fruit import update_fruit_spawns
-from game.world_player import request_turn, update_player_movement
+from game.game_world import (
+    GameWorld,
+    request_turn,
+    update_fruit_spawns,
+    update_player_movement,
+)
+from game.level import load_level
 from game.render_config import MazeBounds, WorldRenderConfig
 from rendering.hud_overlay import HudOverlay
 from sprites.sprite_types import Direction
@@ -21,6 +26,8 @@ class PlayState(GameState):
     def __init__(self) -> None:
         self._world: GameWorld | None = None
         self._session: GameSession | None = None
+        self._level_index: int = 0
+        self._level_seed: int = 42
         self._hud: HudOverlay | None = None
         self._maze_bounds: MazeBounds | None = None
 
@@ -39,7 +46,12 @@ class PlayState(GameState):
         )
 
         started_at = pygame.time.get_ticks()
-        self._session = GameSession(phase_started_at_ms=started_at)
+        self._session = GameSession(
+            phase_started_at_ms=started_at,
+            high_score=context.highscores.top_score(),
+        )
+        self._level_index = 0
+        self._level_seed = int(context.config.get("seed", 42))
         self._build_world(context)
         self._session.enter_ready(started_at)
 
@@ -49,6 +61,8 @@ class PlayState(GameState):
             self._world.teardown()
             self._world = None
         self._session = None
+        self._level_index = 0
+        self._level_seed = 42
         self._hud = None
         self._maze_bounds = None
 
@@ -159,6 +173,8 @@ class PlayState(GameState):
         cycle_ms = elapsed_ms % 400
         self._world.set_wall_flash(cycle_ms < 200)
         if elapsed_ms >= GameSession.LEVEL_COMPLETE_DURATION_MS:
+            self._level_index += 1
+            self._level_seed = random.randint(0, 100000)
             self._session.advance_level()
             self._reload_world(context)
             self._session.reset_level_timer()
@@ -194,9 +210,14 @@ class PlayState(GameState):
         self._session.update_high_score(self._session.score)
 
     def _build_world(self, context: GameContext) -> None:
-        """Load smoke level and spawn a fresh GameWorld."""
+        """Load procedural level and spawn a fresh GameWorld."""
+        assert self._session is not None
         catalog = context.assets
-        layout = load_smoke_level()
+        layout = load_level(
+            context.config,
+            self._level_index,
+            self._level_seed,
+        )
         render_config = WorldRenderConfig.centered(
             layout,
             context.screen.get_size(),

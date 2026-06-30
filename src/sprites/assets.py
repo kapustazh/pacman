@@ -56,7 +56,6 @@ class Assets:
         (83, 0),
     ]
 
-    # TODO: populate when ghost entities are implemented.
     GHOST_COORDS: ClassVar[dict[GhostKind, list[tuple[int, int]]]] = {
         GhostKind.BLINKY: [(57, 8), (59, 8)],
         GhostKind.PINKY: [(57, 10), (59, 10)],

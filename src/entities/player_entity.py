@@ -20,6 +20,7 @@ class PlayerEntity(Sprite):
         "_direction",
         "_dying",
         "_moved_this_step",
+        "_prev_center",
         "cell",
         "center",
         "image",
@@ -38,6 +39,7 @@ class PlayerEntity(Sprite):
         super().__init__()
         self.cell = cell
         self.center = center
+        self._prev_center = center
         self._animations_by_direction = animations_by_direction
         self._death_animation = death_animation
         self._direction = direction
@@ -69,7 +71,7 @@ class PlayerEntity(Sprite):
         self.center = center
         self._moved_this_step = True
         if self.image is not None:
-            self.rect = self.image.get_rect(center=center)
+            self.rect = self.image.get_rect(center=self._visual_center(1.0))
 
     def start_death(self, now_ms: int) -> None:
         """Begin Pac-Man death animation at current position."""
@@ -89,12 +91,31 @@ class PlayerEntity(Sprite):
         """Respawn player at spawn cell after losing a life."""
         self.cell = cell
         self.center = center
+        self._prev_center = center
         self._dying = False
         self._death_finished = False
         self._death_started_ms = 0
         self._moved_this_step = False
         self.image = self._animations_by_direction[self._direction].frame_at(0)
         self.rect = self.image.get_rect(center=center)
+
+    def begin_step(self) -> None:
+        """Mark grid-step start for visual interpolation."""
+        self._prev_center = self.center
+
+    def apply_visual_lerp(self, t: float) -> None:
+        """Slide sprite between prev and current cell centers."""
+        if self._dying:
+            return
+        center = self._visual_center(t)
+        if self.rect.center != center:
+            self.rect.center = center
+
+    def _visual_center(self, t: float) -> tuple[int, int]:
+        return (
+            round(self._prev_center[0] + (self.center[0] - self._prev_center[0]) * t),
+            round(self._prev_center[1] + (self.center[1] - self._prev_center[1]) * t),
+        )
 
     def update(self, dt: float, now_ms: int) -> None:
         """Update player animation frame."""
@@ -108,7 +129,7 @@ class PlayerEntity(Sprite):
         frame = animation.frame_at(now_ms)
         if frame is not self.image:
             self.image = frame
-            self.rect = frame.get_rect(center=self.center)
+            self.rect.size = frame.get_size()
 
     def _update_death(self, now_ms: int) -> None:
         if self._death_animation is None or not self._death_animation.frames:
