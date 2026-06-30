@@ -317,8 +317,11 @@ def _spawn_from_layout(world: GameWorld) -> None:
         world.all_sprites.add(ghost, layer=ghost.layer)
 
     spawn = world._layout.player_spawn
+    pacman_by_dir = {
+        direction: world._catalog.pacman[direction] for direction in Direction
+    }
     world._player = PlayerEntity(
-        {direction: world._catalog.pacman[direction] for direction in Direction},
+        pacman_by_dir,
         spawn,
         cell_center(cfg, spawn),
         death_animation=world._catalog.pacman_death,

@@ -325,7 +325,7 @@ def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:
     assert ghost.cell != ghost_cell_before
 
 
-def test_session_high_score_loads_persisted_top_score(tmp_path) -> None:
+def test_session_high_score_loads_persisted_top_score(tmp_path: Path) -> None:
     from managers.highscore_manager import HighscoreManager
 
     path = tmp_path / "highscores.json"

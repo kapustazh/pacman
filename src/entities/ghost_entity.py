@@ -68,14 +68,19 @@ class GhostEntity(Sprite):
 
     def apply_visual_lerp(self, t: float) -> None:
         """Slide sprite between prev and current cell centers."""
+        rect = self.rect
+        if rect is None:
+            return
         center = self._visual_center(t)
-        if self.rect.center != center:
-            self.rect.center = center
+        if rect.center != center:
+            rect.center = center
 
     def _visual_center(self, t: float) -> tuple[int, int]:
+        px, py = self._prev_center
+        cx, cy = self.center
         return (
-            round(self._prev_center[0] + (self.center[0] - self._prev_center[0]) * t),
-            round(self._prev_center[1] + (self.center[1] - self._prev_center[1]) * t),
+            round(px + (cx - px) * t),
+            round(py + (cy - py) * t),
         )
 
     def hide_eaten(self) -> None:
@@ -106,4 +111,5 @@ class GhostEntity(Sprite):
         frame = animation.frame_at(now_ms)
         if frame is not self.image:
             self.image = frame
-            self.rect.size = frame.get_size()
+            if self.rect is not None:
+                self.rect.size = frame.get_size()
