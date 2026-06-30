@@ -6,61 +6,90 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import StateEnterData
-from states.selectable_menu_state import MenuEntry, SelectableMenuState
+from core.state import GameState, StateEnterData
 from states.text import ArcadeTextColor
 
+from managers.highscore_manager import HighscoreManager
 
-class GameOverState(SelectableMenuState):
-    """Game-over scene with arcade score display and menu."""
 
-    TITLE_Y: ClassVar[int] = 340
-    SCORE_Y: ClassVar[int] = 430
-    MENU_START_Y: ClassVar[int] = 560
+class GameOverState(GameState):
+    """End screen: score, initials entry, then main menu."""
+
+    TITLE_Y: ClassVar[int] = 280
+    SCORE_Y: ClassVar[int] = 370
+    PROMPT_Y: ClassVar[int] = 470
+    NAME_Y: ClassVar[int] = 540
     TITLE_SCALE: ClassVar[int] = 5
     SCORE_SCALE: ClassVar[int] = 4
-    OPTIONS: ClassVar[tuple[MenuEntry, ...]] = (
-        MenuEntry("REPLAY", "replay"),
-        MenuEntry("MAIN MENU", "menu"),
-        MenuEntry("EXIT", "exit"),
-    )
+    PROMPT_SCALE: ClassVar[int] = 2
+    NAME_SCALE: ClassVar[int] = 3
 
-    __slots__ = ("_score",)
+    __slots__ = ("_name", "_score", "_won")
 
     def __init__(self) -> None:
+        self._name = ""
         self._score = 0
-        super().__init__(
-            entries=self.OPTIONS,
-            menu_start_y=self.MENU_START_Y,
-            action_handlers={
-                "replay": self._replay,
-                "menu": self._main_menu,
-                "exit": self._exit_game,
-            },
-            shortcuts={
-                pygame.K_r: (0, "replay"),
-                pygame.K_m: (1, "menu"),
-            },
-        )
+        self._won = False
 
     def enter(
         self,
         context: GameContext,
         enter_data: StateEnterData | None = None,
     ) -> None:
-        """Apply enter_data and reset menu selection."""
-        super().enter(context, enter_data)
+        """Apply enter_data and reset initials entry."""
+        self._name = ""
+        self._won = False
+        self._score = 0
         if enter_data is not None:
             score = enter_data.get("score", 0)
             self._score = score if isinstance(score, int) else 0
+            self._won = bool(enter_data.get("won", False))
 
-    def draw_header(self, surface: Surface, context: GameContext) -> None:
+    def leave(self, context: GameContext) -> None:
+        """Leave end screen."""
+
+    def handle_events(
+        self,
+        events: list[pygame.event.Event],
+        context: GameContext,
+    ) -> None:
+        """Capture initials; save and return to main menu on Enter."""
+        for event in events:
+            if event.type != pygame.KEYDOWN:
+                continue
+            if event.key == pygame.K_RETURN:
+                name = HighscoreManager.clean_name(self._name or "AAA")
+                context.highscores.add_score(name, self._score)
+                from states.menu_state import MenuState
+
+                context.scene_manager.change(MenuState())
+                return
+            if event.key == pygame.K_BACKSPACE:
+                self._name = self._name[:-1]
+                return
+            char = event.unicode
+            if (
+                char
+                and (char.isalnum() or char == " ")
+                and len(self._name) < 10
+            ):
+                self._name += char
+
+    def update(self, dt: float, now_ms: int, context: GameContext) -> None:
+        """No simulation."""
+
+    def draw(self, surface: Surface, context: GameContext) -> None:
+        """Draw title, score, and initials prompt."""
         text = context.text
+        title = "YOU WIN!" if self._won else "GAME OVER"
+        title_color = (
+            ArcadeTextColor.YELLOW if self._won else ArcadeTextColor.RED
+        )
         text.draw_centered_arcade_text(
             surface,
-            "GAME OVER",
+            title,
             self.TITLE_Y,
-            ArcadeTextColor.RED,
+            title_color,
             self.TITLE_SCALE,
         )
         text.draw_centered_arcade_text(
@@ -70,16 +99,18 @@ class GameOverState(SelectableMenuState):
             ArcadeTextColor.GOLD,
             self.SCORE_SCALE,
         )
-
-    def _replay(self, context: GameContext) -> None:
-        from states.play_state import PlayState
-
-        context.scene_manager.change(PlayState())
-
-    def _main_menu(self, context: GameContext) -> None:
-        from states.menu_state import MenuState
-
-        context.scene_manager.change(MenuState())
-
-    def _exit_game(self, context: GameContext) -> None:
-        context.scene_manager.request_shutdown()
+        text.draw_centered_arcade_text(
+            surface,
+            "ENTER NAME - RETURN TO SAVE",
+            self.PROMPT_Y,
+            ArcadeTextColor.WHITE,
+            self.PROMPT_SCALE,
+        )
+        display = self._name if self._name else "-"
+        text.draw_centered_arcade_text(
+            surface,
+            display,
+            self.NAME_Y,
+            ArcadeTextColor.YELLOW,
+            self.NAME_SCALE,
+        )

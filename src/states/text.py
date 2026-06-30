@@ -1,3 +1,5 @@
+# [transition UI] arcade text renderer for menus/HUD.
+
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -17,6 +19,76 @@ class ArcadeTextColor(IntEnum):
     GOLD = 4
     ROSE = 5
     YELLOW = 6
+
+
+class ArcadeTextFont:
+    """Color/scale-bound view of a renderer for one draw style."""
+
+    __slots__ = ("_color", "_renderer", "_scale")
+
+    def __init__(
+        self,
+        renderer: ArcadeTextRenderer,
+        color: ArcadeTextColor = ArcadeTextColor.WHITE,
+        scale: int = 3,
+    ) -> None:
+        self._renderer: ArcadeTextRenderer = renderer
+        self._color: ArcadeTextColor = color
+        self._scale: int = scale
+
+    def advance(self) -> int:
+        """Return fixed monospace advance for one glyph cell."""
+        return ArcadeTextRenderer.CELL_SIZE * self._scale
+
+    def render(self, text: str) -> Surface:
+        """Render text to a surface at the configured scale."""
+        self._renderer._ensure_atlas()
+
+        upper = text.upper()
+        cache_key = (upper, self._color, self._scale)
+        cached = self._renderer._render_cache.get(cache_key)
+        if cached is not None:
+            self._renderer._render_cache.move_to_end(cache_key)
+            return cached
+
+        surface = self._build_surface(upper)
+        self._renderer._cache_render(cache_key, surface)
+        return surface
+
+    def _build_surface(self, upper: str) -> Surface:
+        advance = self.advance()
+        width = 0
+        for char in upper:
+            if char == " ":
+                width += self._space_advance()
+                continue
+            if self._renderer._glyph(char, self._color) is not None:
+                width += advance
+        width = max(width, 0)
+        height = advance
+        surface = Surface((width, height), pygame.SRCALPHA)
+
+        x = 0
+        for char in upper:
+            if char == " ":
+                x += self._space_advance()
+                continue
+            scaled = self._renderer._scaled_glyph(
+                char, self._color, self._scale
+            )
+            if scaled is None:
+                x += advance
+                continue
+            blit_x = x + (advance - scaled.get_width()) // 2
+            blit_y = (advance - scaled.get_height()) // 2
+            surface.blit(scaled, (blit_x, blit_y))
+            x += advance
+
+        return surface
+
+    def _space_advance(self) -> int:
+        """Spaces use half cell width so inline gaps stay tight."""
+        return max(1, self.advance() // 2)
 
 
 class ArcadeTextRenderer:
@@ -50,80 +122,6 @@ class ArcadeTextRenderer:
         120,
     )
 
-    class Font:
-        """Color/scale-bound view of a renderer for one draw style."""
-
-        __slots__ = ("_color", "_renderer", "_scale")
-
-        def __init__(
-            self,
-            renderer: ArcadeTextRenderer,
-            color: ArcadeTextColor = ArcadeTextColor.WHITE,
-            scale: int = 3,
-        ) -> None:
-            self._renderer = renderer
-            self._color = color
-            self._scale = scale
-
-        def advance(self) -> int:
-            """Return fixed monospace advance for one glyph cell."""
-            return ArcadeTextRenderer.CELL_SIZE * self._scale
-
-        def render(self, text: str) -> Surface:
-            """Render text to a surface at the configured scale."""
-            self._renderer._ensure_atlas()
-
-            upper = text.upper()
-            cache_key = (upper, self._color, self._scale)
-            cached = self._renderer._render_cache.get(cache_key)
-            if cached is not None:
-                self._renderer._render_cache.move_to_end(cache_key)
-                return cached
-
-            surface = self._build_surface(upper)
-            self._renderer._cache_render(cache_key, surface)
-            return surface
-
-        def render_uncached(self, text: str) -> Surface:
-            """Render dynamic text without storing it in the render cache."""
-            self._renderer._ensure_atlas()
-            return self._build_surface(text.upper())
-
-        def _build_surface(self, upper: str) -> Surface:
-            advance = self.advance()
-            width = 0
-            for char in upper:
-                if char == " ":
-                    width += self._space_advance()
-                    continue
-                if self._renderer._glyph(char, self._color) is not None:
-                    width += advance
-            width = max(width, 0)
-            height = advance
-            surface = pygame.Surface((width, height), pygame.SRCALPHA)
-
-            x = 0
-            for char in upper:
-                if char == " ":
-                    x += self._space_advance()
-                    continue
-                scaled = self._renderer._scaled_glyph(
-                    char, self._color, self._scale
-                )
-                if scaled is None:
-                    x += advance
-                    continue
-                blit_x = x + (advance - scaled.get_width()) // 2
-                blit_y = (advance - scaled.get_height()) // 2
-                surface.blit(scaled, (blit_x, blit_y))
-                x += advance
-
-            return surface
-
-        def _space_advance(self) -> int:
-            """Spaces use half cell width so inline gaps stay tight."""
-            return max(1, self.advance() // 2)
-
     __slots__ = (
         "_atlas_loaded",
         "_glyphs_by_color",
@@ -149,9 +147,9 @@ class ArcadeTextRenderer:
         self,
         color: ArcadeTextColor = ArcadeTextColor.WHITE,
         scale: int = 3,
-    ) -> Font:
+    ) -> ArcadeTextFont:
         """Return a font bound to this renderer instance."""
-        return self.Font(self, color, scale)
+        return ArcadeTextFont(self, color, scale)
 
     def draw_screen_backdrop(self, surface: Surface) -> None:
         """Fill screen to hide states beneath on the scene stack."""
@@ -164,7 +162,7 @@ class ArcadeTextRenderer:
         y: int,
         color: ArcadeTextColor = ArcadeTextColor.WHITE,
         scale: int = 3,
-    ) -> pygame.Rect:
+    ) -> pygame.rect.Rect:
         """Draw horizontally centered arcade text and return its rect."""
         rendered = self.font(color, scale).render(text)
         rect = rendered.get_rect(center=(surface.get_width() // 2, y))
@@ -279,6 +277,29 @@ def menu_row_rect(
     return pygame.Rect(left, y_center - line_height // 2, width, line_height)
 
 
+_menu_row_highlight_cache: dict[tuple[int, int], Surface] = {}
+
+
+def menu_row_highlight_surface(
+    screen_width: int,
+    line_height: int,
+    *,
+    color: tuple[int, int, int, int] | None = None,
+) -> Surface:
+    """Return cached semi-transparent menu row highlight band."""
+    if color is None:
+        color = ArcadeTextRenderer.MENU_ROW_HIGHLIGHT_COLOR
+    cache_key = (screen_width, line_height)
+    cached = _menu_row_highlight_cache.get(cache_key)
+    if cached is not None:
+        return cached
+    width = int(screen_width * 0.9)
+    highlight = pygame.Surface((width, line_height), pygame.SRCALPHA)
+    highlight.fill(color)
+    _menu_row_highlight_cache[cache_key] = highlight
+    return highlight
+
+
 def draw_menu_row_highlight(
     surface: Surface,
     index: int,
@@ -288,9 +309,8 @@ def draw_menu_row_highlight(
     color: tuple[int, int, int, int] | None = None,
 ) -> None:
     """Draw semi-transparent highlight band behind a menu row."""
-    if color is None:
-        color = ArcadeTextRenderer.MENU_ROW_HIGHLIGHT_COLOR
     row = menu_row_rect(surface, index, start_y, line_height)
-    highlight = pygame.Surface(row.size, pygame.SRCALPHA)
-    highlight.fill(color)
+    highlight = menu_row_highlight_surface(
+        surface.get_width(), line_height, color=color
+    )
     surface.blit(highlight, row.topleft)

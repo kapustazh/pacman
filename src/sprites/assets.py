@@ -1,3 +1,5 @@
+# [transition UI] sprite sheet loader for pygame assets.
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
@@ -30,20 +32,32 @@ class GhostSprites:
 class Assets:
     """Sprite sheet loader and gameplay asset catalog."""
 
-    ASSETS_ROOT: ClassVar[Path] = Path(__file__).resolve().parents[2] / "assets"
+    ASSETS: ClassVar[Path] = Path(__file__).resolve().parents[2] / "assets"
     CELL_SIZE: ClassVar[int] = 8
     SPRITE_CELLS: ClassVar[int] = 2
     DISPLAY_TILE_SIZE: ClassVar[int] = 16
 
-    # 8x8 cell coordinates on general_sprites.png (top-left of each 16x16 sprite)
+    # 8x8 cell coords on general_sprites.png (top-left of each 16x16 sprite)
     PACMAN_COORDS: ClassVar[dict[Direction, list[tuple[int, int]]]] = {
         Direction.RIGHT: [(57, 0), (59, 0), (61, 0)],
         Direction.LEFT: [(57, 2), (59, 2), (61, 2)],
         Direction.UP: [(57, 4), (59, 4), (61, 4)],
         Direction.DOWN: [(57, 6), (59, 6), (61, 6)],
     }
+    DEATH_COORDS: ClassVar[list[tuple[int, int]]] = [
+        (63, 0),
+        (65, 0),
+        (67, 0),
+        (69, 0),
+        (71, 0),
+        (73, 0),
+        (75, 0),
+        (77, 0),
+        (79, 0),
+        (81, 0),
+        (83, 0),
+    ]
 
-    # TODO: populate when ghost entities are implemented.
     GHOST_COORDS: ClassVar[dict[GhostKind, list[tuple[int, int]]]] = {
         GhostKind.BLINKY: [(57, 8), (59, 8)],
         GhostKind.PINKY: [(57, 10), (59, 10)],
@@ -102,16 +116,18 @@ class Assets:
         "maze_tiles",
         "maze_white_tiles",
         "pacman",
+        "pacman_death",
         "power_pellet_surface",
         "root",
     )
 
     def __init__(self, root: Path | None = None) -> None:
-        self.root = root or self.ASSETS_ROOT
+        self.root = root or self.ASSETS
         self.pacman: dict[Direction, AnimatedSprite] = {}
+        self.pacman_death = AnimatedSprite(frames=[])
         self.ghosts = GhostSprites()
-        self.dot_surface = pygame.Surface((1, 1))
-        self.power_pellet_surface = pygame.Surface((1, 1))
+        self.dot_surface: Surface = Surface((1, 1))
+        self.power_pellet_surface: Surface = Surface((1, 1))
         self.maze_tiles: dict[TileKind, Surface] = {}
         self.maze_white_tiles: dict[TileKind, Surface] = {}
         self.fruits: dict[FruitKind, AssetSprite] = {}
@@ -136,30 +152,14 @@ class Assets:
         try:
             self._general_sheet = load_image("sheets", "general_sprites.png")
             self._load_gameplay_assets()
+            self._load_ghosts()
+            self._load_fruits()
             self._load_maze_tiles()
+            self._ghosts_loaded = True
+            self._fruits_loaded = True
             self._loaded = True
         except pygame.error as exc:
             raise AssetError(str(exc)) from exc
-
-    def load_ghosts(self) -> None:
-        # TODO: call when ghost entities are implemented.
-        """Load ghost animations when ghost entities are implemented."""
-        if self._ghosts_loaded:
-            return
-        if self._general_sheet is None:
-            raise AssetError("General sprites sheet not loaded")
-        self._load_ghosts()
-        self._ghosts_loaded = True
-
-    def load_fruits(self) -> None:
-        # TODO: call when bonus fruit entities are implemented.
-        """Load fruit sprites when bonus fruit entities are implemented."""
-        if self._fruits_loaded:
-            return
-        if self._general_sheet is None:
-            raise AssetError("General sprites sheet not loaded")
-        self._load_fruits()
-        self._fruits_loaded = True
 
     def _slice_cells(
         self,
@@ -201,6 +201,12 @@ class Assets:
     def _load_gameplay_assets(self) -> None:
         for direction, coords in self.PACMAN_COORDS.items():
             self.pacman[direction] = self._load_frames(coords)
+        self.pacman_death = self._load_frames(self.DEATH_COORDS)
+        empty_death = pygame.Surface(
+            (self.DISPLAY_TILE_SIZE, self.DISPLAY_TILE_SIZE),
+            pygame.SRCALPHA,
+        )
+        self.pacman_death.frames.append(empty_death)
 
         dot_surface = self._slice_cells(
             self.DOT_COORD[0],
@@ -216,13 +222,11 @@ class Assets:
             height_cells=1,
         )
 
-    # TODO: invoked by load_ghosts() when ghost entities land.
     def _load_ghosts(self) -> None:
         for kind, coords in self.GHOST_COORDS.items():
             self.ghosts.by_kind[kind] = self._load_frames(coords)
         self.ghosts.frightened = self._load_frames(self.FRIGHTENED_COORDS)
 
-    # TODO: invoked by load_fruits() when bonus fruit entities land.
     def _load_fruits(self) -> None:
         for kind, coord in self.FRUIT_COORDS.items():
             self.fruits[kind] = self._load_sprite(coord)

@@ -1,3 +1,5 @@
+# [transition UI] in-game HUD overlay.
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -5,8 +7,9 @@ from typing import ClassVar
 from pygame.surface import Surface
 
 from game.game_session import GameSession, GameplayPhase
+from game.game_world import ScorePopup
 from game.render_config import MazeBounds
-from states.text import ArcadeTextColor, ArcadeTextRenderer
+from states.text import ArcadeTextColor, ArcadeTextFont, ArcadeTextRenderer
 
 
 class HudOverlay:
@@ -19,6 +22,7 @@ class HudOverlay:
     SIDE_MARGIN: ClassVar[int] = 48
     LIFE_ICON_GAP: ClassVar[int] = 4
     MESSAGE_SCALE: ClassVar[int] = 3
+    SCORE_POPUP_SCALE: ClassVar[int] = 1
     STATIC_LABELS: ClassVar[tuple[str, ...]] = ("1UP", "HIGH SCORE", "TIME")
     PHASE_TEXT_COLOR: ClassVar[dict[GameplayPhase, ArcadeTextColor]] = {
         GameplayPhase.GAME_OVER: ArcadeTextColor.RED,
@@ -28,21 +32,27 @@ class HudOverlay:
 
     __slots__ = (
         "_font",
+        "_fruit_icon",
         "_label_surfaces",
         "_level_surface_cache",
         "_life_icon",
         "_phase_message_surfaces",
         "_text",
+        "_value_surface_cache",
     )
 
     def __init__(
         self,
         text: ArcadeTextRenderer,
         life_icon: Surface | None = None,
+        fruit_icon: Surface | None = None,
     ) -> None:
         self._text = text
-        self._font = text.font(ArcadeTextColor.WHITE, self.HUD_SCALE)
-        self._label_surfaces = {
+        self._fruit_icon = fruit_icon
+        self._font: ArcadeTextFont = text.font(
+            ArcadeTextColor.WHITE, self.HUD_SCALE
+        )
+        self._label_surfaces: dict[str, Surface] = {
             label: self._font.render(label) for label in self.STATIC_LABELS
         }
         self._phase_message_surfaces: dict[GameplayPhase, Surface] = {}
@@ -54,7 +64,26 @@ class HudOverlay:
                 color, self.MESSAGE_SCALE
             ).render(message)
         self._level_surface_cache: dict[int, Surface] = {}
+        self._value_surface_cache: dict[str, Surface] = {}
         self._life_icon = life_icon
+
+    def set_fruit_icon(self, fruit_icon: Surface | None) -> None:
+        """Update HUD fruit preview for the active level."""
+        self._fruit_icon = fruit_icon
+
+    def draw_score_popups(
+        self,
+        surface: Surface,
+        popups: tuple[ScorePopup, ...],
+    ) -> None:
+        """Draw floating point values where fruits were eaten."""
+        if not popups:
+            return
+        font = self._text.font(ArcadeTextColor.WHITE, self.SCORE_POPUP_SCALE)
+        for popup in popups:
+            rendered = font.render(str(popup.points))
+            rect = rendered.get_rect(midtop=popup.center)
+            surface.blit(rendered, rect)
 
     def draw(
         self,
@@ -103,6 +132,14 @@ class HudOverlay:
         self._draw_life_icons(
             surface, session.spare_lives(), maze_bounds.x, bottom_y
         )
+        if self._fruit_icon is not None:
+            fruit_rect = self._fruit_icon.get_rect(
+                midleft=(
+                    maze_bounds.x + maze_bounds.width // 2 + 24,
+                    bottom_y,
+                ),
+            )
+            surface.blit(self._fruit_icon, fruit_rect)
         level_surface = self._cached_level_surface(session.level_number)
         level_rect = level_surface.get_rect(
             midright=(maze_bounds.x + maze_bounds.width, bottom_y),
@@ -121,7 +158,7 @@ class HudOverlay:
     ) -> None:
         """Draw one label/value HUD column."""
         label_surface = self._label_surfaces[label]
-        value_surface = self._font.render_uncached(value)
+        value_surface = self._cached_value_surface(value)
 
         if centered:
             label_rect = label_surface.get_rect(midtop=(x, self.TOP_LABEL_Y))
@@ -172,9 +209,18 @@ class HudOverlay:
         cached = self._level_surface_cache.get(level_number)
         if cached is not None:
             return cached
-        rendered = self._font.render(f"LEVEL {level_number}")
-        self._level_surface_cache[level_number] = rendered
-        return rendered
+        surface = self._font.render(f"LEVEL {level_number}")
+        self._level_surface_cache[level_number] = surface
+        return self._level_surface_cache[level_number]
+
+    def _cached_value_surface(self, value: str) -> Surface:
+        """Return cached HUD value surface keyed by formatted string."""
+        cached = self._value_surface_cache.get(value)
+        if cached is not None:
+            return cached
+        surface = self._font.render(value)
+        self._value_surface_cache[value] = surface
+        return self._value_surface_cache[value]
 
 
 def _format_score(score: int) -> str:

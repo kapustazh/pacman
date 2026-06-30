@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pygame.surface import Surface
 
+from managers.highscore_manager import HighscoreManager
 from sprites.assets import Assets
 from states.text import ArcadeTextRenderer
 
@@ -20,3 +21,5 @@ class GameContext:
     assets: Assets
     text: ArcadeTextRenderer
     scene_manager: SceneManager
+    highscores: HighscoreManager
+    config: dict[str, Any]

@@ -1,8 +1,9 @@
+# [transition] SCRUM-35 — wall autotile picker for pygame UI.
+
 from __future__ import annotations
 
-from typing import cast
-
-from game.level import CellPos, CellType, LevelLayout
+from game.level import CellPos, LevelLayout
+from maze.map_data import TileType
 from sprites.sprite_types import TileKind
 
 BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
@@ -51,5 +52,5 @@ def _has_wall_neighbor(layout: LevelLayout, pos: CellPos) -> bool:
     row = layout.cells[pos.row]
     if pos.col >= len(row):
         return False
-    cell_type = cast(CellType, row[pos.col])
-    return bool(cell_type == CellType.WALL)
+    cell_type = row[pos.col]
+    return bool(cell_type == TileType.WALL)

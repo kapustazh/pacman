@@ -1,3 +1,5 @@
+# [transition UI] pygame main loop and scene delegation.
+
 from __future__ import annotations
 
 from core.context import GameContext
@@ -7,6 +9,7 @@ from core.state import GameState
 import pygame
 from pygame.surface import Surface
 
+from managers.highscore_manager import HighscoreManager
 from sprites.assets import Assets
 from states.text import ArcadeTextRenderer
 
@@ -24,8 +27,10 @@ class GameEngine:
         screen: Surface,
         assets: Assets,
         text: ArcadeTextRenderer,
+        highscores: HighscoreManager,
+        config: dict[str, object],
         initial_state: GameState,
-        target_fps: int = 60,
+        target_fps: int = 120,
     ) -> None:
         self._clock = pygame.time.Clock()
         self._scene_manager = SceneManager()
@@ -34,6 +39,8 @@ class GameEngine:
             assets=assets,
             text=text,
             scene_manager=self._scene_manager,
+            highscores=highscores,
+            config=config,
         )
         self._target_fps = target_fps
         self._scene_manager.change(initial_state)
@@ -44,26 +51,26 @@ class GameEngine:
         while not self._scene_manager.shutdown_requested:
             dt = self._clock.tick(self._target_fps) / 1000.0
             now_ms = pygame.time.get_ticks()
-            events = list(pygame.event.get())
+            events = pygame.event.get()
 
             if any(event.type == pygame.QUIT for event in events):
                 self._scene_manager.request_shutdown()
-                self._scene_manager.flush(self._context)
-                continue
-
-            top = self._scene_manager.top()
-            if top is not None:
-                top.handle_events(events, self._context)
+            else:
+                top = self._scene_manager.top()
+                if top is not None:
+                    top.handle_events(events, self._context)
 
             self._scene_manager.flush(self._context)
             if self._scene_manager.shutdown_requested:
                 break
 
             top = self._scene_manager.top()
-            if top is not None and not self._scene_manager.shutdown_requested:
+            if top is not None:
                 top.update(dt, now_ms, self._context)
 
             self._scene_manager.flush(self._context)
+            if self._scene_manager.shutdown_requested:
+                break
 
             self._context.screen.fill(BG_COLOR)
             self._draw_stack()

@@ -1,3 +1,5 @@
+# [transition UI] scene stack wired during SCRUM-35 integration.
+
 from __future__ import annotations
 
 from collections import deque

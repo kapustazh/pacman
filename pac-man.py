@@ -11,28 +11,40 @@ ICON_PATH = Path(__file__).resolve().parent / "assets" / "icon" / "image.png"
 import pygame  # noqa: E402
 
 from core.engine import GameEngine  # noqa: E402
+from config.config import load_config  # noqa: E402
+from managers.highscore_manager import HighscoreManager  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
 from states.menu_state import MenuState  # noqa: E402
 from states.text import ArcadeTextRenderer  # noqa: E402
 
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
+HIGHSCORES_FILE = "highscores.json"
 
 
 def main() -> None:
+    if len(sys.argv) != 2:
+        print("Usage: python3 pac-man.py config.json")
+        sys.exit(1)
+
     pygame.init()
     pygame.key.set_repeat(0)
     pygame.mouse.set_visible(False)
-    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), vsync=1)
     pygame.display.set_caption("Pac-Man")
     if ICON_PATH.exists():
         pygame.display.set_icon(pygame.image.load(ICON_PATH))
 
+    config = load_config(sys.argv[1])
     assets = Assets()
     assets.load()
     text = ArcadeTextRenderer()
     text.preload()
-    engine = GameEngine(screen, assets, text, MenuState())
+    highscores = HighscoreManager(
+        str(config.get("highscore_filename", HIGHSCORES_FILE))
+    )
+    highscores.load()
+    engine = GameEngine(screen, assets, text, highscores, config, MenuState())
     engine.run()
 
     pygame.quit()

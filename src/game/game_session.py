@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — lives, timer, and phase flow from wehan GameState.
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,6 +22,7 @@ class GameSession:
     """Run-level metadata: lives, level index, timer, and gameplay phase."""
 
     DEFAULT_LIVES: ClassVar[int] = 3
+    # [wehan] level_max_time config key; seconds (was turns in wehan)
     DEFAULT_LEVEL_TIME_S: ClassVar[int] = 90
     READY_DURATION_MS: ClassVar[int] = 2000
     LIFE_LOST_DURATION_MS: ClassVar[int] = 2000
@@ -47,6 +50,10 @@ class GameSession:
     def remaining_time_s(self) -> int:
         """Return whole seconds left on the current level."""
         return max(0, self.remaining_time_ms // 1000)
+
+    def level_elapsed_s(self) -> int:
+        """Return whole seconds elapsed in the current level timer."""
+        return max(0, self.level_time_limit_s - self.remaining_time_s())
 
     def reset_level_timer(self) -> None:
         """Reset countdown to full level limit."""

@@ -8,7 +8,6 @@ class Direction(Enum):
     RIGHT = auto()
 
 
-# TODO: populate when ghost entities are implemented.
 class GhostKind(Enum):
     BLINKY = "blinky"
     PINKY = "pinky"
@@ -16,7 +15,6 @@ class GhostKind(Enum):
     CLYDE = "clyde"
 
 
-# TODO: populate when bonus fruit entities are implemented.
 class FruitKind(Enum):
     CHERRY = "cherry"
     STRAWBERRY = "strawberry"
@@ -40,7 +38,6 @@ class TileKind(Enum):
     CORNER_BR = auto()
 
 
-# TODO: populated after Assets.load_fruits() when bonus fruit entities land.
 FRUIT_POINTS: dict[FruitKind, int] = {
     FruitKind.CHERRY: 100,
     FruitKind.STRAWBERRY: 300,

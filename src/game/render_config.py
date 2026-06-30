@@ -1,8 +1,11 @@
+# [transition] SCRUM-35 — grid-to-pixel layout (new for pygame UI).
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from game.level import LevelLayout
+from game.level import CellPos, LevelLayout
+from sprites.sprite_types import Direction
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,3 +61,24 @@ class WorldRenderConfig:
             origin_x=(screen_w - width_px) // 2,
             origin_y=(screen_h - height_px) // 2,
         )
+
+
+DIRECTION_DELTA: dict[Direction, tuple[int, int]] = {
+    Direction.UP: (-1, 0),
+    Direction.DOWN: (1, 0),
+    Direction.LEFT: (0, -1),
+    Direction.RIGHT: (0, 1),
+}
+
+
+def direction_delta(direction: Direction) -> tuple[int, int]:
+    return DIRECTION_DELTA[direction]
+
+
+def cell_center(config: WorldRenderConfig, cell: CellPos) -> tuple[int, int]:
+    """Convert grid cell to pixel center."""
+    tile_px = config.tile_px
+    return (
+        config.origin_x + cell.col * tile_px + tile_px // 2,
+        config.origin_y + cell.row * tile_px + tile_px // 2,
+    )

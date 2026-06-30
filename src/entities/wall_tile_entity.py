@@ -14,6 +14,9 @@ class WallTileEntity(Sprite):
         "_white_surface",
         "cell",
         "center",
+        "image",
+        "layer",
+        "rect",
     )
 
     def __init__(
@@ -29,6 +32,7 @@ class WallTileEntity(Sprite):
         self._blue_surface = blue_surface
         self._white_surface = white_surface
         self._flash_white = False
+        self.layer = int(SpriteLayer.BACKGROUND)
         self.image = blue_surface
         self.rect = blue_surface.get_rect(center=center)
 
@@ -38,7 +42,3 @@ class WallTileEntity(Sprite):
             return
         self._flash_white = white
         self.image = self._white_surface if white else self._blue_surface
-
-    @property
-    def layer(self) -> int:
-        return int(SpriteLayer.BACKGROUND)
