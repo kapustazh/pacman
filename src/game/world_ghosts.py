@@ -212,7 +212,7 @@ def update_frightened_state(world: GameWorld, now_ms: int) -> None:
 
 
 def eat_ghost(world: GameWorld, ghost: GhostEntity) -> None:
-    world._score += world.GHOST_POINTS
+    world._score += world.ghost_points
     ghost.hide_eaten()
     world._ghost_respawn_at_ms[ghost.kind] = (
         pygame.time.get_ticks() + world.GHOST_EATEN_RESPAWN_MS

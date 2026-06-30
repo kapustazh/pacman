@@ -48,9 +48,14 @@ class PlayState(GameState):
         )
 
         started_at = pygame.time.get_ticks()
+        config = context.config
+        level_max_time_s = int(config.get("level_max_time", 90))
         self._session = GameSession(
             phase_started_at_ms=started_at,
             high_score=context.highscores.top_score(),
+            lives=int(config.get("lives", 3)),
+            level_time_limit_s=level_max_time_s,
+            remaining_time_ms=level_max_time_s * 1000,
         )
         self._level_index = 0
         self._level_seed = int(context.config.get("seed", 42))
@@ -234,12 +239,16 @@ class PlayState(GameState):
         level_number = (
             self._session.level_number if self._session is not None else 1
         )
+        config = context.config
         self._world = GameWorld(
             layout,
             catalog,
             render_config,
             initial_score=initial_score,
             level_number=level_number,
+            pellet_points=int(config.get("points_per_pacgum", 10)),
+            power_pellet_points=int(config.get("points_per_super_pacgum", 50)),
+            ghost_points=int(config.get("points_per_ghost", 200)),
         )
         if self._hud is not None:
             self._hud.set_fruit_icon(self._world.level_fruit_surface)

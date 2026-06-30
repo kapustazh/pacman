@@ -68,6 +68,9 @@ class GameWorld:
         "_level_number",
         "_player",
         "_render_config",
+        "pellet_points",
+        "power_pellet_points",
+        "ghost_points",
         "_travel_direction",
         "_requested_direction",
         "_step_accumulator_ms",
@@ -89,11 +92,25 @@ class GameWorld:
         render_config: WorldRenderConfig,
         initial_score: int = 0,
         level_number: int = 1,
+        pellet_points: int | None = None,
+        power_pellet_points: int | None = None,
+        ghost_points: int | None = None,
     ) -> None:
         self._layout: LevelLayout = layout
         self._catalog: Assets = catalog
         self._render_config: WorldRenderConfig = render_config
         self._level_number: int = level_number
+        self.pellet_points = (
+            self.PELLET_POINTS if pellet_points is None else pellet_points
+        )
+        self.power_pellet_points = (
+            self.POWER_PELLET_POINTS
+            if power_pellet_points is None
+            else power_pellet_points
+        )
+        self.ghost_points = (
+            self.GHOST_POINTS if ghost_points is None else ghost_points
+        )
         self.all_sprites: LayeredUpdates[Sprite] = LayeredUpdates()
         self.consumables: Group[PelletEntity] = Group()
         self._remaining_consumables: set[CellPos] = set(layout.pellet_cells)
@@ -278,6 +295,10 @@ class GameWorld:
                 ghost.begin_step()
 
 
+# [transition] module helpers extracted from wehan GameState
+# (request_turn, update_player_movement, _spawn_from_layout)
+
+
 def _spawn_from_layout(world: GameWorld) -> None:
     cfg = world._render_config
     for row_index, row in enumerate(world._layout.cells):
@@ -312,7 +333,7 @@ def _spawn_from_layout(world: GameWorld) -> None:
             world._catalog.power_pellet_surface,
             pos,
             cell_center(cfg, pos),
-            world.POWER_PELLET_POINTS,
+            world.power_pellet_points,
         )
         world.all_sprites.add(pellet, layer=pellet.layer)
         world.consumables.add(pellet)
