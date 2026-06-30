@@ -149,12 +149,12 @@ class PlayState(GameState):
                 now_ms,
             )
             self._world.update(dt, now_ms)
-            if timer_expired:
-                self._handle_life_lost(now_ms)
-            elif self._world.all_consumables_cleared:
+            if self._world.all_consumables_cleared:
                 self._session.sync_score(self._world.score)
                 self._world.freeze_gameplay()
                 self._session.enter_level_complete(now_ms)
+            elif timer_expired:
+                self._handle_life_lost(now_ms)
         else:
             self._world.update(dt, now_ms)
 

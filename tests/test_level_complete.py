@@ -18,7 +18,8 @@ from pygame.surface import Surface  # noqa: E402
 
 from entities.player_entity import PlayerEntity  # noqa: E402
 from entities.wall_tile_entity import WallTileEntity  # noqa: E402
-from game.game_session import GameSession  # noqa: E402
+from game.game_session import GameSession, GameplayPhase  # noqa: E402
+from states.play_state import PlayState  # noqa: E402
 from game.game_world import (  # noqa: E402
     GameWorld,
     request_turn,
@@ -66,6 +67,28 @@ def test_all_consumables_cleared_true_when_set_empty(
 ) -> None:
     game_world._remaining_consumables.clear()
     assert game_world.all_consumables_cleared
+
+
+def test_timer_expiry_same_frame_as_last_pellet_completes_level(
+    game_world: GameWorld,
+) -> None:
+    """Clearing the maze on the frame the timer hits zero must win the level."""
+    play_state = PlayState()
+    session = GameSession(
+        phase=GameplayPhase.PLAYING,
+        phase_started_at_ms=0,
+        remaining_time_ms=1,
+    )
+    game_world._remaining_consumables.clear()
+    game_world.unfreeze_gameplay()
+    play_state._session = session
+    play_state._world = game_world
+
+    play_state._update_playing(0.002, 1_000)
+
+    assert session.phase == GameplayPhase.LEVEL_COMPLETE
+    assert session.lives == GameSession.DEFAULT_LIVES
+    assert game_world.is_frozen
 
 
 def test_unfreeze_gameplay_resumes_movement(game_world: GameWorld) -> None:
