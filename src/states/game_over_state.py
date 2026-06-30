@@ -106,7 +106,7 @@ class GameOverState(GameState):
             ArcadeTextColor.WHITE,
             self.PROMPT_SCALE,
         )
-        display = self._name if self._name else "AAA"
+        display = self._name if self._name else "-"
         text.draw_centered_arcade_text(
             surface,
             display,

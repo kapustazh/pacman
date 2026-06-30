@@ -267,6 +267,7 @@ class PlayState(GameState):
             return
         if self._world is not None:
             self._world.respawn_player()
+            self._world.respawn_ghosts()
             self._world.unfreeze_gameplay()
         self._session.reset_level_timer()
         self._session.enter_ready(now_ms)

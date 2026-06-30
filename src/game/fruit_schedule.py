@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from sprites.sprite_types import FruitKind
 
-# TODO: add fruit schedule for each level
 LEVEL_FRUIT: tuple[FruitKind, ...] = (
     FruitKind.CHERRY,
     FruitKind.STRAWBERRY,
@@ -21,6 +20,7 @@ LEVEL_SPAWN_SECONDS: tuple[tuple[int, ...], ...] = (
     (9, 41),
     (9, 41),
 )  # TODO: add spawn times for fruits
+# can conflict with game session timer, need to be adjusted
 FRUIT_VISIBLE_DURATION_S: int = 10  # TODO: review fruit visible duration
 
 

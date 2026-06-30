@@ -212,6 +212,16 @@ class GameWorld:
         center = cell_center(self._render_config, spawn)
         self._player.reset_after_death(spawn, center)
 
+    def respawn_ghosts(self) -> None:
+        """Return every ghost to its home cell after losing a life."""
+        self._ghost_respawn_at_ms.clear()
+        self._frightened_until_ms = 0
+        for kind, ghost in self._ghosts.items():
+            home = self._ghost_home[kind]
+            center = cell_center(self._render_config, home)
+            ghost.respawn_at(home, center)
+            self.all_sprites.add(ghost, layer=ghost.layer)
+
     def teardown(self) -> None:
         """Kill all sprites and empty all groups."""
         for sprite in list(self.all_sprites.sprites()):

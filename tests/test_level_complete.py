@@ -164,7 +164,11 @@ def _surfaces_equal(a: Surface, b: Surface) -> bool:
     if a.get_size() != b.get_size():
         return False
     w, h = a.get_size()
-    return all(a.get_at((x, y)) == b.get_at((x, y)) for x in range(w) for y in range(h))
+    return all(
+        a.get_at((x, y)) == b.get_at((x, y))
+        for x in range(w)
+        for y in range(h)
+    )
 
 
 def test_freeze_gameplay_stops_turn_requests(game_world: GameWorld) -> None:
@@ -291,6 +295,24 @@ def test_set_wall_flash_swaps_wall_surfaces(game_world: GameWorld) -> None:
 
     game_world.set_wall_flash(False)
     assert wall.image is blue_surface
+
+
+def test_respawn_ghosts_returns_all_to_home(game_world: GameWorld) -> None:
+    from sprites.sprite_types import GhostKind
+
+    ghost = game_world._ghosts[GhostKind.BLINKY]
+    away = CellPos(ghost.cell.row + 1, ghost.cell.col)
+    if game_world._layout.is_wall(away):
+        away = CellPos(ghost.cell.row, ghost.cell.col + 1)
+    ghost.move_to(away, cell_center(game_world._render_config, away))
+    ghost.hide_eaten()
+
+    game_world.respawn_ghosts()
+
+    for kind, entity in game_world._ghosts.items():
+        assert not entity.is_hidden
+        assert entity.cell == game_world._ghost_home[kind]
+    assert not game_world._ghost_respawn_at_ms
 
 
 def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:

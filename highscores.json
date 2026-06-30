@@ -12,8 +12,16 @@
     "score": 1060
   },
   {
+    "name": "AAA",
+    "score": 920
+  },
+  {
     "name": "dm",
     "score": 900
+  },
+  {
+    "name": "MATVII",
+    "score": 830
   },
   {
     "name": "Player",
@@ -30,13 +38,5 @@
   {
     "name": "mak",
     "score": 670
-  },
-  {
-    "name": "ann",
-    "score": 620
-  },
-  {
-    "name": "ma",
-    "score": 610
   }
 ]
