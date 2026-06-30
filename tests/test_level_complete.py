@@ -19,11 +19,19 @@ from pygame.surface import Surface  # noqa: E402
 from entities.player_entity import PlayerEntity  # noqa: E402
 from entities.wall_tile_entity import WallTileEntity  # noqa: E402
 from game.game_session import GameSession  # noqa: E402
-from game.game_world import GameWorld  # noqa: E402
-from game.world_fruit import spawn_fruit  # noqa: E402
-from game.world_player import request_turn, update_player_movement  # noqa: E402
-from game.level import CellPos, load_smoke_level  # noqa: E402
-from game.render_config import WorldRenderConfig  # noqa: E402
+from game.game_world import (  # noqa: E402
+    GameWorld,
+    request_turn,
+    spawn_fruit,
+    update_player_movement,
+)
+from config.config import DEFAULT_CONFIG  # noqa: E402
+from game.level import CellPos, load_level  # noqa: E402
+from game.render_config import (  # noqa: E402
+    WorldRenderConfig,
+    cell_center,
+    direction_delta,
+)
 from sprites.assets import Assets  # noqa: E402
 from sprites.sprite_types import Direction, TileKind  # noqa: E402
 
@@ -39,10 +47,10 @@ def pygame_init() -> Generator[None, None, None]:
 
 @pytest.fixture
 def game_world() -> GameWorld:
-    """Build a smoke-level world with loaded assets."""
+    """Build a procedural test world with loaded assets."""
     assets = Assets()
     assets.load()
-    layout = load_smoke_level()
+    layout = load_level(DEFAULT_CONFIG, 0, 42)
     render_config = WorldRenderConfig.centered(layout, (1920, 1080))
     return GameWorld(layout, assets, render_config)
 
@@ -172,7 +180,7 @@ def test_freeze_gameplay_stops_turn_requests(game_world: GameWorld) -> None:
 def test_initial_score_carried_into_world() -> None:
     assets = Assets()
     assets.load()
-    layout = load_smoke_level()
+    layout = load_level(DEFAULT_CONFIG, 0, 42)
     render_config = WorldRenderConfig.centered(layout, (1920, 1080))
     world = GameWorld(layout, assets, render_config, initial_score=420)
     assert world.score == 420
@@ -192,7 +200,7 @@ def test_level_complete_reload_resets_timer_and_pellets() -> None:
     """After level advance, session timer and maze consumables must reset."""
     assets = Assets()
     assets.load()
-    layout = load_smoke_level()
+    layout = load_level(DEFAULT_CONFIG, 0, 42)
     render_config = WorldRenderConfig.centered(layout, (1920, 1080))
     session = GameSession(remaining_time_ms=1_000)
     world = GameWorld(
@@ -283,3 +291,61 @@ def test_set_wall_flash_swaps_wall_surfaces(game_world: GameWorld) -> None:
 
     game_world.set_wall_flash(False)
     assert wall.image is blue_surface
+
+
+def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:
+    """Ghosts advance on the step clock even when Pac-Man cannot move."""
+    from sprites.sprite_types import Direction, GhostKind
+
+    player = game_world._player
+    assert player is not None
+    ghost = game_world._ghosts[GhostKind.BLINKY]
+    blocked_dir: Direction | None = None
+    cell = player.cell
+    for direction in Direction:
+        dr, dc = direction_delta(direction)
+        if game_world._layout.is_wall(CellPos(cell.row + dr, cell.col + dc)):
+            blocked_dir = direction
+            break
+    assert blocked_dir is not None
+    center = cell_center(game_world._render_config, cell)
+    player.move_to(cell, center)
+    player.face(blocked_dir)
+    game_world._travel_direction = blocked_dir
+    game_world._requested_direction = None
+    game_world._step_accumulator_ms = 0.0
+    game_world.unfreeze_gameplay()
+
+    ghost_cell_before = ghost.cell
+    update_player_movement(
+        game_world,
+        game_world.PLAYER_STEP_MS / 1000.0,
+        1_000,
+    )
+    assert ghost.cell != ghost_cell_before
+
+
+def test_session_high_score_loads_persisted_top_score(tmp_path) -> None:
+    from managers.highscore_manager import HighscoreManager
+
+    path = tmp_path / "highscores.json"
+    path.write_text('[{"name": "ABC", "score": 1234}]', encoding="utf-8")
+    manager = HighscoreManager(str(path))
+    manager.load()
+    session = GameSession(high_score=manager.top_score())
+    assert session.high_score == 1234
+
+
+def test_load_level_deterministic_pellets() -> None:
+    from config.config import load_config
+    from game.level import load_level
+
+    config = load_config("config.json")
+    layout = load_level(config, 0, 42)
+    assert layout.height > 0 and layout.width > 0
+    assert len(layout.ghost_spawns) == 4
+    assert len(layout.pellet_cells) > 0
+    assert len(layout.power_pellet_cells) == 4
+
+    second = load_level(config, 0, 42)
+    assert len(second.pellet_cells) == len(layout.pellet_cells)
