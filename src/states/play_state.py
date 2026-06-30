@@ -149,6 +149,8 @@ class PlayState(GameState):
                 now_ms,
             )
             self._world.update(dt, now_ms)
+            if self._world.player_is_dying:
+                return
             if self._world.all_consumables_cleared:
                 self._session.sync_score(self._world.score)
                 self._world.freeze_gameplay()

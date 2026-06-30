@@ -69,6 +69,43 @@ def test_all_consumables_cleared_true_when_set_empty(
     assert game_world.all_consumables_cleared
 
 
+def test_fatal_ghost_collision_on_last_pellet_loses_life_not_level_complete(
+    game_world: GameWorld,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Death on the last-pellet step must not enter LEVEL_COMPLETE."""
+    from game.world_ghosts import start_player_death
+
+    def trigger_death_and_clear_pellets(
+        world: GameWorld,
+        dt_s: float,
+        now_ms: int,
+    ) -> None:
+        world._remaining_consumables.clear()
+        start_player_death(world, now_ms)
+
+    monkeypatch.setattr(
+        "states.play_state.update_player_movement",
+        trigger_death_and_clear_pellets,
+    )
+
+    play_state = PlayState()
+    session = GameSession(
+        phase=GameplayPhase.PLAYING,
+        phase_started_at_ms=0,
+    )
+    game_world.unfreeze_gameplay()
+    play_state._session = session
+    play_state._world = game_world
+
+    play_state._update_playing(0.002, 1_000)
+
+    assert game_world.player_is_dying
+    assert game_world.all_consumables_cleared
+    assert session.phase == GameplayPhase.PLAYING
+    assert session.lives == GameSession.DEFAULT_LIVES
+
+
 def test_timer_expiry_same_frame_as_last_pellet_completes_level(
     game_world: GameWorld,
 ) -> None:
