@@ -1,18 +1,18 @@
 """Build a playable Pac-Man level from maze tiles."""
 
-from dataclasses import dataclass
-
-from src.maze.map_data import TileType
+from maze.map_data import TileType
 
 import random
 
+from game.level import CellPos, LevelLayout
+from sprites.sprite_types import GhostKind
 
-@dataclass
-class LevelSetup:
-    """Store initial level positions."""
-
-    player_start: tuple[int, int]
-    ghost_starts: list[tuple[int, int]]
+_GHOST_ORDER: tuple[GhostKind, ...] = (
+    GhostKind.BLINKY,
+    GhostKind.PINKY,
+    GhostKind.INKY,
+    GhostKind.CLYDE,
+)
 
 
 class LevelBuilder:
@@ -22,13 +22,12 @@ class LevelBuilder:
         """Initialize level builder."""
         self.pacgum_count = pacgum_count
 
-    def build(self, grid: list[list[TileType]]) -> LevelSetup:
-        """Populate the grid and return spawn positions."""
+    def build(self, grid: list[list[TileType]]) -> LevelLayout:
+        """Populate the grid and return a level layout."""
         height = len(grid)
         width = len(grid[0])
 
         player_start = self._nearest_walkable(grid, height // 2, width // 2)
-        # center may be wall
 
         corner_targets = [
             (1, 1),
@@ -40,7 +39,7 @@ class LevelBuilder:
         corner_positions = self._find_corner_positions(grid, corner_targets)
         ghost_starts = corner_positions.copy()
 
-        reserved = set(ghost_starts)  # pacgum avoid reserved
+        reserved = set(ghost_starts)
         reserved.add(player_start)
 
         self._place_pacgums(grid, reserved)
@@ -49,21 +48,44 @@ class LevelBuilder:
         player_row, player_col = player_start
         grid[player_row][player_col] = TileType.EMPTY
 
-        return LevelSetup(player_start, ghost_starts)
+        pellets: set[CellPos] = set()
+        power_pellets: set[CellPos] = set()
+        for row_index, row in enumerate(grid):
+            for col_index, tile in enumerate(row):
+                pos = CellPos(row_index, col_index)
+                if tile == TileType.PACGUM:
+                    pellets.add(pos)
+                elif tile == TileType.SUPER_PACGUM:
+                    power_pellets.add(pos)
 
-    def _place_pacgums(self, grid: list[list[TileType]],
-                       reserved: set[tuple[int, int]]) -> None:
+        player_spawn = CellPos(*player_start)
+        ghost_spawns = tuple(
+            (kind, CellPos(*corner))
+            for kind, corner in zip(_GHOST_ORDER, ghost_starts)
+        )
+
+        return LevelLayout(
+            cells=tuple(tuple(row) for row in grid),
+            pellet_cells=frozenset(pellets),
+            power_pellet_cells=frozenset(power_pellets),
+            player_spawn=player_spawn,
+            ghost_spawns=ghost_spawns,
+            fruit_spawn=player_spawn,
+        )
+
+    def _place_pacgums(
+        self,
+        grid: list[list[TileType]],
+        reserved: set[tuple[int, int]],
+    ) -> None:
         """Place normal pacgums in available corridors."""
-        candidates = []
-
-        for row, col in self._walkable_positions(grid):
-            if (row, col) not in reserved:
-                candidates.append((row, col))
-
+        candidates = [
+            (row, col)
+            for row, col in self._walkable_positions(grid)
+            if (row, col) not in reserved
+        ]
         random.shuffle(candidates)
-
         limit = min(self.pacgum_count, len(candidates))
-
         for row, col in candidates[:limit]:
             grid[row][col] = TileType.PACGUM
 
@@ -83,45 +105,29 @@ class LevelBuilder:
     ) -> list[tuple[int, int]]:
         """Find four unique walkable positions near the four corners."""
         positions: list[tuple[int, int]] = []
-
         for target_row, target_col in corner_targets:
-            position = self._nearest_walkable_excluding(
+            position = self._nearest_walkable(
                 grid,
                 target_row,
                 target_col,
-                set(positions),  # exclude added ghost respawn spots
+                excluded=set(positions),
             )
             positions.append(position)
         return positions
 
-    def _nearest_walkable(self, grid: list[list[TileType]],
-                          target_row: int, target_col: int) -> tuple[int, int]:
-        """Find nearest non-wall tile."""
-        best_position = (target_row, target_col)
-        best_distance = 999999
-
-        for row, col in self._walkable_positions(grid):
-            distance = abs(row - target_row) + abs(col - target_col)
-
-            if distance < best_distance:
-                best_distance = distance
-                best_position = (row, col)
-
-        return best_position
-
-    def _nearest_walkable_excluding(
+    def _nearest_walkable(
         self,
         grid: list[list[TileType]],
         target_row: int,
         target_col: int,
-        excluded: set[tuple[int, int]],
+        excluded: set[tuple[int, int]] | None = None,
     ) -> tuple[int, int]:
-        """Find nearest non-wall tile that is not excluded."""
+        """Find nearest non-wall tile, optionally skipping excluded cells."""
+        skip = excluded or set()
         best_position = (target_row, target_col)
         best_distance = 999999
-
         for row, col in self._walkable_positions(grid):
-            if (row, col) in excluded:
+            if (row, col) in skip:
                 continue
             distance = abs(row - target_row) + abs(col - target_col)
             if distance < best_distance:
@@ -130,20 +136,13 @@ class LevelBuilder:
         return best_position
 
     def _walkable_positions(
-            self,
-            grid: list[list[TileType]]
+        self,
+        grid: list[list[TileType]],
     ) -> list[tuple[int, int]]:
         """Return all non-wall positions."""
-        positions = []
-
-        for row_index, row in enumerate(grid):
-            for col_index, tile in enumerate(row):
-                if tile != TileType.WALL:
-                    positions.append((row_index, col_index))
-
-        return positions
-
-# MazeAdapter: 生成基础迷宫（WALL / EMPTY）
-# LevelBuilder: 选择玩家和鬼出生点，并放置 Pacgums、Super Pacgums
-# MapData: 保存当前地图和所有物品状态
-# Player/Ghost: 保存角色当前位置和状态
+        return [
+            (row_index, col_index)
+            for row_index, row in enumerate(grid)
+            for col_index, tile in enumerate(row)
+            if tile != TileType.WALL
+        ]
