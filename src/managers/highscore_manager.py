@@ -1,32 +1,37 @@
 """Highscore management for Pac-Man."""
 
+from __future__ import annotations
+
 import json
 from typing import Any
 
 
 class HighscoreManager:
-    """Manage loading, saving, and updating highscore."""
+    """Load, save, and rank highscores (top 10)."""
 
     def __init__(self, filename: str) -> None:
-        """Initialize highscore manager."""
         self.filename = filename
         self.highscores: list[dict[str, Any]] = []
 
     def load(self) -> None:
-        """Load highscores from file."""
+        """Load and validate highscores from file."""
         try:
             with open(self.filename, "r", encoding="utf-8") as file:
                 data = json.load(file)
-                self.highscores = self._validate_highscores(data)
-        except OSError:
+        except (OSError, json.JSONDecodeError):
             self.highscores = []
             return
-        except json.JSONDecodeError:
-            self.highscores = []
-            return
+        self.highscores = self._top10(
+            entry
+            for entry in (data if isinstance(data, list) else [])
+            if isinstance(entry, dict)
+            and isinstance(entry.get("name"), str)
+            and isinstance(entry.get("score"), int)
+            and entry.get("score", -1) >= 0
+        )
 
     def save(self) -> None:
-        """Save highscores to file."""
+        """Persist highscores to file."""
         try:
             with open(self.filename, "w", encoding="utf-8") as file:
                 json.dump(self.highscores, file, indent=2)
@@ -34,80 +39,30 @@ class HighscoreManager:
             print(f"Warning: could not save highscores to {self.filename}")
 
     def add_score(self, name: str, score: int) -> None:
-        """Add score and keep only top 10."""
-        score = max(0, score)
-        clean_name = self._clean_name(name)
-
+        """Add score, keep top 10, persist."""
         self.highscores.append(
-            {
-                "name": clean_name,
-                "score": score,
-            }
+            {"name": self._clean_name(name), "score": max(0, score)}
         )
-
-        self.highscores.sort(
-            key=lambda entry: int(entry["score"]),
-            reverse=True,
-        )
-        self.highscores = self.highscores[:10]
+        self.highscores = self._top10(self.highscores)
         self.save()
 
-    def _clean_name(self, name: str) -> str:
-        """Clean player name."""
-        cleaned = ""
+    def top_score(self) -> int:
+        """Return best score, or 0 if empty."""
+        return int(self.highscores[0]["score"]) if self.highscores else 0
 
-        for char in name:
-            if char.isalnum() or char == " ":
-                cleaned += char
-
-        if not cleaned:
-            return "Player"
-
-        return cleaned[:10]
-
-    def _validate_highscores(
-        self,
-        data: object,
-    ) -> list[dict[str, Any]]:
-        """Validate loaded highscore data."""
-        valid_scores: list[dict[str, Any]] = []
-
-        if not isinstance(data, list):
-            return valid_scores
-
-        for entry in data:
-            if not isinstance(entry, dict):
-                continue
-
-            name = entry.get("name")
-            score = entry.get("score")
-
-            if not isinstance(name, str):
-                continue
-            if not isinstance(score, int):
-                continue
-            if score < 0:
-                continue
-            valid_scores.append(
-                {
-                    "name": self._clean_name(name),
-                    "score": score,
-                }
-            )
-        valid_scores.sort(
+    @staticmethod
+    def _top10(entries: Any) -> list[dict[str, Any]]:
+        return sorted(
+            entries,
             key=lambda entry: int(entry["score"]),
             reverse=True,
-        )
+        )[:10]
 
-        return valid_scores[:10]
+    @staticmethod
+    def clean_name(name: str) -> str:
+        return HighscoreManager._clean_name(name)
 
-    def print_highscores(self) -> None:
-        """Print highscores."""
-        print("=== HIGHSCORES ===")
-
-        if not self.highscores:
-            print("No highscores yet.")
-            return
-
-        for index, entry in enumerate(self.highscores, start=1):
-            print(f"{index}. {entry['name']} - {entry['score']}")
+    @staticmethod
+    def _clean_name(name: str) -> str:
+        cleaned = "".join(c for c in name if c.isalnum() or c == " ")
+        return cleaned[:10] or "Player"

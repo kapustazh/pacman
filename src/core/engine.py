@@ -7,6 +7,7 @@ from core.state import GameState
 import pygame
 from pygame.surface import Surface
 
+from managers.highscore_manager import HighscoreManager
 from sprites.assets import Assets
 from states.text import ArcadeTextRenderer
 
@@ -24,8 +25,10 @@ class GameEngine:
         screen: Surface,
         assets: Assets,
         text: ArcadeTextRenderer,
+        highscores: HighscoreManager,
+        config: dict[str, object],
         initial_state: GameState,
-        target_fps: int = 60,
+        target_fps: int = 120,
     ) -> None:
         self._clock = pygame.time.Clock()
         self._scene_manager = SceneManager()
@@ -34,6 +37,8 @@ class GameEngine:
             assets=assets,
             text=text,
             scene_manager=self._scene_manager,
+            highscores=highscores,
+            config=config,
         )
         self._target_fps = target_fps
         self._scene_manager.change(initial_state)

@@ -146,6 +146,10 @@ class SelectableMenuState(GameState):
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw header and menu options."""
         self.draw_header(surface, context)
+        self.draw_options(surface, context)
+
+    def draw_options(self, surface: Surface, context: GameContext) -> None:
+        """Draw selectable menu rows below the header."""
         text = context.text
         options = self._entries
 
