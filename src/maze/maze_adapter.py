@@ -1,36 +1,24 @@
 """Adaptor for the assigned A-Maze-ing package."""
 
-import random
-
 from maze.map_data import TileType
 
 
 class MazeAdaptor:
     """Convert external maze output into Pac-Man tile grid."""
+
     NORTH = 1  # 0001
-    EAST = 2   # 0010
+    EAST = 2  # 0010
     SOUTH = 4  # 0100
-    WEST = 8   # 1000
+    WEST = 8  # 1000
 
     def generate(
-        self, width: int,
-        height: int,
-        seed: int
+        self, width: int, height: int, seed: int
     ) -> list[list[TileType]]:
         """Generate a maze using the external package."""
         try:
             from mazegenerator.mazegenerator import MazeGenerator
 
-            class _FastMazeGenerator(MazeGenerator):
-                # ponytail: skip _find_short_path — unused, ~15s on 21x21
-                def generate(self, seed: int = 0) -> None:
-                    random.seed(seed) if seed > 0 else random.seed()
-                    self._seed = seed
-                    self._create_empty_maze()
-                    self._add_42_to_maze()
-                    self._generate_maze(self._entryx, self._entryy, 0)
-
-            generator = _FastMazeGenerator(
+            generator = MazeGenerator(
                 size=(width, height),
                 perfect=False,
                 seed=seed,
