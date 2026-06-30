@@ -1,5 +1,7 @@
 """Adaptor for the assigned A-Maze-ing package."""
 
+# [wehan] origin/wehan — A-Maze-ing adaptor and wall-code conversion.
+
 from maze.map_data import TileType
 
 

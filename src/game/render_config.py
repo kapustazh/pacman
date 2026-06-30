@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — grid-to-pixel layout (new for pygame UI).
+
 from __future__ import annotations
 
 from dataclasses import dataclass

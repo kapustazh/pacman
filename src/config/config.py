@@ -1,5 +1,7 @@
 """Configuration loading for Pac-Man."""
 
+# [wehan] origin/wehan — JSON config loading.
+
 from __future__ import annotations
 
 import json

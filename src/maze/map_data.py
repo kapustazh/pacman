@@ -1,5 +1,7 @@
 """Map data structures for Pac-Man."""
 
+# [wehan] origin/wehan — TileType grid model.
+
 from enum import Enum
 
 

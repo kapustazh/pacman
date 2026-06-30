@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — bonus fruit schedule tables.
+
 from __future__ import annotations
 
 from sprites.sprite_types import FruitKind

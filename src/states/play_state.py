@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — main loop from wehan start/handle_input.
+
 from __future__ import annotations
 
 import random
@@ -170,6 +172,7 @@ class PlayState(GameState):
             return
         self._world.update(dt, now_ms)
         elapsed_ms = self._session.phase_elapsed_ms(now_ms)
+        # [transition SCRUM-34] level-complete wall flash
         cycle_ms = elapsed_ms % 400
         self._world.set_wall_flash(cycle_ms < 200)
         if elapsed_ms >= GameSession.LEVEL_COMPLETE_DURATION_MS:

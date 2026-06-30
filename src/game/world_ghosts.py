@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — rewritten from wehan ghost.py (BFS/chase AI).
+
 from __future__ import annotations
 
 import random

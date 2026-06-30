@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — rewritten from wehan GameState.
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -300,7 +302,7 @@ def _spawn_from_layout(world: GameWorld) -> None:
             world._catalog.dot_surface,
             pos,
             cell_center(cfg, pos),
-            world.PELLET_POINTS,
+            world.pellet_points,
         )
         world.all_sprites.add(pellet, layer=pellet.layer)
         world.consumables.add(pellet)

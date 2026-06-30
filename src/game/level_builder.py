@@ -1,5 +1,7 @@
 """Build a playable Pac-Man level from maze tiles."""
 
+# [wehan] origin/wehan — LevelBuilder maze population.
+
 from maze.map_data import TileType
 
 import random
@@ -27,6 +29,7 @@ class LevelBuilder:
         height = len(grid)
         width = len(grid[0])
 
+        # [wehan] player and ghost spawn placement
         player_start = self._nearest_walkable(grid, height // 2, width // 2)
 
         corner_targets = [
@@ -42,6 +45,7 @@ class LevelBuilder:
         reserved = set(ghost_starts)
         reserved.add(player_start)
 
+        # [wehan] pacgum placement
         self._place_pacgums(grid, reserved)
         self._place_super_pacgums(grid, corner_positions)
 

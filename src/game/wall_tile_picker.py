@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — wall autotile picker for pygame UI.
+
 from __future__ import annotations
 
 from game.level import CellPos, LevelLayout

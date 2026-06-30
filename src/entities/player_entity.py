@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — pygame sprite rewrite of wehan Player.
+
 from typing import ClassVar
 
 from pygame.sprite import Sprite

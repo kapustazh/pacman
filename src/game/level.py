@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — LevelLayout from wehan LevelManager/MapData.
+
 from __future__ import annotations
 
 import random

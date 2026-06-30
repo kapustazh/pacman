@@ -1,3 +1,5 @@
+# [transition UI] pygame main loop and scene delegation.
+
 from __future__ import annotations
 
 from core.context import GameContext

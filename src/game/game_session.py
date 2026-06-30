@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — lives, timer, and phase flow from wehan GameState.
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,6 +22,7 @@ class GameSession:
     """Run-level metadata: lives, level index, timer, and gameplay phase."""
 
     DEFAULT_LIVES: ClassVar[int] = 3
+    # [wehan] level_max_time config key; seconds (was turns in wehan)
     DEFAULT_LEVEL_TIME_S: ClassVar[int] = 90
     READY_DURATION_MS: ClassVar[int] = 2000
     LIFE_LOST_DURATION_MS: ClassVar[int] = 2000

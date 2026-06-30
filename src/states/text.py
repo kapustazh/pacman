@@ -1,3 +1,5 @@
+# [transition UI] arcade text renderer for menus/HUD.
+
 from __future__ import annotations
 
 from collections import OrderedDict

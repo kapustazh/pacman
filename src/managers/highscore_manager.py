@@ -1,5 +1,7 @@
 """Highscore management for Pac-Man."""
 
+# [wehan] origin/wehan — persistent leaderboard.
+
 from __future__ import annotations
 
 import json

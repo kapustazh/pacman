@@ -1,3 +1,5 @@
+# [transition] SCRUM-35 — pygame sprite rewrite of wehan Ghost.
+
 from pygame.sprite import Sprite
 
 from entities.sprite_layer import SpriteLayer
