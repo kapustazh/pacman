@@ -30,15 +30,6 @@ from maze.map_data import TileType
 from sprites.assets import Assets
 from sprites.sprite_types import Direction, FRUIT_POINTS, GhostKind
 
-__all__ = (
-    "GameWorld",
-    "ScorePopup",
-    "request_turn",
-    "spawn_fruit",
-    "update_fruit_spawns",
-    "update_player_movement",
-)
-
 
 @dataclass(slots=True, frozen=True)
 class ScorePopup:
