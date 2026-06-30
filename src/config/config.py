@@ -11,6 +11,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "highscore_filename": "highscores.json",
     "pacgum": 42,
     "seed": 42,
+    "lives": 3,
+    "points_per_pacgum": 10,
+    "points_per_super_pacgum": 50,
+    "points_per_ghost": 200,
+    "level_max_time": 90,  # [wehan] seconds per level (wehan used turn count)
     "levels": [
         {"width": 21, "height": 21},
         {"width": 21, "height": 21},
