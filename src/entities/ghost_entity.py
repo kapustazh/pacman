@@ -104,9 +104,7 @@ class GhostEntity(Sprite):
         if self._hidden:
             return
         animation = (
-            self._frightened_animation
-            if self._frightened
-            else self._animation
+            self._frightened_animation if self._frightened else self._animation
         )
         frame = animation.frame_at(now_ms)
         if frame is not self.image:

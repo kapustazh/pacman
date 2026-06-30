@@ -43,7 +43,7 @@ class LevelLayout:
             return True
         if pos.row >= self.height or pos.col >= self.width:
             return True
-        return self.cells[pos.row][pos.col] == TileType.WALL
+        return bool(self.cells[pos.row][pos.col] == TileType.WALL)
 
 
 def load_level(
@@ -65,4 +65,5 @@ def load_level(
     random.seed(seed)
     adaptor = MazeAdaptor()
     grid = adaptor.generate(width, height, seed)
-    return LevelBuilder(pacgum_count).build(grid)
+    layout: LevelLayout = LevelBuilder(pacgum_count).build(grid)
+    return layout

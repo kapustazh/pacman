@@ -28,6 +28,7 @@ from game.world_ghosts import (
 )
 from maze.map_data import TileType
 from sprites.assets import Assets
+from pygame.sprite import Sprite
 from sprites.sprite_types import Direction, FRUIT_POINTS, GhostKind
 
 
@@ -91,8 +92,8 @@ class GameWorld:
         self._catalog: Assets = catalog
         self._render_config: WorldRenderConfig = render_config
         self._level_number: int = level_number
-        self.all_sprites: LayeredUpdates = LayeredUpdates()
-        self.consumables: Group = Group()
+        self.all_sprites: LayeredUpdates[Sprite] = LayeredUpdates()
+        self.consumables: Group[PelletEntity] = Group()
         self._remaining_consumables: set[CellPos] = set(layout.pellet_cells)
         self._remaining_consumables.update(layout.power_pellet_cells)
         self._player: PlayerEntity | None = None

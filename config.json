@@ -3,7 +3,7 @@
   "pacgum": 42,
   "seed": 42,
   "levels": [
-    {"width": 21, "height": 21},
+    {"width": 15, "height": 15},
     {"width": 21, "height": 21},
     {"width": 23, "height": 23},
     {"width": 23, "height": 23},
