@@ -20,10 +20,13 @@ from states.text import ArcadeTextRenderer  # noqa: E402
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
 HIGHSCORES_FILE = "highscores.json"
-CONFIG_PATH = "config.json"
 
 
 def main() -> None:
+    if len(sys.argv) != 2:
+        print("Usage: python3 pac-man.py config.json")
+        sys.exit(1)
+
     pygame.init()
     pygame.key.set_repeat(0)
     pygame.mouse.set_visible(False)
@@ -32,7 +35,7 @@ def main() -> None:
     if ICON_PATH.exists():
         pygame.display.set_icon(pygame.image.load(ICON_PATH))
 
-    config = load_config(CONFIG_PATH)
+    config = load_config(sys.argv[1])
     assets = Assets()
     assets.load()
     text = ArcadeTextRenderer()
