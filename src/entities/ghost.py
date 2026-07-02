@@ -7,6 +7,16 @@ from src.maze.map_data import MapData
 from src.entities.player import Player
 
 
+# Original Pac-Man direction priority used for tie-breaking.
+# Priority: Up -> Left -> Down -> Right.
+DIRECTION_ORDER = [
+    (-1, 0),  # up
+    (0, -1),  # left
+    (1, 0),  # down
+    (0, 1),  # right
+]
+
+
 class Ghost:
     """Represent a ghost."""
 
@@ -87,20 +97,110 @@ class Ghost:
             map_data: MapData
             ) -> None:
         """
-        Move one step towards the target using BFS shortest path.
+        Move one step towards the target using original Pac-Man style logic.
+
+        Normal ghosts do not compute a full shortest path. They keep moving
+        straight in corridors and only choose a new direction at junctions.
+        At a junction, each possible neighboring tile is compared by squared
+        distance to the target, using a fixed tie-breaking order.
         """
         if not self.active:
             return
 
-        path = self.find_path_bfs(
-            self.row, self.col, target_row, target_col, map_data)
-
-        if len(path) >= 2:
-            self.last_row = self.row
-            self.last_col = self.col
-            self.row, self.col = path[1]
+        next_pos = self._choose_pacman_step(target_row, target_col, map_data)
+        if next_pos is None:
+            self.move_random_allow_back(map_data)
             return
-        self.move_random(map_data)
+
+        self.last_row = self.row
+        self.last_col = self.col
+        self.row, self.col = next_pos
+
+    def _current_direction(self) -> tuple[int, int] | None:
+        """Return the current movement direction based on previous position."""
+        row_delta = self.row - self.last_row
+        col_delta = self.col - self.last_col
+        if (row_delta, col_delta) in DIRECTION_ORDER:
+            return (row_delta, col_delta)
+        return None
+
+    def _valid_directions(
+        self,
+        map_data: MapData,
+        allow_reverse: bool = False,
+    ) -> list[tuple[int, int]]:
+        """Return valid directions in a fixed priority order."""
+        current_direction = self._current_direction()
+        reverse_direction = None
+        if current_direction is not None:
+            reverse_direction = (-current_direction[0], -current_direction[1])
+
+        valid_directions = []
+        for row_delta, col_delta in DIRECTION_ORDER:
+            if (
+                not allow_reverse
+                and (row_delta, col_delta) == reverse_direction
+            ):
+                continue
+            new_row = self.row + row_delta
+            new_col = self.col + col_delta
+
+            if not map_data.is_wall(new_row, new_col):
+                valid_directions.append((row_delta, col_delta))
+        return valid_directions
+
+    def _is_junction(self, map_data: MapData) -> bool:
+        """Return True if the ghost has multiple forward choices."""
+        return len(self._valid_directions(map_data)) >= 2
+        # Reverse is excluded, so:
+        # 2 forward choices == 3 total directions in the original game.
+
+    def _choose_pacman_step(
+            self, 
+            target_row: int,
+            target_col: int,
+            map_data: MapData,
+    ) -> tuple[int, int] | None:
+        """
+        Choose the next grid cell using the original Pac-Man
+        junction-based movement algorithm.
+
+        The ghost only evaluates neighbouring tiles at
+        intersections instead of computing a global shortest
+        path.
+        """
+        current_direction = self._current_direction()
+
+        if current_direction is not None and not self._is_junction(map_data):
+            next_row = self.row + current_direction[0]
+            next_col = self.col + current_direction[1]
+
+            if not map_data .is_wall(next_row, next_col):
+                return next_row, next_col
+
+        directions = self._valid_directions(map_data)
+        if not directions:
+            directions = self._valid_directions(map_data, allow_reverse=True)
+        if not directions:
+            return None
+
+        best_direction: tuple[int, int] = directions[0]
+        best_distance = float("inf")
+
+        for row_delta, col_delta in directions:
+            new_row = self.row + row_delta
+            new_col = self.col + col_delta
+            row_distance = new_row - target_row
+            col_distance = new_col - target_col
+            distance = (
+                row_distance * row_distance
+                + col_distance * col_distance
+            )
+            if distance < best_distance:
+                best_distance = distance
+                best_direction = (row_delta, col_delta)
+
+        return self.row + best_direction[0], self.col + best_direction[1]
 
     def move_away(
             self,
@@ -123,12 +223,7 @@ class Ghost:
         if len(path) >= 2:
             avoid_pos = path[-2]
 
-        moves = [
-            (0, 1),  # right
-            (0, -1),  # left
-            (-1, 0),  # up
-            (1, 0),  # down
-        ]
+        moves = DIRECTION_ORDER
 
         valid_moves: list[tuple[int, int]] = []
         back_pos = (self.last_row, self.last_col)
@@ -158,12 +253,7 @@ class Ghost:
         if not self.active:
             return
 
-        moves = [
-            (0, 1),  # right
-            (0, -1),  # left
-            (-1, 0),  # up
-            (1, 0),  # down
-        ]
+        moves = DIRECTION_ORDER
 
         valid_moves: list[tuple[int, int]] = []
 
@@ -185,12 +275,7 @@ class Ghost:
         if not self.active:
             return
 
-        moves = [
-            (0, 1),  # right
-            (0, -1),  # left
-            (-1, 0),  # up
-            (1, 0),  # down
-        ]
+        moves = DIRECTION_ORDER
 
         valid_moves: list[tuple[int, int]] = []
         back_pos = (self.last_row, self.last_col)
