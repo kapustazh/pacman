@@ -156,7 +156,7 @@ class Ghost:
         # 2 forward choices == 3 total directions in the original game.
 
     def _choose_pacman_step(
-            self, 
+            self,
             target_row: int,
             target_col: int,
             map_data: MapData,
