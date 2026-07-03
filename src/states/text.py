@@ -264,6 +264,27 @@ class ArcadeTextRenderer:
         return scaled
 
 
+_plus_glyph_cache: dict[tuple[tuple[int, int, int, int], int], Surface] = {}
+
+
+def plus_glyph(color: tuple[int, int, int, int], scale: int) -> Surface:
+    """Return a cached plus sign surface for HUD life overflow."""
+    key = (color, scale)
+    cached = _plus_glyph_cache.get(key)
+    if cached is not None:
+        return cached
+
+    cell = ArcadeTextRenderer.CELL_SIZE * scale
+    surface = pygame.Surface((cell, cell), pygame.SRCALPHA)
+    cx = cy = cell // 2
+    thickness = max(1, scale)
+    arm = cx - scale
+    pygame.draw.line(surface, color, (cx - arm, cy), (cx + arm, cy), thickness)
+    pygame.draw.line(surface, color, (cx, cy - arm), (cx, cy + arm), thickness)
+    _plus_glyph_cache[key] = surface
+    return surface
+
+
 def menu_row_rect(
     surface: Surface,
     index: int,
