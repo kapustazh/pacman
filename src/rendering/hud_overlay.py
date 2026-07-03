@@ -190,16 +190,14 @@ class HudOverlay:
             return
 
         spare = max(0, lives - 1)
-        icon_count = (
-            self.MAX_LIFE_ICONS if lives > self.MAX_LIFE_ICONS else spare
-        )
+        icon_count = min(spare, self.MAX_LIFE_ICONS)
         icon_height = self._life_icon.get_height()
         icon_y = y - icon_height // 2
         for _ in range(icon_count):
             surface.blit(self._life_icon, (x, icon_y))
             x += self._life_icon.get_width() + self.LIFE_ICON_GAP
 
-        if lives <= self.MAX_LIFE_ICONS:
+        if spare <= self.MAX_LIFE_ICONS:
             return
 
         font = self._text.font(ArcadeTextColor.YELLOW, self.HUD_SCALE)
@@ -208,7 +206,7 @@ class HudOverlay:
         plus = plus_glyph(self.YELLOW, self.HUD_SCALE)
         plus_rect = plus.get_rect(midleft=(x, y))
         surface.blit(plus, plus_rect)
-        count_surface = font.render(str(lives - self.MAX_LIFE_ICONS))
+        count_surface = font.render(str(spare - self.MAX_LIFE_ICONS))
         count_rect = count_surface.get_rect(midleft=(plus_rect.right + gap, y))
         surface.blit(count_surface, count_rect)
 
