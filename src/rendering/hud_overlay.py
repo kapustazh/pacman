@@ -9,7 +9,12 @@ from pygame.surface import Surface
 from game.game_session import GameSession, GameplayPhase
 from game.game_world import ScorePopup
 from game.render_config import MazeBounds
-from states.text import ArcadeTextColor, ArcadeTextFont, ArcadeTextRenderer
+from states.text import (
+    ArcadeTextColor,
+    ArcadeTextFont,
+    ArcadeTextRenderer,
+    plus_glyph,
+)
 
 
 class HudOverlay:
@@ -21,6 +26,7 @@ class HudOverlay:
     HUD_SCALE: ClassVar[int] = 2
     SIDE_MARGIN: ClassVar[int] = 48
     LIFE_ICON_GAP: ClassVar[int] = 4
+    MAX_LIFE_ICONS: ClassVar[int] = 3
     MESSAGE_SCALE: ClassVar[int] = 3
     SCORE_POPUP_SCALE: ClassVar[int] = 1
     STATIC_LABELS: ClassVar[tuple[str, ...]] = ("1UP", "HIGH SCORE", "TIME")
@@ -29,6 +35,7 @@ class HudOverlay:
         GameplayPhase.READY: ArcadeTextColor.YELLOW,
         GameplayPhase.LEVEL_COMPLETE: ArcadeTextColor.YELLOW,
     }
+    YELLOW: ClassVar[tuple[int, int, int, int]] = (255, 255, 0, 255)
 
     __slots__ = (
         "_font",
@@ -129,9 +136,7 @@ class HudOverlay:
     ) -> None:
         """Draw spare life icons and current level below the maze."""
         bottom_y = maze_bounds.bottom + self.BOTTOM_EDGE
-        self._draw_life_icons(
-            surface, session.spare_lives(), maze_bounds.x, bottom_y
-        )
+        self._draw_life_icons(surface, session.lives, maze_bounds.x, bottom_y)
         if self._fruit_icon is not None:
             fruit_rect = self._fruit_icon.get_rect(
                 midleft=(
@@ -176,19 +181,36 @@ class HudOverlay:
     def _draw_life_icons(
         self,
         surface: Surface,
-        spare_lives: int,
+        lives: int,
         x: int,
         y: int,
     ) -> None:
-        """Draw one Pac-Man icon per spare life."""
-        if self._life_icon is None or spare_lives <= 0:
+        """Draw spare life icons; above cap show 3 icons, plus and counter."""
+        if lives <= 0 or self._life_icon is None:
             return
 
+        spare = max(0, lives - 1)
+        icon_count = (
+            self.MAX_LIFE_ICONS if lives > self.MAX_LIFE_ICONS else spare
+        )
         icon_height = self._life_icon.get_height()
         icon_y = y - icon_height // 2
-        for _ in range(spare_lives):
+        for _ in range(icon_count):
             surface.blit(self._life_icon, (x, icon_y))
             x += self._life_icon.get_width() + self.LIFE_ICON_GAP
+
+        if lives <= self.MAX_LIFE_ICONS:
+            return
+
+        font = self._text.font(ArcadeTextColor.YELLOW, self.HUD_SCALE)
+        gap = self.LIFE_ICON_GAP
+        x += gap
+        plus = plus_glyph(self.YELLOW, self.HUD_SCALE)
+        plus_rect = plus.get_rect(midleft=(x, y))
+        surface.blit(plus, plus_rect)
+        count_surface = font.render(str(lives - self.MAX_LIFE_ICONS))
+        count_rect = count_surface.get_rect(midleft=(plus_rect.right + gap, y))
+        surface.blit(count_surface, count_rect)
 
     def _draw_phase_message(
         self,
