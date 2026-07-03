@@ -268,7 +268,7 @@ _plus_glyph_cache: dict[tuple[tuple[int, int, int, int], int], Surface] = {}
 
 
 def plus_glyph(color: tuple[int, int, int, int], scale: int) -> Surface:
-    """Return a cached yellow plus sign for HUD life overflow."""
+    """Return a cached plus sign surface for HUD life overflow."""
     key = (color, scale)
     cached = _plus_glyph_cache.get(key)
     if cached is not None:
