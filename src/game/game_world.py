@@ -55,6 +55,8 @@ class GameWorld:
     FRIGHTENED_FLASH_MS: ClassVar[int] = 2000
     GHOST_EATEN_RESPAWN_MS: ClassVar[int] = 5000
     SCORE_POPUP_DURATION_MS: ClassVar[int] = 1000
+    CHASE_STEPS: ClassVar[int] = 20
+    SCATTER_STEPS: ClassVar[int] = 20
 
     __slots__ = (
         "_catalog",
@@ -65,6 +67,8 @@ class GameWorld:
         "_ghost_respawn_at_ms",
         "_ghosts",
         "_frightened_until_ms",
+        "_scatter_mode",
+        "_scatter_step_count",
         "_layout",
         "_level_number",
         "_player",
@@ -121,6 +125,8 @@ class GameWorld:
         self._ghost_home: dict[GhostKind, CellPos] = {}
         self._ghost_respawn_at_ms: dict[GhostKind, int] = {}
         self._frightened_until_ms: int = 0
+        self._scatter_mode: bool = False
+        self._scatter_step_count: int = 0
         self._fruit: PelletEntity | None = None
         self._fruit_spawn_index: int = 0
         self._fruit_kill_at_ms: int = 0
