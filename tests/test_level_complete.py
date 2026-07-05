@@ -74,7 +74,7 @@ def test_fatal_ghost_collision_on_last_pellet_loses_life_not_level_complete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Death on the last-pellet step must not enter LEVEL_COMPLETE."""
-    from game.world_ghosts import start_player_death
+    from game.ghost_logic import start_player_death
 
     def trigger_death_and_clear_pellets(
         world: GameWorld,
