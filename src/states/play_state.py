@@ -92,6 +92,22 @@ class PlayState(GameState):
 
                 context.scene_manager.push(PauseState())
                 return
+            if event.key == pygame.K_i and self._world is not None:
+                self._world.toggle_invincible()
+                continue
+            if event.key == pygame.K_f and self._world is not None:
+                self._world.toggle_ghosts_frozen()
+                continue
+            if event.key == pygame.K_l and self._session is not None:
+                self._session.lives += 1
+                continue
+            if (
+                event.key == pygame.K_n
+                and self._session is not None
+                and self._world is not None
+            ):
+                self._advance_level_or_win(context, pygame.time.get_ticks())
+                continue
             direction = _direction_from_key(event.key)
             if (
                 direction is not None
@@ -183,16 +199,21 @@ class PlayState(GameState):
         cycle_ms = elapsed_ms % 400
         self._world.set_wall_flash(cycle_ms < 200)
         if elapsed_ms >= GameSession.LEVEL_COMPLETE_DURATION_MS:
-            levels = context.config.get("levels", [])
-            if self._level_index + 1 >= len(levels):
-                self._open_end_screen(context, won=True)
-                return
-            self._level_index += 1
-            self._level_seed = random.randint(0, 100000)
-            self._session.advance_level()
-            self._reload_world(context)
-            self._session.reset_level_timer()
-            self._session.enter_ready(now_ms)
+            self._advance_level_or_win(context, now_ms)
+
+    def _advance_level_or_win(self, context: GameContext, now_ms: int) -> None:
+        """Move to the next configured level, or the win screen if none remain."""
+        assert self._session is not None
+        levels = context.config.get("levels", [])
+        if self._level_index + 1 >= len(levels):
+            self._open_end_screen(context, won=True)
+            return
+        self._level_index += 1
+        self._level_seed = random.randint(0, 100000)
+        self._session.advance_level()
+        self._reload_world(context)
+        self._session.reset_level_timer()
+        self._session.enter_ready(now_ms)
 
     def _update_game_over(self, now_ms: int, context: GameContext) -> None:
         if self._session is None:

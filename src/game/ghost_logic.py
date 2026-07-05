@@ -243,7 +243,7 @@ def _chase_target(
 
 def move_ghosts(world: GameWorld) -> None:
     """Step every visible ghost once per player grid step."""
-    if world._player is None:
+    if world._player is None or world._ghosts_frozen:
         return
     layout = world._layout
     player_cell = world._player.cell
@@ -346,7 +346,7 @@ def resolve_actor_collisions(world: GameWorld) -> None:
             continue
         if is_frightened(world):
             eat_ghost(world, ghost)
-        else:
+        elif not world._invincible:
             start_player_death(world, world._step_now_ms)
             return
 

@@ -21,6 +21,7 @@ from game.game_world import GameWorld, spawn_fruit, update_fruit_spawns
 from game.ghost_logic import (
     activate_frightened_mode,
     move_ghosts,
+    resolve_actor_collisions,
     update_frightened_state,
 )
 from game.level import load_level
@@ -117,3 +118,26 @@ def test_scatter_mode_toggles_after_chase_and_scatter_steps() -> None:
     for _ in range(world.SCATTER_STEPS):
         move_ghosts(world)
     assert world._scatter_mode is False
+
+
+def test_cheat_invincible_blocks_death() -> None:
+    world = _build_world()
+    assert world._player is not None
+    world.toggle_invincible()
+    ghost = next(iter(world._ghosts.values()))
+    ghost.cell = world._player.cell
+
+    resolve_actor_collisions(world)
+
+    assert world.player_is_dying is False
+
+
+def test_cheat_freeze_stops_ghost_movement() -> None:
+    world = _build_world()
+    world.toggle_ghosts_frozen()
+    ghost = next(iter(world._ghosts.values()))
+    before = ghost.cell
+
+    move_ghosts(world)
+
+    assert ghost.cell == before
