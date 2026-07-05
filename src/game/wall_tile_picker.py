@@ -22,7 +22,11 @@ BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
     (True, True, True, False): TileKind.VERTICAL,
     (True, True, False, True): TileKind.VERTICAL,
     (True, True, True, True): TileKind.WALL,
-    (False, False, False, False): TileKind.WALL,
+    # A wall cell with no wall neighbours at all is a lone post at a 4-way
+    # junction (common in this maze generator's checkerboard layout), not an
+    # enclosed wall mass — give it its own small "pillar" art, not a full
+    # solid-fill block that reads as a disconnected obstacle.
+    (False, False, False, False): TileKind.PILLAR,
 }
 
 

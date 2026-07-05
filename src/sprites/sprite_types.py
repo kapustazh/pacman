@@ -36,6 +36,7 @@ class TileKind(Enum):
     CORNER_TR = auto()
     CORNER_BL = auto()
     CORNER_BR = auto()
+    PILLAR = auto()
 
 
 FRUIT_POINTS: dict[FruitKind, int] = {

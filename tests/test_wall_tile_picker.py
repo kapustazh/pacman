@@ -17,9 +17,13 @@ def test_pick_wall_tile_all_sixteen_neighbor_patterns() -> None:
         assert pick_for_neighbors(up, down, left, right) == BY_NEIGHBORS[neighbors]
 
 
-def test_interior_and_isolated_walls_use_solid_fill() -> None:
+def test_fully_enclosed_wall_uses_solid_fill() -> None:
     assert pick_for_neighbors(True, True, True, True) == TileKind.WALL
-    assert pick_for_neighbors(False, False, False, False) == TileKind.WALL
+
+
+def test_isolated_wall_uses_pillar_not_solid_fill() -> None:
+    """A lone post at a 4-way junction must not look like a wall-mass fill."""
+    assert pick_for_neighbors(False, False, False, False) == TileKind.PILLAR
 
 
 def test_wall_tile_dict_has_no_duplicate_keys() -> None:
