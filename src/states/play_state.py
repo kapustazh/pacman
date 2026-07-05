@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import threading
 
 import pygame
 from pygame.surface import Surface
@@ -16,10 +17,14 @@ from game.game_world import (
     update_fruit_spawns,
     update_player_movement,
 )
-from game.level import load_level
+from game.level import LevelLayout, load_level
 from game.render_config import MazeBounds, WorldRenderConfig
 from rendering.hud_overlay import HudOverlay
 from sprites.sprite_types import Direction
+from states.text import ArcadeTextColor
+
+LOADING_TEXT_Y: int = 400
+LOADING_DOT_CYCLE_MS: int = 400
 
 
 class PlayState(GameState):
@@ -32,6 +37,9 @@ class PlayState(GameState):
         self._level_seed: int = 42
         self._hud: HudOverlay | None = None
         self._maze_bounds: MazeBounds | None = None
+        self._loading_thread: threading.Thread | None = None
+        self._pending_layout: LevelLayout | None = None
+        self._loading_error: BaseException | None = None
 
     def enter(
         self,
@@ -59,8 +67,7 @@ class PlayState(GameState):
         )
         self._level_index = 0
         self._level_seed = int(context.config.get("seed", 42))
-        self._build_world(context)
-        self._session.enter_ready(started_at)
+        self._start_loading(context)
 
     def leave(self, context: GameContext) -> None:
         """Tear down world resources."""
@@ -104,6 +111,9 @@ class PlayState(GameState):
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
         """Advance gameplay phase, timer, and world animation."""
+        if self._loading_thread is not None:
+            self._poll_loading(context, now_ms)
+            return
         if self._session is None or self._world is None:
             return
 
@@ -191,8 +201,6 @@ class PlayState(GameState):
             self._level_seed = random.randint(0, 100000)
             self._session.advance_level()
             self._reload_world(context)
-            self._session.reset_level_timer()
-            self._session.enter_ready(now_ms)
 
     def _update_game_over(self, now_ms: int, context: GameContext) -> None:
         if self._session is None:
@@ -205,6 +213,9 @@ class PlayState(GameState):
 
     def draw(self, surface: Surface, context: GameContext) -> None:
         """Draw world, classic HUD bands, and phase message."""
+        if self._loading_thread is not None:
+            self._draw_loading(surface, context)
+            return
         if (
             self._world is None
             or self._session is None
@@ -216,6 +227,16 @@ class PlayState(GameState):
         self._hud.draw_score_popups(surface, self._world.score_popups)
         self._hud.draw(surface, self._session, self._maze_bounds)
 
+    def _draw_loading(self, surface: Surface, context: GameContext) -> None:
+        """Animate a message while the maze generates off the main thread."""
+        dots = "." * (1 + (pygame.time.get_ticks() // LOADING_DOT_CYCLE_MS) % 3)
+        context.text.draw_centered_arcade_text(
+            surface,
+            f"GENERATING MAZE{dots}",
+            LOADING_TEXT_Y,
+            ArcadeTextColor.YELLOW,
+        )
+
     def _sync_session_score(self) -> None:
         """Keep session score/high-score in sync with world during update."""
         if self._session is None or self._world is None:
@@ -223,24 +244,17 @@ class PlayState(GameState):
         self._session.sync_score(self._world.score)
         self._session.update_high_score(self._session.score)
 
-    def _build_world(self, context: GameContext) -> None:
-        """Load procedural level and spawn a fresh GameWorld."""
+    def _build_world(self, context: GameContext, layout: LevelLayout) -> None:
+        """Spawn a fresh GameWorld from an already-generated layout."""
         assert self._session is not None
         catalog = context.assets
-        layout = load_level(
-            context.config,
-            self._level_index,
-            self._level_seed,
-        )
         render_config = WorldRenderConfig.centered(
             layout,
             context.screen.get_size(),
         )
         self._maze_bounds = render_config.maze_bounds(layout)
-        initial_score = self._session.score if self._session is not None else 0
-        level_number = (
-            self._session.level_number if self._session is not None else 1
-        )
+        initial_score = self._session.score
+        level_number = self._session.level_number
         config = context.config
         self._world = GameWorld(
             layout,
@@ -256,11 +270,41 @@ class PlayState(GameState):
             self._hud.set_fruit_icon(self._world.level_fruit_surface)
 
     def _reload_world(self, context: GameContext) -> None:
-        """Tear down world and build a new one for the next level."""
+        """Tear down world and start loading the next level."""
         if self._world is not None:
             self._world.teardown()
             self._world = None
-        self._build_world(context)
+        self._start_loading(context)
+
+    def _start_loading(self, context: GameContext) -> None:
+        """Generate the maze off the main thread so the window stays live."""
+        self._pending_layout = None
+        self._loading_error = None
+        config = context.config
+        level_index = self._level_index
+        seed = self._level_seed
+
+        def generate() -> None:
+            try:
+                self._pending_layout = load_level(config, level_index, seed)
+            except BaseException as exc:  # noqa: BLE001 - surfaced below
+                self._loading_error = exc
+
+        self._loading_thread = threading.Thread(target=generate, daemon=True)
+        self._loading_thread.start()
+
+    def _poll_loading(self, context: GameContext, now_ms: int) -> None:
+        """Finish building the world once the background generation ends."""
+        if self._loading_thread is None or self._loading_thread.is_alive():
+            return
+        self._loading_thread = None
+        if self._loading_error is not None:
+            raise self._loading_error
+        assert self._pending_layout is not None and self._session is not None
+        self._build_world(context, self._pending_layout)
+        self._pending_layout = None
+        self._session.reset_level_timer()
+        self._session.enter_ready(now_ms)
 
     def _handle_life_lost(self, now_ms: int) -> None:
         """Lose one life when timer expires or ghost collision."""
