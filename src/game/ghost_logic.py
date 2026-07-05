@@ -293,10 +293,12 @@ def is_frightened(world: GameWorld) -> bool:
 
 
 def update_frightened_state(world: GameWorld, now_ms: int) -> None:
-    frightened = now_ms < world._frightened_until_ms
+    remaining = world._frightened_until_ms - now_ms
+    frightened = remaining > 0
+    flashing = frightened and remaining <= world.FRIGHTENED_FLASH_MS
     for ghost in world._ghosts.values():
         if not ghost.is_hidden:
-            ghost.set_frightened(frightened)
+            ghost.set_frightened(frightened, flashing)
 
 
 def eat_ghost(world: GameWorld, ghost: GhostEntity) -> None:

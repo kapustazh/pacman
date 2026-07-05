@@ -52,6 +52,7 @@ class GameWorld:
     POWER_PELLET_POINTS: ClassVar[int] = 50
     GHOST_POINTS: ClassVar[int] = 200
     FRIGHTENED_DURATION_MS: ClassVar[int] = 6000
+    FRIGHTENED_FLASH_MS: ClassVar[int] = 2000
     GHOST_EATEN_RESPAWN_MS: ClassVar[int] = 5000
     SCORE_POPUP_DURATION_MS: ClassVar[int] = 1000
 
@@ -350,6 +351,7 @@ def _spawn_from_layout(world: GameWorld) -> None:
             world._catalog.ghosts.frightened,
             cell,
             cell_center(cfg, cell),
+            flash_animation=world._catalog.ghosts.frightened_flash,
         )
         world._ghosts[kind] = ghost
         world._ghost_home[kind] = cell

@@ -13,6 +13,8 @@ class GhostEntity(Sprite):
 
     __slots__ = (
         "_animation",
+        "_flashing",
+        "_flash_animation",
         "_frightened_animation",
         "_frightened",
         "_hidden",
@@ -33,6 +35,7 @@ class GhostEntity(Sprite):
         frightened_animation: AnimatedSprite,
         cell: CellPos,
         center: tuple[int, int],
+        flash_animation: AnimatedSprite | None = None,
     ) -> None:
         super().__init__()
         self.kind = kind
@@ -42,7 +45,9 @@ class GhostEntity(Sprite):
         self._prev_center = center
         self._animation = animation
         self._frightened_animation = frightened_animation
+        self._flash_animation = flash_animation or frightened_animation
         self._frightened = False
+        self._flashing = False
         self._hidden = False
         self.layer = int(SpriteLayer.ACTORS)
         self.image = animation.frame_at(0)
@@ -53,9 +58,10 @@ class GhostEntity(Sprite):
         """Return True when ghost was eaten and not yet respawned."""
         return self._hidden
 
-    def set_frightened(self, frightened: bool) -> None:
-        """Switch between normal and frightened appearance."""
+    def set_frightened(self, frightened: bool, flashing: bool = False) -> None:
+        """Switch between normal, frightened and flashing-warning appearance."""
         self._frightened = frightened
+        self._flashing = flashing
 
     def move_to(self, cell: CellPos, center: tuple[int, int]) -> None:
         """Move ghost one grid step."""
@@ -98,6 +104,7 @@ class GhostEntity(Sprite):
         self._prev_center = center
         self._hidden = False
         self._frightened = False
+        self._flashing = False
         self.image = self._animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
 
@@ -105,9 +112,12 @@ class GhostEntity(Sprite):
         """Update ghost animation frame."""
         if self._hidden:
             return
-        animation = (
-            self._frightened_animation if self._frightened else self._animation
-        )
+        if self._frightened and self._flashing:
+            animation = self._flash_animation
+        elif self._frightened:
+            animation = self._frightened_animation
+        else:
+            animation = self._animation
         frame = animation.frame_at(now_ms)
         if frame is not self.image:
             self.image = frame

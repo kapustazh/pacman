@@ -18,6 +18,7 @@ import pygame  # noqa: E402
 from config.config import DEFAULT_CONFIG
 from game.fruit_schedule import fruit_for_level, spawn_seconds_for_level
 from game.game_world import GameWorld, spawn_fruit, update_fruit_spawns
+from game.ghost_logic import activate_frightened_mode, update_frightened_state
 from game.level import load_level
 from game.render_config import WorldRenderConfig
 from sprites.assets import Assets
@@ -80,3 +81,22 @@ def test_reset_fruit_spawns_allows_early_spawn_after_life_lost() -> None:
 
     assert world._fruit is not None
     assert world._fruit_spawn_index == 1
+
+
+def test_frightened_ghosts_flash_only_near_the_end() -> None:
+    world = _build_world()
+    activate_frightened_mode(world)
+    ghost = next(iter(world._ghosts.values()))
+
+    update_frightened_state(world, now_ms=0)
+    assert ghost._frightened is True
+    assert ghost._flashing is False
+
+    flash_starts_at = world._frightened_until_ms - world.FRIGHTENED_FLASH_MS
+    update_frightened_state(world, now_ms=flash_starts_at)
+    assert ghost._frightened is True
+    assert ghost._flashing is True
+
+    update_frightened_state(world, now_ms=world._frightened_until_ms)
+    assert ghost._frightened is False
+    assert ghost._flashing is False
