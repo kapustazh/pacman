@@ -71,7 +71,7 @@ class GhostEntity(Sprite):
         return self._returning
 
     def set_frightened(self, frightened: bool, flashing: bool = False) -> None:
-        """Switch between normal, frightened and flashing-warning appearance."""
+        """Switch between normal, frightened and flashing appearance."""
         self._frightened = frightened
         self._flashing = flashing
 
@@ -140,7 +140,9 @@ class GhostEntity(Sprite):
         elif self._frightened and self._flashing:
             toggle = (now_ms // self.FLASH_INTERVAL_MS) % 2
             animation = (
-                self._flash_animation if toggle == 0 else self._frightened_animation
+                self._flash_animation
+                if toggle == 0
+                else self._frightened_animation
             )
         elif self._frightened:
             animation = self._frightened_animation

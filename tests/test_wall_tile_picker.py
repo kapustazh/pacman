@@ -14,7 +14,8 @@ def test_pick_wall_tile_all_sixteen_neighbor_patterns() -> None:
     for up, down, left, right in itertools.product((False, True), repeat=4):
         neighbors = (up, down, left, right)
         assert neighbors in BY_NEIGHBORS
-        assert pick_for_neighbors(up, down, left, right) == BY_NEIGHBORS[neighbors]
+        expected = BY_NEIGHBORS[neighbors]
+        assert pick_for_neighbors(up, down, left, right) == expected
 
 
 def test_fully_enclosed_wall_uses_solid_fill() -> None:

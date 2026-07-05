@@ -20,7 +20,6 @@ from game.fruit_schedule import fruit_for_level, spawn_seconds_for_level
 from game.game_world import GameWorld, spawn_fruit, update_fruit_spawns
 from game.ghost_logic import (
     activate_frightened_mode,
-    eat_ghost,
     move_ghosts,
     resolve_actor_collisions,
     update_frightened_state,

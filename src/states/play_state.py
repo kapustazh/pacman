@@ -226,7 +226,7 @@ class PlayState(GameState):
             self._advance_level_or_win(context, now_ms)
 
     def _advance_level_or_win(self, context: GameContext, now_ms: int) -> None:
-        """Move to the next configured level, or the win screen if none remain."""
+        """Move to the next level, or the win screen if none remain."""
         assert self._session is not None
         levels = context.config.get("levels", [])
         if self._level_index + 1 >= len(levels):
@@ -270,7 +270,9 @@ class PlayState(GameState):
             pygame.time.get_ticks() + CHEAT_MESSAGE_DURATION_MS
         )
 
-    def _draw_cheat_message(self, surface: Surface, context: GameContext) -> None:
+    def _draw_cheat_message(
+        self, surface: Surface, context: GameContext
+    ) -> None:
         """Draw the last-used cheat key in the bottom-left corner, briefly."""
         if self._cheat_message is None:
             return

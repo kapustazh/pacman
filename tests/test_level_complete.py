@@ -433,7 +433,7 @@ def test_load_level_deterministic_pellets() -> None:
 
 
 def test_play_state_loads_level_off_main_thread() -> None:
-    """Maze generation must run on a background thread, not block the caller."""
+    """Maze generation must run on a background thread, not block."""
     import time
     from types import SimpleNamespace
 

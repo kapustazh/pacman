@@ -72,7 +72,10 @@ class Assets:
     }
 
     FRIGHTENED_COORDS: ClassVar[list[tuple[int, int]]] = [(73, 8), (75, 8)]
-    FRIGHTENED_FLASH_COORDS: ClassVar[list[tuple[int, int]]] = [(77, 8), (79, 8)]
+    FRIGHTENED_FLASH_COORDS: ClassVar[list[tuple[int, int]]] = [
+        (77, 8),
+        (79, 8),
+    ]
     EYES_COORDS: ClassVar[list[tuple[int, int]]] = [(75, 10)]
 
     FRUIT_COORDS: ClassVar[dict[FruitKind, tuple[int, int]]] = {
@@ -324,7 +327,9 @@ class Assets:
         )
 
     @staticmethod
-    def _solid_tile(color: tuple[int, int, int], scale: float = 1.0) -> Surface:
+    def _solid_tile(
+        color: tuple[int, int, int], scale: float = 1.0
+    ) -> Surface:
         """Flat-filled tile for wall cells with no matching line-art shape.
 
         scale < 1 draws a centered, smaller square (e.g. a lone junction
@@ -353,4 +358,4 @@ class Assets:
                 if a == 0 or r + g + b < 20:
                     continue
                 counts[(r, g, b)] = counts.get((r, g, b), 0) + 1
-        return max(counts, key=counts.get) if counts else (0, 0, 0)
+        return max(counts, key=counts.__getitem__) if counts else (0, 0, 0)
