@@ -11,13 +11,17 @@ from sprites.sprite_types import GhostKind
 class GhostEntity(Sprite):
     """Static ghost sprite; movement deferred."""
 
+    FLASH_INTERVAL_MS = 200
+
     __slots__ = (
         "_animation",
+        "_eyes_animation",
         "_flashing",
         "_flash_animation",
         "_frightened_animation",
         "_frightened",
         "_hidden",
+        "_returning",
         "_prev_center",
         "cell",
         "center",
@@ -36,6 +40,7 @@ class GhostEntity(Sprite):
         cell: CellPos,
         center: tuple[int, int],
         flash_animation: AnimatedSprite | None = None,
+        eyes_animation: AnimatedSprite | None = None,
     ) -> None:
         super().__init__()
         self.kind = kind
@@ -46,8 +51,10 @@ class GhostEntity(Sprite):
         self._animation = animation
         self._frightened_animation = frightened_animation
         self._flash_animation = flash_animation or frightened_animation
+        self._eyes_animation = eyes_animation or animation
         self._frightened = False
         self._flashing = False
+        self._returning = False
         self._hidden = False
         self.layer = int(SpriteLayer.ACTORS)
         self.image = animation.frame_at(0)
@@ -58,10 +65,25 @@ class GhostEntity(Sprite):
         """Return True when ghost was eaten and not yet respawned."""
         return self._hidden
 
+    @property
+    def is_returning(self) -> bool:
+        """Return True while eaten-ghost eyes are travelling back home."""
+        return self._returning
+
     def set_frightened(self, frightened: bool, flashing: bool = False) -> None:
         """Switch between normal, frightened and flashing-warning appearance."""
         self._frightened = frightened
         self._flashing = flashing
+
+    def start_returning_home(self) -> None:
+        """Switch to eyes-only and travel back to home instead of hiding."""
+        self._returning = True
+        self._frightened = False
+        self._flashing = False
+
+    def arrive_home(self) -> None:
+        """End the eyes-only trip; resume normal appearance at home."""
+        self._returning = False
 
     def move_to(self, cell: CellPos, center: tuple[int, int]) -> None:
         """Move ghost one grid step."""
@@ -105,6 +127,7 @@ class GhostEntity(Sprite):
         self._hidden = False
         self._frightened = False
         self._flashing = False
+        self._returning = False
         self.image = self._animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
 
@@ -112,8 +135,13 @@ class GhostEntity(Sprite):
         """Update ghost animation frame."""
         if self._hidden:
             return
-        if self._frightened and self._flashing:
-            animation = self._flash_animation
+        if self._returning:
+            animation = self._eyes_animation
+        elif self._frightened and self._flashing:
+            toggle = (now_ms // self.FLASH_INTERVAL_MS) % 2
+            animation = (
+                self._flash_animation if toggle == 0 else self._frightened_animation
+            )
         elif self._frightened:
             animation = self._frightened_animation
         else:

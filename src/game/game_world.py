@@ -26,7 +26,6 @@ from game.ghost_logic import (
     move_ghosts,
     resolve_actor_collisions,
     update_frightened_state,
-    update_ghost_respawns,
 )
 from maze.map_data import TileType
 from sprites.assets import Assets
@@ -53,7 +52,6 @@ class GameWorld:
     GHOST_POINTS: ClassVar[int] = 200
     FRIGHTENED_DURATION_MS: ClassVar[int] = 6000
     FRIGHTENED_FLASH_MS: ClassVar[int] = 2000
-    GHOST_EATEN_RESPAWN_MS: ClassVar[int] = 5000
     SCORE_POPUP_DURATION_MS: ClassVar[int] = 1000
     CHASE_STEPS: ClassVar[int] = 20
     SCATTER_STEPS: ClassVar[int] = 20
@@ -64,7 +62,6 @@ class GameWorld:
         "_fruit_kill_at_ms",
         "_fruit_spawn_index",
         "_ghost_home",
-        "_ghost_respawn_at_ms",
         "_ghosts",
         "_frightened_until_ms",
         "_scatter_mode",
@@ -125,7 +122,6 @@ class GameWorld:
         self._player: PlayerEntity | None = None
         self._ghosts: dict[GhostKind, GhostEntity] = {}
         self._ghost_home: dict[GhostKind, CellPos] = {}
-        self._ghost_respawn_at_ms: dict[GhostKind, int] = {}
         self._frightened_until_ms: int = 0
         self._scatter_mode: bool = False
         self._scatter_step_count: int = 0
@@ -227,7 +223,6 @@ class GameWorld:
                 ghost.update(dt, now_ms)
         self._apply_step_visual()
         update_frightened_state(self, now_ms)
-        update_ghost_respawns(self, now_ms)
         _prune_score_popups(self, now_ms)
 
     def _apply_step_visual(self) -> None:
@@ -255,7 +250,6 @@ class GameWorld:
 
     def respawn_ghosts(self) -> None:
         """Return every ghost to its home cell after losing a life."""
-        self._ghost_respawn_at_ms.clear()
         self._frightened_until_ms = 0
         for kind, ghost in self._ghosts.items():
             home = self._ghost_home[kind]
@@ -277,7 +271,6 @@ class GameWorld:
         self._player = None
         self._ghosts.clear()
         self._ghost_home.clear()
-        self._ghost_respawn_at_ms.clear()
         self._fruit = None
         self._remaining_consumables.clear()
         self._score_popups.clear()
@@ -372,6 +365,7 @@ def _spawn_from_layout(world: GameWorld) -> None:
             cell,
             cell_center(cfg, cell),
             flash_animation=world._catalog.ghosts.frightened_flash,
+            eyes_animation=world._catalog.ghosts.eyes,
         )
         world._ghosts[kind] = ghost
         world._ghost_home[kind] = cell

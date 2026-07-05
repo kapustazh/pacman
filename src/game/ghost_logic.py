@@ -241,6 +241,25 @@ def _chase_target(
     return target
 
 
+def _next_return_step(
+    cell: CellPos,
+    home: CellPos,
+    layout: LevelLayout,
+) -> CellPos | None:
+    """One step along the shortest path back to the home corner."""
+    path = _path_bfs(cell, home, layout)
+    if len(path) >= 2:
+        return path[1]
+    return None
+
+
+def _arrive_home(world: GameWorld, ghost: GhostEntity) -> None:
+    """End an eaten ghost's return trip; resume frightened or normal look."""
+    ghost.arrive_home()
+    if is_frightened(world):
+        ghost.set_frightened(True)
+
+
 def move_ghosts(world: GameWorld) -> None:
     """Step every visible ghost once per player grid step."""
     if world._player is None or world._ghosts_frozen:
@@ -252,6 +271,17 @@ def move_ghosts(world: GameWorld) -> None:
         if ghost.is_hidden:
             continue
         home = world._ghost_home.get(kind, ghost.cell)
+        if ghost.is_returning:
+            if ghost.cell == home:
+                _arrive_home(world, ghost)
+                continue
+            step = _next_return_step(ghost.cell, home, layout)
+            if step is not None:
+                ghost.last_cell = ghost.cell
+                ghost.move_to(step, cell_center(world._render_config, step))
+                if step == home:
+                    _arrive_home(world, ghost)
+            continue
         if fleeing:
             step = _next_flee_step(
                 ghost.cell,
@@ -317,32 +347,16 @@ def update_frightened_state(world: GameWorld, now_ms: int) -> None:
 
 def eat_ghost(world: GameWorld, ghost: GhostEntity) -> None:
     world._score += world.ghost_points
-    ghost.hide_eaten()
-    world._ghost_respawn_at_ms[ghost.kind] = (
-        pygame.time.get_ticks() + world.GHOST_EATEN_RESPAWN_MS
-    )
-
-
-def update_ghost_respawns(world: GameWorld, now_ms: int) -> None:
-    for kind, respawn_at_ms in list(world._ghost_respawn_at_ms.items()):
-        if now_ms < respawn_at_ms:
-            continue
-        del world._ghost_respawn_at_ms[kind]
-        home = world._ghost_home[kind]
-        ghost = world._ghosts.get(kind)
-        if ghost is None:
-            continue
-        ghost.respawn_at(home, cell_center(world._render_config, home))
-        world.all_sprites.add(ghost, layer=ghost.layer)
-        if is_frightened(world):
-            ghost.set_frightened(True)
+    ghost.start_returning_home()
 
 
 def resolve_actor_collisions(world: GameWorld) -> None:
     if world._player is None or world._player.is_dying:
         return
     for ghost in world._ghosts.values():
-        if ghost.is_hidden or ghost.cell != world._player.cell:
+        if ghost.is_hidden or ghost.is_returning:
+            continue
+        if ghost.cell != world._player.cell:
             continue
         if is_frightened(world):
             eat_ghost(world, ghost)

@@ -372,7 +372,6 @@ def test_respawn_ghosts_returns_all_to_home(game_world: GameWorld) -> None:
     for kind, entity in game_world._ghosts.items():
         assert not entity.is_hidden
         assert entity.cell == game_world._ghost_home[kind]
-    assert not game_world._ghost_respawn_at_ms
 
 
 def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:

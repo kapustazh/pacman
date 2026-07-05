@@ -30,6 +30,9 @@ class GhostSprites:
     frightened_flash: AnimatedSprite = field(
         default_factory=lambda: AnimatedSprite(frames=[]),
     )
+    eyes: AnimatedSprite = field(
+        default_factory=lambda: AnimatedSprite(frames=[]),
+    )
 
 
 class Assets:
@@ -70,6 +73,7 @@ class Assets:
 
     FRIGHTENED_COORDS: ClassVar[list[tuple[int, int]]] = [(73, 8), (75, 8)]
     FRIGHTENED_FLASH_COORDS: ClassVar[list[tuple[int, int]]] = [(77, 8), (79, 8)]
+    EYES_COORDS: ClassVar[list[tuple[int, int]]] = [(75, 10)]
 
     FRUIT_COORDS: ClassVar[dict[FruitKind, tuple[int, int]]] = {
         FruitKind.CHERRY: (63, 6),
@@ -233,6 +237,7 @@ class Assets:
         self.ghosts.frightened_flash = self._load_frames(
             self.FRIGHTENED_FLASH_COORDS
         )
+        self.ghosts.eyes = self._load_frames(self.EYES_COORDS)
 
     def _load_fruits(self) -> None:
         for kind, coord in self.FRUIT_COORDS.items():

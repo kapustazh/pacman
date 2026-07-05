@@ -20,6 +20,7 @@ from game.fruit_schedule import fruit_for_level, spawn_seconds_for_level
 from game.game_world import GameWorld, spawn_fruit, update_fruit_spawns
 from game.ghost_logic import (
     activate_frightened_mode,
+    eat_ghost,
     move_ghosts,
     resolve_actor_collisions,
     update_frightened_state,
@@ -141,3 +142,41 @@ def test_cheat_freeze_stops_ghost_movement() -> None:
     move_ghosts(world)
 
     assert ghost.cell == before
+
+
+def test_frightened_flash_alternates_blue_and_white() -> None:
+    world = _build_world()
+    activate_frightened_mode(world)
+    ghost = next(iter(world._ghosts.values()))
+    flash_starts_at = world._frightened_until_ms - world.FRIGHTENED_FLASH_MS
+    update_frightened_state(world, now_ms=flash_starts_at)
+    assert ghost._flashing is True
+
+    interval = ghost.FLASH_INTERVAL_MS
+    ghost.update(0, flash_starts_at)
+    first_flash_frame = ghost.image
+    ghost.update(0, flash_starts_at + interval)
+    second_flash_frame = ghost.image
+
+    assert first_flash_frame is not second_flash_frame
+
+
+def test_eaten_ghost_becomes_eyes_and_returns_home() -> None:
+    world = _build_world()
+    assert world._player is not None
+    activate_frightened_mode(world)
+    kind, ghost = next(iter(world._ghosts.items()))
+    ghost.cell = world._player.cell
+
+    resolve_actor_collisions(world)
+
+    assert ghost.is_returning is True
+    assert ghost._frightened is False
+
+    home = world._ghost_home[kind]
+    for _ in range(200):
+        if not ghost.is_returning:
+            break
+        move_ghosts(world)
+    assert ghost.is_returning is False
+    assert ghost.cell == home
