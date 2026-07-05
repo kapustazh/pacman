@@ -18,6 +18,7 @@ import pygame  # noqa: E402
 from config.config import DEFAULT_CONFIG
 from game.fruit_schedule import fruit_for_level, spawn_seconds_for_level
 from game.game_world import GameWorld, spawn_fruit, update_fruit_spawns
+from game.ghost_logic import move_ghosts
 from game.level import load_level
 from game.render_config import WorldRenderConfig
 from sprites.assets import Assets
@@ -80,3 +81,16 @@ def test_reset_fruit_spawns_allows_early_spawn_after_life_lost() -> None:
 
     assert world._fruit is not None
     assert world._fruit_spawn_index == 1
+
+
+def test_scatter_mode_toggles_after_chase_and_scatter_steps() -> None:
+    world = _build_world()
+    assert world._scatter_mode is False
+
+    for _ in range(world.CHASE_STEPS):
+        move_ghosts(world)
+    assert world._scatter_mode is True
+
+    for _ in range(world.SCATTER_STEPS):
+        move_ghosts(world)
+    assert world._scatter_mode is False

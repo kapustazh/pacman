@@ -260,14 +260,17 @@ def move_ghosts(world: GameWorld) -> None:
                 layout,
             )
         else:
-            target = _chase_target(
-                kind,
-                player_cell,
-                world._travel_direction,
-                ghost.cell,
-                home,
-                layout,
-            )
+            if world._scatter_mode:
+                target = home
+            else:
+                target = _chase_target(
+                    kind,
+                    player_cell,
+                    world._travel_direction,
+                    ghost.cell,
+                    home,
+                    layout,
+                )
             step = _next_chase_step(
                 ghost.cell,
                 ghost.last_cell,
@@ -278,6 +281,17 @@ def move_ghosts(world: GameWorld) -> None:
             continue
         ghost.last_cell = ghost.cell
         ghost.move_to(step, cell_center(world._render_config, step))
+    _update_scatter_mode(world)
+
+
+def _update_scatter_mode(world: GameWorld) -> None:
+    """Alternate global Chase/Scatter behaviour every player grid step."""
+    world._scatter_step_count += 1
+    if world._scatter_step_count >= world.CHASE_STEPS + world.SCATTER_STEPS:
+        world._scatter_step_count = 0
+        world._scatter_mode = False
+    elif world._scatter_step_count >= world.CHASE_STEPS:
+        world._scatter_mode = True
 
 
 def activate_frightened_mode(world: GameWorld) -> None:
