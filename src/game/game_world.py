@@ -21,7 +21,7 @@ from game.fruit_schedule import (
 from game.level import CellPos, LevelLayout
 from game.render_config import WorldRenderConfig, cell_center, direction_delta
 from game.wall_tile_picker import pick
-from game.world_ghosts import (
+from game.ghost_logic import (
     activate_frightened_mode,
     move_ghosts,
     resolve_actor_collisions,
