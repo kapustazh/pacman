@@ -64,6 +64,8 @@ class GameWorld:
         "_ghost_respawn_at_ms",
         "_ghosts",
         "_frightened_until_ms",
+        "_invincible",
+        "_ghosts_frozen",
         "_layout",
         "_level_number",
         "_player",
@@ -120,6 +122,8 @@ class GameWorld:
         self._ghost_home: dict[GhostKind, CellPos] = {}
         self._ghost_respawn_at_ms: dict[GhostKind, int] = {}
         self._frightened_until_ms: int = 0
+        self._invincible: bool = False
+        self._ghosts_frozen: bool = False
         self._fruit: PelletEntity | None = None
         self._fruit_spawn_index: int = 0
         self._fruit_kill_at_ms: int = 0
@@ -178,6 +182,16 @@ class GameWorld:
         self._wall_flash_white = white
         for wall in self._wall_sprites:
             wall.set_flash_white(white)
+
+    def toggle_invincible(self) -> bool:
+        """Flip cheat invincibility; return the new state."""
+        self._invincible = not self._invincible
+        return self._invincible
+
+    def toggle_ghosts_frozen(self) -> bool:
+        """Flip cheat ghost-freeze; return the new state."""
+        self._ghosts_frozen = not self._ghosts_frozen
+        return self._ghosts_frozen
 
     def freeze_gameplay(self) -> None:
         """Pause gameplay."""
