@@ -431,3 +431,44 @@ def test_load_level_deterministic_pellets() -> None:
 
     second = load_level(config, 0, 42)
     assert len(second.pellet_cells) == len(layout.pellet_cells)
+
+
+def test_play_state_loads_level_off_main_thread() -> None:
+    """Maze generation must run on a background thread, not block the caller."""
+    import time
+    from types import SimpleNamespace
+
+    # Small maze so this test stays fast regardless of generator seed luck;
+    # the mechanism under test (background thread + polling), not generation
+    # speed itself, is what matters here.
+    fast_config = {
+        **DEFAULT_CONFIG,
+        "levels": [{"width": 15, "height": 15}],
+    }
+    assets = Assets()
+    assets.load()
+    context = SimpleNamespace(
+        config=fast_config,
+        assets=assets,
+        screen=Surface((1920, 1080)),
+    )
+
+    play_state = PlayState()
+    play_state._session = GameSession(phase_started_at_ms=0)
+    play_state._level_index = 0
+    play_state._level_seed = 42
+
+    start = time.monotonic()
+    play_state._start_loading(context)
+    assert time.monotonic() - start < 1.0
+    assert play_state._loading_thread is not None
+    assert play_state._world is None
+
+    deadline = time.monotonic() + 10
+    while play_state._loading_thread is not None:
+        assert time.monotonic() < deadline, "background load never finished"
+        play_state._poll_loading(context, now_ms=0)
+        time.sleep(0.05)
+
+    assert play_state._world is not None
+    assert play_state._session.phase == GameplayPhase.READY
