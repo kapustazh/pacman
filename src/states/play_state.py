@@ -24,7 +24,10 @@ from sprites.sprite_types import Direction
 from states.text import ArcadeTextColor
 
 LOADING_TEXT_Y: int = 400
+LOADING_PACMAN_Y: int = 440
 LOADING_DOT_CYCLE_MS: int = 400
+CHEAT_MESSAGE_DURATION_MS: int = 1500
+CHEAT_MESSAGE_MARGIN: int = 12
 
 
 class PlayState(GameState):
@@ -40,6 +43,8 @@ class PlayState(GameState):
         self._loading_thread: threading.Thread | None = None
         self._pending_layout: LevelLayout | None = None
         self._loading_error: BaseException | None = None
+        self._cheat_message: str | None = None
+        self._cheat_message_until_ms: int = 0
 
     def enter(
         self,
@@ -67,6 +72,7 @@ class PlayState(GameState):
         )
         self._level_index = 0
         self._level_seed = int(context.config.get("seed", 42))
+        self._cheat_message = None
         self._start_loading(context)
 
     def leave(self, context: GameContext) -> None:
@@ -100,13 +106,20 @@ class PlayState(GameState):
                 context.scene_manager.push(PauseState())
                 return
             if event.key == pygame.K_i and self._world is not None:
-                self._world.toggle_invincible()
+                now_on = self._world.toggle_invincible()
+                self._show_cheat_message(
+                    f"CHEAT: INVINCIBLE {'ON' if now_on else 'OFF'}"
+                )
                 continue
             if event.key == pygame.K_f and self._world is not None:
-                self._world.toggle_ghosts_frozen()
+                now_on = self._world.toggle_ghosts_frozen()
+                self._show_cheat_message(
+                    f"CHEAT: FREEZE GHOSTS {'ON' if now_on else 'OFF'}"
+                )
                 continue
             if event.key == pygame.K_l and self._session is not None:
                 self._session.lives += 1
+                self._show_cheat_message("CHEAT: +1 LIFE")
                 continue
             if (
                 event.key == pygame.K_n
@@ -114,6 +127,7 @@ class PlayState(GameState):
                 and self._world is not None
             ):
                 self._advance_level_or_win(context, pygame.time.get_ticks())
+                self._show_cheat_message("CHEAT: LEVEL SKIPPED")
                 continue
             direction = _direction_from_key(event.key)
             if (
@@ -247,16 +261,48 @@ class PlayState(GameState):
         self._world.draw(surface)
         self._hud.draw_score_popups(surface, self._world.score_popups)
         self._hud.draw(surface, self._session, self._maze_bounds)
+        self._draw_cheat_message(surface, context)
+
+    def _show_cheat_message(self, message: str) -> None:
+        """Record the most recent cheat action to flash in a screen corner."""
+        self._cheat_message = message
+        self._cheat_message_until_ms = (
+            pygame.time.get_ticks() + CHEAT_MESSAGE_DURATION_MS
+        )
+
+    def _draw_cheat_message(self, surface: Surface, context: GameContext) -> None:
+        """Draw the last-used cheat key in the bottom-left corner, briefly."""
+        if self._cheat_message is None:
+            return
+        if pygame.time.get_ticks() >= self._cheat_message_until_ms:
+            self._cheat_message = None
+            return
+        rendered = context.text.font(ArcadeTextColor.RED, scale=1).render(
+            self._cheat_message
+        )
+        rect = rendered.get_rect(
+            bottomleft=(
+                CHEAT_MESSAGE_MARGIN,
+                surface.get_height() - CHEAT_MESSAGE_MARGIN,
+            )
+        )
+        surface.blit(rendered, rect)
 
     def _draw_loading(self, surface: Surface, context: GameContext) -> None:
         """Animate a message while the maze generates off the main thread."""
-        dots = "." * (1 + (pygame.time.get_ticks() // LOADING_DOT_CYCLE_MS) % 3)
+        now_ms = pygame.time.get_ticks()
+        dots = "." * (1 + (now_ms // LOADING_DOT_CYCLE_MS) % 3)
         context.text.draw_centered_arcade_text(
             surface,
             f"GENERATING MAZE{dots}",
             LOADING_TEXT_Y,
             ArcadeTextColor.YELLOW,
         )
+        frame = context.assets.pacman[Direction.RIGHT].frame_at(now_ms)
+        rect = frame.get_rect(
+            center=(surface.get_width() // 2, LOADING_PACMAN_Y)
+        )
+        surface.blit(frame, rect)
 
     def _sync_session_score(self) -> None:
         """Keep session score/high-score in sync with world during update."""
