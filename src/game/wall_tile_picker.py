@@ -21,6 +21,8 @@ BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
     (False, True, True, True): TileKind.HORIZONTAL,
     (True, True, True, False): TileKind.VERTICAL,
     (True, True, False, True): TileKind.VERTICAL,
+    (True, True, True, True): TileKind.WALL,
+    (False, False, False, False): TileKind.WALL,
 }
 
 

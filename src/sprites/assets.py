@@ -274,15 +274,54 @@ class Assets:
         if not maze_path.exists():
             raise AssetError(f"File not found: {maze_path}")
         self._maze_sheet = pygame.image.load(maze_path).convert_alpha()
+        vertical_col, vertical_row = self.TILE_KIND_COORDS[TileKind.VERTICAL]
+        wall_color = self._dominant_color(
+            self._slice_cells(
+                vertical_col, vertical_row, width_cells=1, height_cells=1
+            )
+        )
         for tile_kind, coords in self.TILE_KIND_COORDS.items():
+            if tile_kind == TileKind.WALL:
+                # No line-art shape exists for a fully-enclosed wall cell in
+                # the original sheet (source mazes are always 1 cell thick);
+                # synthesize a flat fill instead of reusing HORIZONTAL's
+                # hollow outline.
+                self.maze_tiles[tile_kind] = self._solid_tile(wall_color)
+                continue
             col, row = coords
             blue_surface = self._slice_cells(
                 col, row, width_cells=1, height_cells=1
             )
             self.maze_tiles[tile_kind] = blue_surface
         for tile_kind, coords in self.MAZE_PARTS_WHITE_KIND_COORDS.items():
+            if tile_kind == TileKind.WALL:
+                self.maze_white_tiles[tile_kind] = self._solid_tile(
+                    (255, 255, 255)
+                )
+                continue
             col, row = coords
             sheet_surface = self._slice_maze_cells(col, row)
             self.maze_white_tiles[tile_kind] = self._make_white_tile(
                 sheet_surface
             )
+
+    @staticmethod
+    def _solid_tile(color: tuple[int, int, int]) -> Surface:
+        """Flat-filled tile for wall cells with no matching line-art shape."""
+        surface = pygame.Surface(
+            (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
+        )
+        surface.fill(color)
+        return surface
+
+    @staticmethod
+    def _dominant_color(surface: Surface) -> tuple[int, int, int]:
+        """Most common non-black opaque pixel color, to match the wall hue."""
+        counts: dict[tuple[int, int, int], int] = {}
+        for x in range(surface.get_width()):
+            for y in range(surface.get_height()):
+                r, g, b, a = surface.get_at((x, y))
+                if a == 0 or r + g + b < 20:
+                    continue
+                counts[(r, g, b)] = counts.get((r, g, b), 0) + 1
+        return max(counts, key=counts.get) if counts else (0, 0, 0)
