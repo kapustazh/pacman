@@ -319,33 +319,27 @@ class Assets:
             self.maze_white_tiles[tile_kind] = self._make_white_tile(
                 sheet_surface
             )
-        self.maze_tiles[TileKind.PILLAR] = self._solid_tile(
-            wall_color, scale=0.5
-        )
-        self.maze_white_tiles[TileKind.PILLAR] = self._solid_tile(
-            (255, 255, 255), scale=0.5
+        self.maze_tiles[TileKind.PILLAR] = self._dot_tile(wall_color)
+        self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile(
+            (255, 255, 255)
         )
 
     @staticmethod
-    def _solid_tile(
-        color: tuple[int, int, int], scale: float = 1.0
-    ) -> Surface:
-        """Flat-filled tile for wall cells with no matching line-art shape.
-
-        scale < 1 draws a centered, smaller square (e.g. a lone junction
-        post) on a transparent tile instead of a full-tile block.
-        """
-        size = Assets.DISPLAY_TILE_SIZE
-        if scale >= 1.0:
-            surface = pygame.Surface((size, size))
-            surface.fill(color)
-            return surface
-        surface = pygame.Surface((size, size), pygame.SRCALPHA)
-        square_size = max(1, round(size * scale))
-        offset = (size - square_size) // 2
-        pygame.draw.rect(
-            surface, color, (offset, offset, square_size, square_size)
+    def _solid_tile(color: tuple[int, int, int]) -> Surface:
+        """Flat-filled tile for wall cells with no matching line-art shape."""
+        surface = pygame.Surface(
+            (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
         )
+        surface.fill(color)
+        return surface
+
+    @staticmethod
+    def _dot_tile(color: tuple[int, int, int], scale: float = 0.5) -> Surface:
+        """Small centered circle for a lone wall post with no neighbours."""
+        size = Assets.DISPLAY_TILE_SIZE
+        surface = pygame.Surface((size, size), pygame.SRCALPHA)
+        radius = max(1, round(size * scale / 2))
+        pygame.draw.circle(surface, color, (size // 2, size // 2), radius)
         return surface
 
     @staticmethod
