@@ -41,7 +41,7 @@ class PauseState(GameState):
         text = context.text
         for index, (line, color, scale) in enumerate(self.LINES):
             y = start_y + index * self.LINE_HEIGHT
-            rendered = text.font(color, scale).render(line)
+            rendered = text.render(line, color, scale)
             self._line_surfaces.append((rendered, y))
 
     def leave(self, context: GameContext) -> None:

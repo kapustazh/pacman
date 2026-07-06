@@ -18,9 +18,9 @@ def test_pick_wall_tile_all_sixteen_neighbor_patterns() -> None:
         assert pick_for_neighbors(up, down, left, right) == expected
 
 
-def test_four_wall_neighbours_use_cross_not_solid_block() -> None:
-    """A cell with walls on all sides is a 4-way junction, not a blue block."""
-    assert pick_for_neighbors(True, True, True, True) == TileKind.CROSS
+def test_four_wall_neighbours_use_solid_wall_fill() -> None:
+    """A cell walled on all sides is interior wall mass: solid fill."""
+    assert pick_for_neighbors(True, True, True, True) == TileKind.WALL
 
 
 def test_three_wall_neighbours_use_t_junctions() -> None:

@@ -16,80 +16,10 @@ class ArcadeTextColor(IntEnum):
 
     WHITE = 0
     RED = 1
+    CYAN = 3
     GOLD = 4
     ROSE = 5
     YELLOW = 6
-
-
-class ArcadeTextFont:
-    """Color/scale-bound view of a renderer for one draw style."""
-
-    def __init__(
-        self,
-        renderer: ArcadeTextRenderer,
-        color: ArcadeTextColor = ArcadeTextColor.WHITE,
-        scale: int = 3,
-    ) -> None:
-        self._renderer: ArcadeTextRenderer = renderer
-        self._color: ArcadeTextColor = color
-        self._scale: int = scale
-
-    def advance(self) -> int:
-        """Return fixed monospace advance for one glyph cell."""
-        return ArcadeTextRenderer.CELL_SIZE * self._scale
-
-    def render(self, text: str) -> Surface:
-        """Render text to a surface at the configured scale."""
-        self._renderer._ensure_atlas()
-
-        upper = text.upper()
-        cache_key = (upper, self._color, self._scale)
-        cached = self._renderer._render_cache.get(cache_key)
-        if cached is not None:
-            self._renderer._render_cache.move_to_end(cache_key)
-            return cached
-
-        surface = self._build_surface(upper)
-        self._renderer._cache_render(cache_key, surface)
-        return surface
-
-    def _build_surface(self, upper: str) -> Surface:
-        advance = self.advance()
-        width = 0
-        for char in upper:
-            if char == " ":
-                width += self._space_advance()
-                continue
-            if self._renderer._glyph(char, self._color) is not None:
-                width += advance
-        width = max(width, 0)
-        height = advance
-        surface = Surface((width, height), pygame.SRCALPHA)
-
-        x = 0
-        for char in upper:
-            if char == " ":
-                x += self._space_advance()
-                continue
-            scaled = self._renderer._scaled_glyph(
-                char, self._color, self._scale
-            )
-            if scaled is None:
-                # No glyph for this char (e.g. unsupported punctuation):
-                # reserve no space, matching the width pass above — do not
-                # advance, or later characters get pushed past the
-                # surface's width and are silently clipped.
-                continue
-            blit_x = x + (advance - scaled.get_width()) // 2
-            blit_y = (advance - scaled.get_height()) // 2
-            surface.blit(scaled, (blit_x, blit_y))
-            x += advance
-
-        return surface
-
-    def _space_advance(self) -> int:
-        """Spaces use half cell width so inline gaps stay tight."""
-        return max(1, self.advance() // 2)
 
 
 class ArcadeTextRenderer:
@@ -114,7 +44,6 @@ class ArcadeTextRenderer:
         **{str(digit): (digit, 2) for digit in range(10)},
     }
     RENDER_CACHE_MAX: ClassVar[int] = 128
-    SCALED_GLYPH_CACHE_MAX: ClassVar[int] = 256
     MENU_ROW_HIGHLIGHT_COLOR: ClassVar[tuple[int, int, int, int]] = (
         40,
         40,
@@ -136,13 +65,60 @@ class ArcadeTextRenderer:
         """Load text atlas up front so first menu frame does not hitch."""
         self._ensure_atlas()
 
-    def font(
+    def advance(self, scale: int = 3) -> int:
+        """Return fixed monospace advance for one glyph cell."""
+        return self.CELL_SIZE * scale
+
+    def render(
         self,
+        text: str,
         color: ArcadeTextColor = ArcadeTextColor.WHITE,
         scale: int = 3,
-    ) -> ArcadeTextFont:
-        """Return a font bound to this renderer instance."""
-        return ArcadeTextFont(self, color, scale)
+    ) -> Surface:
+        """Render text to a cached surface at the given color and scale."""
+        self._ensure_atlas()
+        upper = text.upper()
+        cache_key = (upper, color, scale)
+        cached = self._render_cache.get(cache_key)
+        if cached is not None:
+            self._render_cache.move_to_end(cache_key)
+            return cached
+        surface = self._build_surface(upper, color, scale)
+        self._cache_render(cache_key, surface)
+        return surface
+
+    def _build_surface(
+        self, upper: str, color: ArcadeTextColor, scale: int
+    ) -> Surface:
+        advance = self.advance(scale)
+        # spaces use half cell width so inline gaps stay tight
+        space = max(1, advance // 2)
+        width = 0
+        for char in upper:
+            if char == " ":
+                width += space
+            elif self._glyph(char, color) is not None:
+                width += advance
+        surface = Surface((width, advance), pygame.SRCALPHA)
+
+        x = 0
+        for char in upper:
+            if char == " ":
+                x += space
+                continue
+            scaled = self._scaled_glyph(char, color, scale)
+            if scaled is None:
+                # No glyph for this char (e.g. unsupported punctuation):
+                # reserve no space, matching the width pass above — do not
+                # advance, or later characters get pushed past the
+                # surface's width and are silently clipped.
+                continue
+            blit_x = x + (advance - scaled.get_width()) // 2
+            blit_y = (advance - scaled.get_height()) // 2
+            surface.blit(scaled, (blit_x, blit_y))
+            x += advance
+
+        return surface
 
     def draw_centered_arcade_text(
         self,
@@ -153,7 +129,7 @@ class ArcadeTextRenderer:
         scale: int = 3,
     ) -> pygame.rect.Rect:
         """Draw horizontally centered arcade text and return its rect."""
-        rendered = self.font(color, scale).render(text)
+        rendered = self.render(text, color, scale)
         rect = rendered.get_rect(center=(surface.get_width() // 2, y))
         surface.blit(rendered, rect)
         return rect
@@ -171,15 +147,14 @@ class ArcadeTextRenderer:
         gap_chars: int = 2,
     ) -> None:
         """Draw one aligned label/value row centered on screen."""
-        font = self.font(color, scale)
-        advance = font.advance()
+        advance = self.advance(scale)
         label_width = label_chars * advance
         gap_width = gap_chars * advance
-        value_surface = font.render(value)
+        value_surface = self.render(value, color, scale)
         block_width = label_width + gap_width + value_surface.get_width()
         left = (surface.get_width() - block_width) // 2
 
-        label_surface = font.render(label)
+        label_surface = self.render(label, color, scale)
         label_rect = label_surface.get_rect(midright=(left + label_width, y))
         value_rect = value_surface.get_rect(
             midleft=(left + label_width + gap_width, y)
@@ -247,9 +222,8 @@ class ArcadeTextRenderer:
             return cached
         size = (self.CELL_SIZE * scale, self.CELL_SIZE * scale)
         scaled = pygame.transform.scale(glyph, size)
+        # bounded naturally: ~40 glyphs x 6 colors x a few scales
         self._scaled_glyph_cache[key] = scaled
-        while len(self._scaled_glyph_cache) > self.SCALED_GLYPH_CACHE_MAX:
-            self._scaled_glyph_cache.pop(next(iter(self._scaled_glyph_cache)))
         return scaled
 
 

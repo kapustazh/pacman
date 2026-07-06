@@ -25,7 +25,9 @@ BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
     (False, True, True, True): TileKind.T_DOWN,
     (True, True, True, False): TileKind.T_LEFT,
     (True, True, False, True): TileKind.T_RIGHT,
-    (True, True, True, True): TileKind.CROSS,
+    # Fully enclosed wall cells are interior wall mass: solid fill,
+    # not a line crossing.
+    (True, True, True, True): TileKind.WALL,
     # A wall cell with no wall neighbours at all is a lone post at a 4-way
     # junction (common in this maze generator's checkerboard layout), not an
     # enclosed wall mass — give it its own small "pillar" art, not a full

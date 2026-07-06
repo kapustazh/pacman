@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import pygame
-from pygame.sprite import Group, LayeredUpdates, spritecollide
+from pygame.sprite import LayeredUpdates
 from pygame.surface import Surface
 
 from entities.ghost_entity import GhostEntity
@@ -79,13 +79,12 @@ class GameWorld:
         self.power_pellet_points = power_pellet_points
         self.ghost_points = ghost_points
         self.all_sprites: LayeredUpdates[Sprite] = LayeredUpdates()
-        self.consumables: Group[PelletEntity] = Group()
-        self._remaining_consumables: set[CellPos] = set(layout.pellet_cells)
-        self._remaining_consumables.update(layout.power_pellet_cells)
+        self._pellets: dict[CellPos, PelletEntity] = {}
         self._player: PlayerEntity | None = None
         self._ghosts: dict[GhostKind, GhostEntity] = {}
         self._ghost_home: dict[GhostKind, CellPos] = {}
         self._frightened_until_ms: int = 0
+        self.frightened: bool = False
         self._scatter_mode: bool = False
         self._mode_started_ms: int = pygame.time.get_ticks()
         self._pause_until_ms: int = 0
@@ -109,7 +108,7 @@ class GameWorld:
     @property
     def all_consumables_cleared(self) -> bool:
         """Return True when no pellets or power pellets remain on the maze."""
-        return not self._remaining_consumables
+        return not self._pellets
 
     @property
     def player_is_dying(self) -> bool:
@@ -213,6 +212,7 @@ class GameWorld:
     def respawn_ghosts(self) -> None:
         """Return every ghost to its home cell after losing a life."""
         self._frightened_until_ms = 0
+        self.frightened = False
         for kind, ghost in self._ghosts.items():
             home = self._ghost_home[kind]
             center = cell_center(self._render_config, home)
@@ -229,42 +229,29 @@ class GameWorld:
         for sprite in list(self.all_sprites.sprites()):
             sprite.kill()
         self.all_sprites.empty()
-        self.consumables.empty()
         self._player = None
         self._ghosts.clear()
         self._ghost_home.clear()
         self._fruit = None
-        self._remaining_consumables.clear()
+        self._pellets.clear()
         self.score_popups.clear()
         self.frozen = False
         self._wall_flash_white = False
         self._wall_sprites.clear()
         self._frightened_until_ms = 0
+        self.frightened = False
         self._fruit_spawn_index = 0
         self._fruit_kill_at_ms = 0
 
     def _consume_current_cell(self) -> None:
         if self._player is None:
             return
-
-        hits = spritecollide(
-            self._player,
-            self.consumables,
-            dokill=False,
-            collided=pygame.sprite.collide_rect,
-        )
-        for sprite in hits:
-            if not isinstance(sprite, PelletEntity):
-                continue
-            pellet = sprite
-            if pellet.cell not in self._remaining_consumables:
-                continue
-            self._remaining_consumables.remove(pellet.cell)
+        pellet = self._pellets.pop(self._player.cell, None)
+        if pellet is not None:
             self.score += pellet.points
             if pellet.cell in self._layout.power_pellet_cells:
                 activate_frightened_mode(self)
             pellet.kill()
-
         _collect_fruit(self)
 
     def _sync_visual_centers(self) -> None:
@@ -306,7 +293,7 @@ def _spawn_from_layout(world: GameWorld) -> None:
             world.pellet_points,
         )
         world.all_sprites.add(pellet, layer=pellet.layer)
-        world.consumables.add(pellet)
+        world._pellets[pos] = pellet
 
     for pos in world._layout.power_pellet_cells:
         pellet = PelletEntity(
@@ -316,7 +303,7 @@ def _spawn_from_layout(world: GameWorld) -> None:
             world.power_pellet_points,
         )
         world.all_sprites.add(pellet, layer=pellet.layer)
-        world.consumables.add(pellet)
+        world._pellets[pos] = pellet
 
     for kind, cell in world._layout.ghost_spawns:
         ghost = GhostEntity(
@@ -448,27 +435,29 @@ def update_fruit_spawns(
         _kill_fruit(world)
 
 
+def add_score_popup(
+    world: GameWorld, center: tuple[int, int], points: int
+) -> None:
+    """Show a floating point label just below a pixel position."""
+    tile_px = world._render_config.tile_px
+    world.score_popups.append(
+        ScorePopup(
+            center=(center[0], center[1] + tile_px // 2 + 2),
+            points=points,
+            expires_at_ms=(
+                pygame.time.get_ticks() + world.SCORE_POPUP_DURATION_MS
+            ),
+        )
+    )
+
+
 def _collect_fruit(world: GameWorld) -> None:
     if world._player is None or world._fruit is None:
         return
     if world._player.cell != world._fruit.cell:
         return
-    points = world._fruit.points
-    fruit_center_px = world._fruit.center
-    world.score += points
-    tile_px = world._render_config.tile_px
-    popup_center = (
-        fruit_center_px[0],
-        fruit_center_px[1] + tile_px // 2 + 2,
-    )
-    expires_at_ms = pygame.time.get_ticks() + world.SCORE_POPUP_DURATION_MS
-    world.score_popups.append(
-        ScorePopup(
-            center=popup_center,
-            points=points,
-            expires_at_ms=expires_at_ms,
-        )
-    )
+    world.score += world._fruit.points
+    add_score_popup(world, world._fruit.center, world._fruit.points)
     _kill_fruit(world)
 
 

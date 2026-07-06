@@ -1,19 +1,9 @@
 from __future__ import annotations
 
-import os
-import sys
-from collections.abc import Generator
 from pathlib import Path
 
-import pytest
-
-os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
-
-SRC_ROOT = Path(__file__).resolve().parent.parent / "src"
-sys.path.insert(0, str(SRC_ROOT))
-
 import pygame  # noqa: E402
+import pytest
 from pygame.surface import Surface  # noqa: E402
 
 from entities.player_entity import PlayerEntity  # noqa: E402
@@ -37,25 +27,6 @@ from sprites.assets import Assets  # noqa: E402
 from sprites.sprite_types import Direction, TileKind  # noqa: E402
 
 
-@pytest.fixture(scope="module", autouse=True)
-def pygame_init() -> Generator[None, None, None]:
-    """Initialize pygame once for headless asset loading."""
-    pygame.init()
-    pygame.display.set_mode((1, 1))
-    yield
-    pygame.quit()
-
-
-@pytest.fixture
-def game_world() -> GameWorld:
-    """Build a procedural test world with loaded assets."""
-    assets = Assets()
-    assets.load()
-    layout = load_level(DEFAULT_CONFIG, 0, 42)
-    render_config = WorldRenderConfig.centered(layout, (1920, 1080))
-    return GameWorld(layout, assets, render_config)
-
-
 def test_all_consumables_cleared_false_with_pellets(
     game_world: GameWorld,
 ) -> None:
@@ -65,7 +36,7 @@ def test_all_consumables_cleared_false_with_pellets(
 def test_all_consumables_cleared_true_when_set_empty(
     game_world: GameWorld,
 ) -> None:
-    game_world._remaining_consumables.clear()
+    game_world._pellets.clear()
     assert game_world.all_consumables_cleared
 
 
@@ -81,7 +52,7 @@ def test_fatal_ghost_collision_on_last_pellet_loses_life_not_level_complete(
         dt_s: float,
         now_ms: int,
     ) -> None:
-        world._remaining_consumables.clear()
+        world._pellets.clear()
         start_player_death(world, now_ms)
 
     monkeypatch.setattr(
@@ -109,14 +80,14 @@ def test_fatal_ghost_collision_on_last_pellet_loses_life_not_level_complete(
 def test_timer_expiry_same_frame_as_last_pellet_completes_level(
     game_world: GameWorld,
 ) -> None:
-    """Clearing the maze on the frame the timer hits zero must win the level."""
+    """Clearing the maze the frame the timer hits zero must win."""
     play_state = PlayState()
     session = GameSession(
         phase=GameplayPhase.PLAYING,
         phase_started_at_ms=0,
         remaining_time_ms=1,
     )
-    game_world._remaining_consumables.clear()
+    game_world._pellets.clear()
     game_world.unfreeze_gameplay()
     play_state._session = session
     play_state._world = game_world
@@ -272,7 +243,7 @@ def test_level_complete_reload_resets_timer_and_pellets() -> None:
         render_config,
         level_number=session.level_number,
     )
-    world._remaining_consumables.clear()
+    world._pellets.clear()
     assert world.all_consumables_cleared
 
     session.advance_level()
@@ -289,7 +260,7 @@ def test_level_complete_reload_resets_timer_and_pellets() -> None:
     assert session.level_number == 2
     assert session.remaining_time_ms == session.level_time_limit_s * 1000
     assert not world.all_consumables_cleared
-    assert len(world.consumables) == len(layout.pellet_cells) + len(
+    assert len(world._pellets) == len(layout.pellet_cells) + len(
         layout.power_pellet_cells
     )
 

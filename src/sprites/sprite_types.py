@@ -41,7 +41,6 @@ class TileKind(Enum):
     T_DOWN = auto()
     T_LEFT = auto()
     T_RIGHT = auto()
-    CROSS = auto()
 
 
 FRUIT_POINTS: dict[FruitKind, int] = {

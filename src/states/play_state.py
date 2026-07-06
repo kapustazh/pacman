@@ -26,7 +26,6 @@ from states.text import ArcadeTextColor
 LOADING_TEXT_Y: int = 400
 LOADING_PACMAN_Y: int = 440
 LOADING_DOT_CYCLE_MS: int = 400
-CHEAT_MESSAGE_DURATION_MS: int = 1500
 CHEAT_MESSAGE_MARGIN: int = 12
 CHEAT_MESSAGE_SCALE: int = 2
 
@@ -44,8 +43,8 @@ class PlayState(GameState):
         self._loading_thread: threading.Thread | None = None
         self._pending_layout: LevelLayout | None = None
         self._loading_error: BaseException | None = None
-        self._cheat_message: str | None = None
-        self._cheat_message_until_ms: int = 0
+        # cheats used this run, in first-use order; drawn bottom-right
+        self._cheats_used: list[str] = []
 
     def enter(
         self,
@@ -73,7 +72,7 @@ class PlayState(GameState):
         )
         self._level_index = 0
         self._level_seed = int(context.config.get("seed", 42))
-        self._cheat_message = None
+        self._cheats_used.clear()
         self._start_loading(context)
 
     def leave(self, context: GameContext) -> None:
@@ -107,20 +106,16 @@ class PlayState(GameState):
                 context.scene_manager.push(PauseState())
                 return
             if event.key == pygame.K_i and self._world is not None:
-                now_on = self._world.toggle_invincible()
-                self._show_cheat_message(
-                    f"CHEAT - INVINCIBLE {'ON' if now_on else 'OFF'}"
-                )
+                self._world.toggle_invincible()
+                self._record_cheat("INVINCIBLE")
                 continue
             if event.key == pygame.K_f and self._world is not None:
-                now_on = self._world.toggle_ghosts_frozen()
-                self._show_cheat_message(
-                    f"CHEAT - FREEZE GHOSTS {'ON' if now_on else 'OFF'}"
-                )
+                self._world.toggle_ghosts_frozen()
+                self._record_cheat("FREEZE")
                 continue
             if event.key == pygame.K_l and self._session is not None:
                 self._session.lives += 1
-                self._show_cheat_message("CHEAT - PLUS 1 LIFE")
+                self._record_cheat("LIFE")
                 continue
             if (
                 event.key == pygame.K_n
@@ -128,7 +123,7 @@ class PlayState(GameState):
                 and self._world is not None
             ):
                 self._advance_level_or_win(context, pygame.time.get_ticks())
-                self._show_cheat_message("CHEAT - LEVEL SKIPPED")
+                self._record_cheat("SKIP")
                 continue
             direction = _direction_from_key(event.key)
             if (
@@ -265,37 +260,25 @@ class PlayState(GameState):
         self._hud.draw(surface, self._session, self._maze_bounds)
         self._draw_cheat_message(surface, context)
 
-    def _show_cheat_message(self, message: str) -> None:
-        """Record the most recent cheat action to flash in a screen corner."""
-        self._cheat_message = message
-        self._cheat_message_until_ms = (
-            pygame.time.get_ticks() + CHEAT_MESSAGE_DURATION_MS
-        )
+    def _record_cheat(self, name: str) -> None:
+        """Remember a used cheat for the run's bottom-right list."""
+        if name not in self._cheats_used:
+            self._cheats_used.append(name)
 
     def _draw_cheat_message(
         self, surface: Surface, context: GameContext
     ) -> None:
-        """Bottom-left cheat feedback: brief flash on use, then a
-        persistent status line while any toggle cheat stays active."""
-        message = self._cheat_message
-        if message and pygame.time.get_ticks() >= self._cheat_message_until_ms:
-            self._cheat_message = message = None
-        if message is None and self._world is not None:
-            active = []
-            if self._world._invincible:
-                active.append("INVINCIBLE")
-            if self._world._ghosts_frozen:
-                active.append("GHOSTS FROZEN")
-            if active:
-                message = "CHEAT ON - " + " - ".join(active)
-        if message is None:
+        """List every cheat used this run in the bottom-right corner."""
+        if not self._cheats_used:
             return
-        rendered = context.text.font(
-            ArcadeTextColor.RED, scale=CHEAT_MESSAGE_SCALE
-        ).render(message)
+        rendered = context.text.render(
+            "CHEATS - " + " ".join(self._cheats_used),
+            ArcadeTextColor.RED,
+            CHEAT_MESSAGE_SCALE,
+        )
         rect = rendered.get_rect(
-            bottomleft=(
-                CHEAT_MESSAGE_MARGIN,
+            bottomright=(
+                surface.get_width() - CHEAT_MESSAGE_MARGIN,
                 surface.get_height() - CHEAT_MESSAGE_MARGIN,
             )
         )

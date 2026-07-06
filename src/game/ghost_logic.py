@@ -274,7 +274,7 @@ def move_ghosts(world: GameWorld) -> None:
         return
     layout = world._layout
     player_cell = world._player.cell
-    fleeing = is_frightened(world)
+    fleeing = world.frightened
     world._ghost_step_count += 1
     frightened_step_due = (
         world._ghost_step_count % world.FRIGHTENED_GHOST_SPEED_DIVISOR == 0
@@ -294,7 +294,7 @@ def move_ghosts(world: GameWorld) -> None:
                 ghost.move_to(step, cell_center(world._render_config, step))
             if ghost.cell == home:
                 ghost.arrive_home()
-                if is_frightened(world):
+                if world.frightened:
                     ghost.set_frightened(True)
             continue
         if fleeing:
@@ -333,22 +333,19 @@ def move_ghosts(world: GameWorld) -> None:
 def activate_frightened_mode(world: GameWorld) -> None:
     now_ms = pygame.time.get_ticks()
     world._frightened_until_ms = now_ms + world.FRIGHTENED_DURATION_MS
+    world.frightened = True
     for ghost in world._ghosts.values():
         if not ghost.hidden:
             ghost.set_frightened(True)
 
 
-def is_frightened(world: GameWorld) -> bool:
-    return bool(pygame.time.get_ticks() < world._frightened_until_ms)
-
-
 def update_frightened_state(world: GameWorld, now_ms: int) -> None:
     remaining = world._frightened_until_ms - now_ms
-    frightened = remaining > 0
-    flashing = frightened and remaining <= world.FRIGHTENED_FLASH_MS
+    world.frightened = remaining > 0
+    flashing = world.frightened and remaining <= world.FRIGHTENED_FLASH_MS
     for ghost in world._ghosts.values():
         if not ghost.hidden:
-            ghost.set_frightened(frightened, flashing)
+            ghost.set_frightened(world.frightened, flashing)
 
 
 def resolve_actor_collisions(world: GameWorld) -> None:
@@ -359,8 +356,11 @@ def resolve_actor_collisions(world: GameWorld) -> None:
             continue
         if ghost.cell != world._player.cell:
             continue
-        if is_frightened(world):
+        if world.frightened:
+            from game.game_world import add_score_popup
+
             world.score += world.ghost_points
+            add_score_popup(world, ghost.center, world.ghost_points)
             ghost.start_returning_home()
             world.pause_gameplay(world.GHOST_EATEN_PAUSE_MS)
         elif not world._invincible:

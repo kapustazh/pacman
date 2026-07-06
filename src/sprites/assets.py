@@ -263,9 +263,12 @@ class Assets:
             if tile_kind == TileKind.WALL:
                 # No line-art shape exists for a fully-enclosed wall cell in
                 # the original sheet (source mazes are always 1 cell thick);
-                # synthesize a flat fill instead of reusing HORIZONTAL's
-                # hollow outline.
-                self.maze_tiles[tile_kind] = self._solid_tile(wall_color)
+                # fill it light blue — the text sheet's 4th color band
+                # (ArcadeTextColor.CYAN), so wall mass reads as solid but
+                # distinct from the line walls.
+                self.maze_tiles[tile_kind] = self._solid_tile(
+                    self.WALL_FILL_COLOR
+                )
                 continue
             col, row = coords
             blue_surface = self._slice_cells(
@@ -298,13 +301,15 @@ class Assets:
                 mask, (255, 255, 255)
             )
 
+    # Light blue sampled from the text sheet's 4th color band (CYAN).
+    WALL_FILL_COLOR: ClassVar[tuple[int, int, int]] = (0, 255, 255)
+
     # (up, down, left, right) arms present, matching wall_tile_picker.
     JUNCTION_MASKS: ClassVar[dict[TileKind, tuple[bool, bool, bool, bool]]] = {
         TileKind.T_UP: (True, False, True, True),
         TileKind.T_DOWN: (False, True, True, True),
         TileKind.T_LEFT: (True, True, True, False),
         TileKind.T_RIGHT: (True, True, False, True),
-        TileKind.CROSS: (True, True, True, True),
     }
 
     @staticmethod

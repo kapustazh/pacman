@@ -11,7 +11,6 @@ from game.game_world import ScorePopup
 from game.render_config import MazeBounds
 from states.text import (
     ArcadeTextColor,
-    ArcadeTextFont,
     ArcadeTextRenderer,
     plus_glyph,
 )
@@ -46,20 +45,18 @@ class HudOverlay:
     ) -> None:
         self._text = text
         self._fruit_icon = fruit_icon
-        self._font: ArcadeTextFont = text.font(
-            ArcadeTextColor.WHITE, self.HUD_SCALE
-        )
         self._label_surfaces: dict[str, Surface] = {
-            label: self._font.render(label) for label in self.STATIC_LABELS
+            label: text.render(label, scale=self.HUD_SCALE)
+            for label in self.STATIC_LABELS
         }
         self._phase_message_surfaces: dict[GameplayPhase, Surface] = {}
         for phase, message in GameSession.PHASE_MESSAGE.items():
             if message is None:
                 continue
             color = self.PHASE_TEXT_COLOR.get(phase, ArcadeTextColor.WHITE)
-            self._phase_message_surfaces[phase] = text.font(
-                color, self.MESSAGE_SCALE
-            ).render(message)
+            self._phase_message_surfaces[phase] = text.render(
+                message, color, self.MESSAGE_SCALE
+            )
         self._level_surface_cache: dict[int, Surface] = {}
         self._value_surface_cache: dict[str, Surface] = {}
         self._life_icon = life_icon
@@ -76,9 +73,10 @@ class HudOverlay:
         """Draw floating point values where fruits were eaten."""
         if not popups:
             return
-        font = self._text.font(ArcadeTextColor.WHITE, self.SCORE_POPUP_SCALE)
         for popup in popups:
-            rendered = font.render(str(popup.points))
+            rendered = self._text.render(
+                str(popup.points), scale=self.SCORE_POPUP_SCALE
+            )
             rect = rendered.get_rect(midtop=popup.center)
             surface.blit(rendered, rect)
 
@@ -187,13 +185,16 @@ class HudOverlay:
         if spare <= self.MAX_LIFE_ICONS:
             return
 
-        font = self._text.font(ArcadeTextColor.YELLOW, self.HUD_SCALE)
         gap = self.LIFE_ICON_GAP
         x += gap
         plus = plus_glyph(self.YELLOW, self.HUD_SCALE)
         plus_rect = plus.get_rect(midleft=(x, y))
         surface.blit(plus, plus_rect)
-        count_surface = font.render(str(spare - self.MAX_LIFE_ICONS))
+        count_surface = self._text.render(
+            str(spare - self.MAX_LIFE_ICONS),
+            ArcadeTextColor.YELLOW,
+            self.HUD_SCALE,
+        )
         count_rect = count_surface.get_rect(midleft=(plus_rect.right + gap, y))
         surface.blit(count_surface, count_rect)
 
@@ -216,7 +217,9 @@ class HudOverlay:
         cached = self._level_surface_cache.get(level_number)
         if cached is not None:
             return cached
-        surface = self._font.render(f"LEVEL {level_number}")
+        surface = self._text.render(
+            f"LEVEL {level_number}", scale=self.HUD_SCALE
+        )
         self._level_surface_cache[level_number] = surface
         return self._level_surface_cache[level_number]
 
@@ -225,7 +228,7 @@ class HudOverlay:
         cached = self._value_surface_cache.get(value)
         if cached is not None:
             return cached
-        surface = self._font.render(value)
+        surface = self._text.render(value, scale=self.HUD_SCALE)
         self._value_surface_cache[value] = surface
         return self._value_surface_cache[value]
 

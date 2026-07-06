@@ -65,8 +65,7 @@ class InstructionsState(GameState):
             scale=self.TITLE_SCALE,
         )
 
-        font = text.font(ArcadeTextColor.WHITE, scale=self.ROW_SCALE)
-        row_step = font.advance() + self.ROW_GAP
+        row_step = text.advance(self.ROW_SCALE) + self.ROW_GAP
         for index, (label, value) in enumerate(INSTRUCTION_ROWS):
             y = self.ROW_START_Y + index * row_step
             text.draw_arcade_two_column_row(
