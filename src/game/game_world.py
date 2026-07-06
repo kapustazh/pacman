@@ -257,7 +257,7 @@ class GameWorld:
             self.all_sprites.add(ghost, layer=ghost.layer)
 
     def reset_fruit_spawns(self) -> None:
-        """Clear fruits after spawn."""
+        """Clear active fruit and reset fruit spawn progression."""
         _kill_fruit(self)
         self._fruit_spawn_index = 0
 
