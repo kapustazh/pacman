@@ -323,6 +323,49 @@ class Assets:
         self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile(
             (255, 255, 255)
         )
+        # T-junctions and the 4-way cross have no matching cell in the
+        # sheet's double-line maze, so build them from the same row-4/col-4
+        # line pixels the HORIZONTAL and VERTICAL slices use — one arm per
+        # wall neighbour. This tiles seamlessly with the sliced straights
+        # and corners and removes the old solid-block fallback.
+        for tile_kind, mask in self.JUNCTION_MASKS.items():
+            self.maze_tiles[tile_kind] = self._junction_tile(mask, wall_color)
+            self.maze_white_tiles[tile_kind] = self._junction_tile(
+                mask, (255, 255, 255)
+            )
+
+    # (up, down, left, right) arms present, matching wall_tile_picker.
+    JUNCTION_MASKS: ClassVar[dict[TileKind, tuple[bool, bool, bool, bool]]] = {
+        TileKind.T_UP: (True, False, True, True),
+        TileKind.T_DOWN: (False, True, True, True),
+        TileKind.T_LEFT: (True, True, True, False),
+        TileKind.T_RIGHT: (True, True, False, True),
+        TileKind.CROSS: (True, True, True, True),
+    }
+
+    @staticmethod
+    def _junction_tile(
+        mask: tuple[bool, bool, bool, bool],
+        color: tuple[int, int, int],
+    ) -> Surface:
+        """Compose a junction tile from centered arms (row 4 / col 4)."""
+        up, down, left, right = mask
+        cell = 8  # native sheet cell size before display scaling
+        mid = cell // 2
+        native = pygame.Surface((cell, cell), pygame.SRCALPHA)
+        for i in range(cell):  # column
+            for j in range(cell):  # row
+                on = (
+                    (up and i == mid and j <= mid)
+                    or (down and i == mid and j >= mid)
+                    or (left and j == mid and i <= mid)
+                    or (right and j == mid and i >= mid)
+                )
+                if on:
+                    native.set_at((i, j), (*color, 255))
+        return pygame.transform.scale(
+            native, (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
+        )
 
     @staticmethod
     def _solid_tile(color: tuple[int, int, int]) -> Surface:

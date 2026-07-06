@@ -17,11 +17,14 @@ BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
     (False, False, True, False): TileKind.CORNER_TR,
     (True, False, False, False): TileKind.CORNER_BL,
     (False, True, False, False): TileKind.CORNER_TL,
-    (True, False, True, True): TileKind.HORIZONTAL,
-    (False, True, True, True): TileKind.HORIZONTAL,
-    (True, True, True, False): TileKind.VERTICAL,
-    (True, True, False, True): TileKind.VERTICAL,
-    (True, True, True, True): TileKind.WALL,
+    # Three-wall-neighbour cells are T-junctions; four are a cross. These
+    # used to drop the odd branch (rendering a plain straight) or fall back
+    # to a solid block, which left gaps and stray squares in the maze.
+    (True, False, True, True): TileKind.T_UP,
+    (False, True, True, True): TileKind.T_DOWN,
+    (True, True, True, False): TileKind.T_LEFT,
+    (True, True, False, True): TileKind.T_RIGHT,
+    (True, True, True, True): TileKind.CROSS,
     # A wall cell with no wall neighbours at all is a lone post at a 4-way
     # junction (common in this maze generator's checkerboard layout), not an
     # enclosed wall mass — give it its own small "pillar" art, not a full
