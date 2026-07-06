@@ -196,9 +196,7 @@ def _surfaces_equal(a: Surface, b: Surface) -> bool:
         return False
     w, h = a.get_size()
     return all(
-        a.get_at((x, y)) == b.get_at((x, y))
-        for x in range(w)
-        for y in range(h)
+        a.get_at((x, y)) == b.get_at((x, y)) for x in range(w) for y in range(h)
     )
 
 
@@ -425,9 +423,7 @@ def test_all_pellets_reachable_from_player_spawn() -> None:
         while queue:
             current = queue.popleft()
             for delta_row, delta_col in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                nxt = CellPos(
-                    current.row + delta_row, current.col + delta_col
-                )
+                nxt = CellPos(current.row + delta_row, current.col + delta_col)
                 if nxt in seen or layout.is_wall(nxt):
                     continue
                 seen.add(nxt)

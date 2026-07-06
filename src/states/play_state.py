@@ -156,7 +156,9 @@ class PlayState(GameState):
                 event.key in (pygame.K_PLUS, pygame.K_EQUALS)
                 and self._world is not None
             ):
-                self._world.adjust_player_speed(-GameWorld.PLAYER_SPEED_STEP_MS)
+                self._world.adjust_player_speed(
+                    -GameWorld.PLAYER_SPEED_STEP_MS
+                )
                 continue
             if event.key == pygame.K_MINUS and self._world is not None:
                 self._world.adjust_player_speed(GameWorld.PLAYER_SPEED_STEP_MS)
@@ -305,7 +307,8 @@ class PlayState(GameState):
             context: Shared game context for scene transitions.
             now_ms: Monotonic clock in milliseconds (unused).
         """
-        assert self._session is not None
+        if self._session is None:
+            return
         levels = context.config.get("levels", [])
         if self._level_index + 1 >= len(levels):
             self._open_end_screen(context, won=True)
@@ -419,7 +422,8 @@ class PlayState(GameState):
             context: Shared game context with config and assets.
             layout: Generated level layout to instantiate.
         """
-        assert self._session is not None
+        if self._session is None:
+            return
         catalog = context.assets
         render_config = WorldRenderConfig.centered(
             layout,

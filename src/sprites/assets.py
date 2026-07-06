@@ -364,7 +364,9 @@ class Assets:
             white_surface.set_colorkey((0, 0, 0))
             self.maze_white_tiles[tile_kind] = white_surface
         self.maze_tiles[TileKind.PILLAR] = self._dot_tile(self.WALL_LINE_COLOR)
-        self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile((255, 255, 255))
+        self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile(
+            (255, 255, 255)
+        )
         # T-junctions and the 4-way cross have no matching cell in the
         # sheet's double-line maze, so build them from the same row-4/col-4
         # line pixels the HORIZONTAL and VERTICAL slices use — one arm per
