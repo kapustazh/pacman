@@ -284,19 +284,18 @@ def move_ghosts(world: GameWorld) -> None:
             continue
         home = world._ghost_home.get(kind, ghost.cell)
         if ghost.returning:
+            for _ in range(2):  # eyes fly home at double speed
+                if ghost.cell == home:
+                    break
+                step = _next_return_step(ghost.cell, home, layout)
+                if step is None:
+                    break
+                ghost.last_cell = ghost.cell
+                ghost.move_to(step, cell_center(world._render_config, step))
             if ghost.cell == home:
                 ghost.arrive_home()
                 if is_frightened(world):
                     ghost.set_frightened(True)
-                continue
-            step = _next_return_step(ghost.cell, home, layout)
-            if step is not None:
-                ghost.last_cell = ghost.cell
-                ghost.move_to(step, cell_center(world._render_config, step))
-                if step == home:
-                    ghost.arrive_home()
-                    if is_frightened(world):
-                        ghost.set_frightened(True)
             continue
         if fleeing:
             if not frightened_step_due:
@@ -329,17 +328,6 @@ def move_ghosts(world: GameWorld) -> None:
             continue
         ghost.last_cell = ghost.cell
         ghost.move_to(step, cell_center(world._render_config, step))
-    _update_scatter_mode(world)
-
-
-def _update_scatter_mode(world: GameWorld) -> None:
-    """Alternate global Chase/Scatter behaviour every player grid step."""
-    world._scatter_step_count += 1
-    if world._scatter_step_count >= world.CHASE_STEPS + world.SCATTER_STEPS:
-        world._scatter_step_count = 0
-        world._scatter_mode = False
-    elif world._scatter_step_count >= world.CHASE_STEPS:
-        world._scatter_mode = True
 
 
 def activate_frightened_mode(world: GameWorld) -> None:
@@ -374,6 +362,7 @@ def resolve_actor_collisions(world: GameWorld) -> None:
         if is_frightened(world):
             world.score += world.ghost_points
             ghost.start_returning_home()
+            world.pause_gameplay(world.GHOST_EATEN_PAUSE_MS)
         elif not world._invincible:
             start_player_death(world, world._step_now_ms)
             return

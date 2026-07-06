@@ -275,15 +275,24 @@ class PlayState(GameState):
     def _draw_cheat_message(
         self, surface: Surface, context: GameContext
     ) -> None:
-        """Draw the last-used cheat key in the bottom-left corner, briefly."""
-        if self._cheat_message is None:
-            return
-        if pygame.time.get_ticks() >= self._cheat_message_until_ms:
-            self._cheat_message = None
+        """Bottom-left cheat feedback: brief flash on use, then a
+        persistent status line while any toggle cheat stays active."""
+        message = self._cheat_message
+        if message and pygame.time.get_ticks() >= self._cheat_message_until_ms:
+            self._cheat_message = message = None
+        if message is None and self._world is not None:
+            active = []
+            if self._world._invincible:
+                active.append("INVINCIBLE")
+            if self._world._ghosts_frozen:
+                active.append("GHOSTS FROZEN")
+            if active:
+                message = "CHEAT ON - " + " - ".join(active)
+        if message is None:
             return
         rendered = context.text.font(
             ArcadeTextColor.RED, scale=CHEAT_MESSAGE_SCALE
-        ).render(self._cheat_message)
+        ).render(message)
         rect = rendered.get_rect(
             bottomleft=(
                 CHEAT_MESSAGE_MARGIN,

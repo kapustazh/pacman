@@ -54,8 +54,11 @@ class GameWorld:
     FRIGHTENED_FLASH_MS: ClassVar[int] = 2000
     FRIGHTENED_GHOST_SPEED_DIVISOR: ClassVar[int] = 2
     SCORE_POPUP_DURATION_MS: ClassVar[int] = 1000
-    CHASE_STEPS: ClassVar[int] = 20
-    SCATTER_STEPS: ClassVar[int] = 20
+    # wehan's terminal game alternated 20 chase turns / 20 scatter turns;
+    # one turn = one player grid step (PLAYER_STEP_MS), so 20 x 180ms.
+    CHASE_DURATION_MS: ClassVar[int] = 20 * PLAYER_STEP_MS
+    SCATTER_DURATION_MS: ClassVar[int] = 20 * PLAYER_STEP_MS
+    GHOST_EATEN_PAUSE_MS: ClassVar[int] = 1000
 
     def __init__(
         self,
@@ -84,7 +87,8 @@ class GameWorld:
         self._ghost_home: dict[GhostKind, CellPos] = {}
         self._frightened_until_ms: int = 0
         self._scatter_mode: bool = False
-        self._scatter_step_count: int = 0
+        self._mode_started_ms: int = pygame.time.get_ticks()
+        self._pause_until_ms: int = 0
         self._ghost_step_count: int = 0
         self._invincible: bool = False
         self._ghosts_frozen: bool = False
@@ -153,15 +157,27 @@ class GameWorld:
         """Resume gameplay after a pause (death, level transition, etc.)."""
         self.frozen = False
 
+    def pause_gameplay(self, duration_ms: int) -> None:
+        """Freeze briefly (ghost eaten); update() resumes automatically."""
+        self.freeze_gameplay()
+        self._pause_until_ms = pygame.time.get_ticks() + duration_ms
+
     def start_auto_movement(self) -> None:
         """Begin classic auto-walk after READY clears."""
         self._travel_direction = self.DEFAULT_TRAVEL_DIRECTION
         self._step_accumulator_ms = 0.0
+        self._mode_started_ms = pygame.time.get_ticks()
         if self._player is not None:
             self._player.face(self._travel_direction)
 
     def update(self, dt: float, now_ms: int) -> None:
         """Update animated sprites."""
+        if self._pause_until_ms and now_ms >= self._pause_until_ms:
+            self._pause_until_ms = 0
+            self.unfreeze_gameplay()
+        cycle = self.CHASE_DURATION_MS + self.SCATTER_DURATION_MS
+        elapsed = now_ms - self._mode_started_ms
+        self._scatter_mode = elapsed % cycle >= self.CHASE_DURATION_MS
         if self._player is not None:
             self._player.update(dt, now_ms)
         for ghost in self._ghosts.values():
@@ -402,6 +418,9 @@ def spawn_fruit(world: GameWorld, now_ms: int) -> None:
     )
     world.all_sprites.add(world._fruit, layer=world._fruit.layer)
     world._fruit_kill_at_ms = now_ms + FRUIT_VISIBLE_DURATION_S * 1000
+    # Fruit spawns on the player's spawn cell; if Pac-Man is standing there
+    # collection must happen now, not on his next move.
+    _collect_fruit(world)
 
 
 def _kill_fruit(world: GameWorld) -> None:

@@ -140,16 +140,15 @@ def test_unfreeze_gameplay_resumes_movement(game_world: GameWorld) -> None:
 
 
 def test_fruit_collection_spawns_score_popup(game_world: GameWorld) -> None:
+    """Fruit spawning under Pac-Man is eaten immediately, always dropping
+    the fruit and always leaving a score popup."""
     player = game_world._player
     assert player is not None
+    score_before = game_world.score
     spawn_fruit(game_world, pygame.time.get_ticks())
-    fruit = game_world._fruit
-    assert fruit is not None
-    player.move_to(fruit.cell, fruit.center)
-    game_world._consume_current_cell()
     assert game_world._fruit is None
     assert len(game_world.score_popups) == 1
-    assert game_world.score_popups[0].points == fruit.points
+    assert game_world.score > score_before
 
 
 def test_death_coords_skip_walk_chomp_frames() -> None:

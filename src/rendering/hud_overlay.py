@@ -71,7 +71,7 @@ class HudOverlay:
     def draw_score_popups(
         self,
         surface: Surface,
-        popups: tuple[ScorePopup, ...],
+        popups: list[ScorePopup],
     ) -> None:
         """Draw floating point values where fruits were eaten."""
         if not popups:

@@ -80,6 +80,10 @@ def test_reset_fruit_spawns_clears_index_and_active_fruit() -> None:
 def test_reset_fruit_spawns_allows_early_spawn_after_life_lost() -> None:
     world = _build_world()
     world._fruit_spawn_index = 1
+    # step the player off the spawn cell so the fruit isn't eaten instantly
+    assert world._player is not None
+    spawn = world._player.cell
+    world._player.cell = type(spawn)(spawn.row + 1, spawn.col)
 
     world.reset_fruit_spawns()
     update_fruit_spawns(world, level_elapsed_s=9, now_ms=9_000)
@@ -107,16 +111,19 @@ def test_frightened_ghosts_flash_only_near_the_end() -> None:
     assert ghost._flashing is False
 
 
-def test_scatter_mode_toggles_after_chase_and_scatter_steps() -> None:
+def test_scatter_mode_alternates_on_a_timer() -> None:
     world = _build_world()
+    world._mode_started_ms = 0
+
+    world.update(0, now_ms=world.CHASE_DURATION_MS - 1)
     assert world._scatter_mode is False
 
-    for _ in range(world.CHASE_STEPS):
-        move_ghosts(world)
+    world.update(0, now_ms=world.CHASE_DURATION_MS)
     assert world._scatter_mode is True
 
-    for _ in range(world.SCATTER_STEPS):
-        move_ghosts(world)
+    world.update(
+        0, now_ms=world.CHASE_DURATION_MS + world.SCATTER_DURATION_MS
+    )
     assert world._scatter_mode is False
 
 
@@ -171,6 +178,9 @@ def test_eaten_ghost_becomes_eyes_and_returns_home() -> None:
 
     assert ghost.returning is True
     assert ghost._frightened is False
+    # eating a ghost freezes the screen briefly before the eyes fly home
+    assert world.frozen is True
+    world.unfreeze_gameplay()
 
     home = world._ghost_home[kind]
     for _ in range(200):
