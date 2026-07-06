@@ -5,6 +5,7 @@
 from maze.map_data import TileType
 
 import random
+from collections import deque
 
 from game.level import CellPos, LevelLayout
 from sprites.sprite_types import GhostKind
@@ -32,6 +33,13 @@ class LevelBuilder:
         # [wehan] player and ghost spawn placement
         player_start = self._nearest_walkable(grid, height // 2, width // 2)
 
+        # This maze generator can leave small pockets of open floor
+        # disconnected from the main maze. Anything placed outside the
+        # region reachable from the player's start would be permanently
+        # uncollectable (or, for ghosts, stuck), so every later placement
+        # is restricted to this reachable set.
+        reachable = self._reachable_positions(grid, player_start)
+
         corner_targets = [
             (1, 1),
             (1, width - 2),
@@ -39,14 +47,16 @@ class LevelBuilder:
             (height - 2, width - 2),
         ]
 
-        corner_positions = self._find_corner_positions(grid, corner_targets)
+        corner_positions = self._find_corner_positions(
+            grid, corner_targets, reachable
+        )
         ghost_starts = corner_positions.copy()
 
         reserved = set(ghost_starts)
         reserved.add(player_start)
 
         # [wehan] pacgum placement
-        self._place_pacgums(grid, reserved)
+        self._place_pacgums(grid, reserved, reachable)
         self._place_super_pacgums(grid, corner_positions)
 
         player_row, player_col = player_start
@@ -81,11 +91,12 @@ class LevelBuilder:
         self,
         grid: list[list[TileType]],
         reserved: set[tuple[int, int]],
+        reachable: set[tuple[int, int]],
     ) -> None:
-        """Place normal pacgums in available corridors."""
+        """Place normal pacgums in corridors the player can actually reach."""
         candidates = [
             (row, col)
-            for row, col in self._walkable_positions(grid)
+            for row, col in reachable
             if (row, col) not in reserved
         ]
         random.shuffle(candidates)
@@ -106,8 +117,9 @@ class LevelBuilder:
         self,
         grid: list[list[TileType]],
         corner_targets: list[tuple[int, int]],
+        reachable: set[tuple[int, int]],
     ) -> list[tuple[int, int]]:
-        """Find four unique walkable positions near the four corners."""
+        """Find four unique reachable positions near the four corners."""
         positions: list[tuple[int, int]] = []
         for target_row, target_col in corner_targets:
             position = self._nearest_walkable(
@@ -115,6 +127,7 @@ class LevelBuilder:
                 target_row,
                 target_col,
                 excluded=set(positions),
+                reachable=reachable,
             )
             positions.append(position)
         return positions
@@ -125,12 +138,21 @@ class LevelBuilder:
         target_row: int,
         target_col: int,
         excluded: set[tuple[int, int]] | None = None,
+        reachable: set[tuple[int, int]] | None = None,
     ) -> tuple[int, int]:
-        """Find nearest non-wall tile, optionally skipping excluded cells."""
+        """Find nearest non-wall tile, optionally skipping excluded cells.
+
+        When `reachable` is given, only cells in that set are considered —
+        used once the player's start is known, so corner/ghost spawns never
+        land in a floor pocket disconnected from the player.
+        """
         skip = excluded or set()
+        candidates = (
+            self._walkable_positions(grid) if reachable is None else reachable
+        )
         best_position = (target_row, target_col)
         best_distance = 999999
-        for row, col in self._walkable_positions(grid):
+        for row, col in candidates:
             if (row, col) in skip:
                 continue
             distance = abs(row - target_row) + abs(col - target_col)
@@ -138,6 +160,30 @@ class LevelBuilder:
                 best_distance = distance
                 best_position = (row, col)
         return best_position
+
+    def _reachable_positions(
+        self,
+        grid: list[list[TileType]],
+        start: tuple[int, int],
+    ) -> set[tuple[int, int]]:
+        """Flood-fill every non-wall cell reachable from start."""
+        height = len(grid)
+        width = len(grid[0])
+        seen = {start}
+        queue = deque([start])
+        while queue:
+            row, col = queue.popleft()
+            for delta_row, delta_col in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                next_row, next_col = row + delta_row, col + delta_col
+                if not (0 <= next_row < height and 0 <= next_col < width):
+                    continue
+                if (next_row, next_col) in seen:
+                    continue
+                if grid[next_row][next_col] == TileType.WALL:
+                    continue
+                seen.add((next_row, next_col))
+                queue.append((next_row, next_col))
+        return seen
 
     def _walkable_positions(
         self,

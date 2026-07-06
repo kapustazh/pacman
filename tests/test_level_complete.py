@@ -432,6 +432,35 @@ def test_load_level_deterministic_pellets() -> None:
     assert len(second.pellet_cells) == len(layout.pellet_cells)
 
 
+def test_all_pellets_reachable_from_player_spawn() -> None:
+    """Every pellet must be collectible or the level can never complete."""
+    from collections import deque
+
+    from config.config import load_config
+    from game.level import load_level
+
+    config = load_config("config.json")
+    for seed in (1, 2, 3, 42, 99):
+        layout = load_level(config, 0, seed)
+        start = layout.player_spawn
+        seen = {start}
+        queue = deque([start])
+        while queue:
+            current = queue.popleft()
+            for delta_row, delta_col in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nxt = CellPos(
+                    current.row + delta_row, current.col + delta_col
+                )
+                if nxt in seen or layout.is_wall(nxt):
+                    continue
+                seen.add(nxt)
+                queue.append(nxt)
+
+        all_pellets = set(layout.pellet_cells) | set(layout.power_pellet_cells)
+        assert all_pellets <= seen, f"seed {seed} has unreachable pellets"
+        assert all(cell in seen for _kind, cell in layout.ghost_spawns)
+
+
 def test_play_state_loads_level_off_main_thread() -> None:
     """Maze generation must run on a background thread, not block."""
     import time
