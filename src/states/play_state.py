@@ -108,18 +108,18 @@ class PlayState(GameState):
             if event.key == pygame.K_i and self._world is not None:
                 now_on = self._world.toggle_invincible()
                 self._show_cheat_message(
-                    f"CHEAT: INVINCIBLE {'ON' if now_on else 'OFF'}"
+                    f"CHEAT - INVINCIBLE {'ON' if now_on else 'OFF'}"
                 )
                 continue
             if event.key == pygame.K_f and self._world is not None:
                 now_on = self._world.toggle_ghosts_frozen()
                 self._show_cheat_message(
-                    f"CHEAT: FREEZE GHOSTS {'ON' if now_on else 'OFF'}"
+                    f"CHEAT - FREEZE GHOSTS {'ON' if now_on else 'OFF'}"
                 )
                 continue
             if event.key == pygame.K_l and self._session is not None:
                 self._session.lives += 1
-                self._show_cheat_message("CHEAT: +1 LIFE")
+                self._show_cheat_message("CHEAT - PLUS 1 LIFE")
                 continue
             if (
                 event.key == pygame.K_n
@@ -127,7 +127,7 @@ class PlayState(GameState):
                 and self._world is not None
             ):
                 self._advance_level_or_win(context, pygame.time.get_ticks())
-                self._show_cheat_message("CHEAT: LEVEL SKIPPED")
+                self._show_cheat_message("CHEAT - LEVEL SKIPPED")
                 continue
             direction = _direction_from_key(event.key)
             if (

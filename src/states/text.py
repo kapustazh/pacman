@@ -77,7 +77,10 @@ class ArcadeTextFont:
                 char, self._color, self._scale
             )
             if scaled is None:
-                x += advance
+                # No glyph for this char (e.g. unsupported punctuation):
+                # reserve no space, matching the width pass above — do not
+                # advance, or later characters get pushed past the
+                # surface's width and are silently clipped.
                 continue
             blit_x = x + (advance - scaled.get_width()) // 2
             blit_y = (advance - scaled.get_height()) // 2
