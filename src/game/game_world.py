@@ -52,6 +52,7 @@ class GameWorld:
     GHOST_POINTS: ClassVar[int] = 200
     FRIGHTENED_DURATION_MS: ClassVar[int] = 6000
     FRIGHTENED_FLASH_MS: ClassVar[int] = 2000
+    FRIGHTENED_GHOST_SPEED_DIVISOR: ClassVar[int] = 2
     SCORE_POPUP_DURATION_MS: ClassVar[int] = 1000
     CHASE_STEPS: ClassVar[int] = 20
     SCATTER_STEPS: ClassVar[int] = 20
@@ -66,6 +67,7 @@ class GameWorld:
         "_frightened_until_ms",
         "_scatter_mode",
         "_scatter_step_count",
+        "_ghost_step_count",
         "_invincible",
         "_ghosts_frozen",
         "_layout",
@@ -125,6 +127,7 @@ class GameWorld:
         self._frightened_until_ms: int = 0
         self._scatter_mode: bool = False
         self._scatter_step_count: int = 0
+        self._ghost_step_count: int = 0
         self._invincible: bool = False
         self._ghosts_frozen: bool = False
         self._fruit: PelletEntity | None = None

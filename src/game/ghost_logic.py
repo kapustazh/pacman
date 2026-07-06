@@ -261,12 +261,21 @@ def _arrive_home(world: GameWorld, ghost: GhostEntity) -> None:
 
 
 def move_ghosts(world: GameWorld) -> None:
-    """Step every visible ghost once per player grid step."""
+    """Step every visible ghost once per player grid step.
+
+    Frightened ghosts move at a fraction of that rate (classic Pac-Man
+    slows fleeing ghosts down), so Pac-Man can outrun and catch them;
+    eaten ghosts returning home are never slowed.
+    """
     if world._player is None or world._ghosts_frozen:
         return
     layout = world._layout
     player_cell = world._player.cell
     fleeing = is_frightened(world)
+    world._ghost_step_count += 1
+    frightened_step_due = (
+        world._ghost_step_count % world.FRIGHTENED_GHOST_SPEED_DIVISOR == 0
+    )
     for kind, ghost in world._ghosts.items():
         if ghost.is_hidden:
             continue
@@ -283,6 +292,8 @@ def move_ghosts(world: GameWorld) -> None:
                     _arrive_home(world, ghost)
             continue
         if fleeing:
+            if not frightened_step_due:
+                continue
             step = _next_flee_step(
                 ghost.cell,
                 ghost.last_cell,

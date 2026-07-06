@@ -179,3 +179,25 @@ def test_eaten_ghost_becomes_eyes_and_returns_home() -> None:
         move_ghosts(world)
     assert ghost.is_returning is False
     assert ghost.cell == home
+
+
+def test_frightened_ghosts_move_slower_than_normal() -> None:
+    """Frightened ghosts must only step every FRIGHTENED_GHOST_SPEED_DIVISOR
+    move_ghosts() calls, so Pac-Man can outrun and catch them."""
+    world = _build_world()
+    activate_frightened_mode(world)
+    ghost = next(iter(world._ghosts.values()))
+    divisor = world.FRIGHTENED_GHOST_SPEED_DIVISOR
+
+    moved_steps = 0
+    start = ghost.cell
+    previous = start
+    for _ in range(divisor * 4):
+        move_ghosts(world)
+        if ghost.cell != previous:
+            moved_steps += 1
+            previous = ghost.cell
+
+    # Non-frightened ghosts would move on every one of these calls; a
+    # frightened ghost must move on at most half (1/divisor) of them.
+    assert moved_steps <= (divisor * 4) // divisor
