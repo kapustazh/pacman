@@ -22,7 +22,7 @@ _KEY_COMMANDS: dict[int, str] = {
 
 
 class SelectableMenuState(GameState):
-    """Shared keyboard-navigated option list."""
+    """Reusable keyboard-navigated menu with configurable rows."""
 
     MENU_LINE_HEIGHT: ClassVar[int] = 56
     MENU_SCALE: ClassVar[int] = 3
@@ -34,6 +34,14 @@ class SelectableMenuState(GameState):
         action_handlers: dict[str, Callable[[GameContext], None]],
         shortcuts: dict[int, tuple[int, str]] | None = None,
     ) -> None:
+        """Configure menu rows, layout, and action handlers.
+
+        Args:
+            entries: Label and action-key pairs for each row.
+            menu_start_y: Vertical center of the first row.
+            action_handlers: Map from action keys to callbacks.
+            shortcuts: Optional direct key-to-(index, action) bindings.
+        """
         self._entries = entries
         self._menu_start_y = menu_start_y
         self._action_handlers = action_handlers
@@ -41,53 +49,98 @@ class SelectableMenuState(GameState):
         self._selected_index = 0
 
     def option_count(self) -> int:
-        """Return number of selectable menu rows."""
+        """Return the number of selectable rows.
+
+        Returns:
+            Count of configured menu entries.
+        """
         return len(self._entries)
 
     def select(self, index: int) -> None:
-        """Highlight menu row at index."""
+        """Move the highlight to a menu row.
+
+        Args:
+            index: Zero-based row index to select.
+        """
         self._selected_index = index
 
     def move(self, delta: int) -> None:
-        """Move selection up or down, wrapping at list ends."""
+        """Move the highlight up or down with wraparound.
+
+        Args:
+            delta: Row offset; negative moves up, positive moves down.
+        """
         count = self.option_count()
         self._selected_index = (self._selected_index + delta) % count
 
     def activate_selected(self, context: GameContext) -> None:
-        """Activate currently highlighted row."""
+        """Run the action for the highlighted row.
+
+        Args:
+            context: Shared game context passed to the action handler.
+        """
         self.activate_index(self._selected_index, context)
 
     def activate_index(self, index: int, context: GameContext) -> None:
-        """Activate row at index when in range."""
+        """Run the action for one row when the index is valid.
+
+        Args:
+            index: Zero-based row index to activate.
+            context: Shared game context passed to the action handler.
+        """
         if 0 <= index < len(self._entries):
             self.activate_action(self._entries[index][1], context)
 
     def activate_action(self, action: str, context: GameContext) -> None:
-        """Run handler for named menu action."""
+        """Dispatch a named menu action to its handler.
+
+        Args:
+            action: Internal action key from the entries table.
+            context: Shared game context passed to the action handler.
+        """
         handler = self._action_handlers.get(action)
         if handler is not None:
             handler(context)
 
     def draw_header(self, surface: Surface, context: GameContext) -> None:
-        """Draw screen content above the option list."""
+        """No-op; subclasses draw content above the option list.
+
+        Args:
+            surface: Destination draw target (unused).
+            context: Shared game context (unused).
+        """
 
     def enter(
         self,
         context: GameContext,
         enter_data: StateEnterData | None = None,
     ) -> None:
-        """Reset menu selection."""
+        """Reset selection to the first row.
+
+        Args:
+            context: Shared game context (unused).
+            enter_data: Optional payload from the previous scene (unused).
+        """
         self._selected_index = 0
 
     def leave(self, context: GameContext) -> None:
-        """Leave menu."""
+        """No-op; scene has no teardown work.
+
+        Args:
+            context: Shared game context (unused).
+        """
 
     def handle_events(
         self,
         events: list[pygame.event.Event],
         context: GameContext,
     ) -> None:
-        """Handle keyboard menu navigation."""
+        """Route keyboard input to menu navigation.
+
+        Args:
+            events: Pygame events for this frame.
+            context: Shared game context for scene transitions.
+        """
         for event in events:
             if event.type == pygame.KEYDOWN:
                 self._handle_menu_key(event, context)
@@ -99,7 +152,13 @@ class SelectableMenuState(GameState):
         *,
         escape_action: str = "exit",
     ) -> None:
-        """Dispatch one KEYDOWN event through shared menu key bindings."""
+        """Handle one key press for menu navigation or activation.
+
+        Args:
+            event: Keydown event to interpret.
+            context: Shared game context for scene transitions.
+            escape_action: Action key to run when Escape is pressed.
+        """
         shortcut = self._shortcuts.get(event.key)
         if shortcut is not None:
             index, action = shortcut
@@ -124,15 +183,31 @@ class SelectableMenuState(GameState):
                     self.activate_index(index, context)
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """Menu has no simulation."""
+        """No-op; menu has no simulation.
+
+        Args:
+            dt: Elapsed seconds since the last frame (unused).
+            now_ms: Monotonic clock in milliseconds (unused).
+            context: Shared game context (unused).
+        """
 
     def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw header and menu options."""
+        """Draw the header and selectable menu rows.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context with text renderer.
+        """
         self.draw_header(surface, context)
         self.draw_options(surface, context)
 
     def draw_options(self, surface: Surface, context: GameContext) -> None:
-        """Draw selectable menu rows below the header."""
+        """Draw selectable rows with highlight for the current selection.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context with text renderer.
+        """
         text = context.text
         options = self._entries
 

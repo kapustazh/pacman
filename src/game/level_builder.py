@@ -19,14 +19,25 @@ _GHOST_ORDER: tuple[GhostKind, ...] = (
 
 
 class LevelBuilder:
-    """Place player, ghosts, pacgums, and super-pacgums."""
+    """Place player, ghosts, pellets, and power pellets on a maze grid."""
 
     def __init__(self, pacgum_count: int) -> None:
-        """Initialize level builder."""
+        """Create a builder with a target pellet count.
+
+        Args:
+            pacgum_count: Maximum normal pellets to place on walkable cells.
+        """
         self.pacgum_count = pacgum_count
 
     def build(self, grid: list[list[TileType]]) -> LevelLayout:
-        """Populate the grid and return a level layout."""
+        """Populate the grid and return an immutable level layout.
+
+        Args:
+            grid: Mutable maze tile grid to modify in place.
+
+        Returns:
+            Level layout with spawns, pellets, and unreachable-floor metadata.
+        """
         height = len(grid)
         width = len(grid[0])
 
@@ -94,7 +105,13 @@ class LevelBuilder:
         reserved: set[tuple[int, int]],
         reachable: set[tuple[int, int]],
     ) -> None:
-        """Place normal pacgums in corridors the player can actually reach."""
+        """Scatter normal pellets on reachable, unreserved floor cells.
+
+        Args:
+            grid: Maze tile grid to modify in place.
+            reserved: Cells that must not receive pellets.
+            reachable: Walkable cells connected to the player start.
+        """
         candidates = [
             (row, col) for row, col in reachable if (row, col) not in reserved
         ]
@@ -108,7 +125,12 @@ class LevelBuilder:
         grid: list[list[TileType]],
         positions: list[tuple[int, int]],
     ) -> None:
-        """Place exactly four super-pacgums near maze corners."""
+        """Place up to four power pellets near maze corners.
+
+        Args:
+            grid: Maze tile grid to modify in place.
+            positions: Candidate corner-adjacent cells, newest first.
+        """
         for row, col in positions[:4]:
             grid[row][col] = TileType.SUPER_PACGUM
 
@@ -118,7 +140,16 @@ class LevelBuilder:
         corner_targets: list[tuple[int, int]],
         reachable: set[tuple[int, int]],
     ) -> list[tuple[int, int]]:
-        """Find four unique reachable positions near the four corners."""
+        """Find four unique reachable cells near the maze corners.
+
+        Args:
+            grid: Maze tile grid used for walkability checks.
+            corner_targets: Preferred corner anchor positions.
+            reachable: Walkable cells connected to the player start.
+
+        Returns:
+            Up to four distinct spawn coordinates.
+        """
         positions: list[tuple[int, int]] = []
         for target_row, target_col in corner_targets:
             position = self._nearest_walkable(
@@ -139,11 +170,17 @@ class LevelBuilder:
         excluded: set[tuple[int, int]] | None = None,
         reachable: set[tuple[int, int]] | None = None,
     ) -> tuple[int, int]:
-        """Find nearest non-wall tile, optionally skipping excluded cells.
+        """Find the closest walkable cell to a target coordinate.
 
-        When `reachable` is given, only cells in that set are considered —
-        used once the player's start is known, so corner/ghost spawns never
-        land in a floor pocket disconnected from the player.
+        Args:
+            grid: Maze tile grid used when reachable is not provided.
+            target_row: Preferred row index.
+            target_col: Preferred column index.
+            excluded: Cells to skip when searching.
+            reachable: Optional connected walkable set; limits search scope.
+
+        Returns:
+            Nearest eligible row/column pair by Manhattan distance.
         """
         skip = excluded or set()
         candidates = (
@@ -165,7 +202,15 @@ class LevelBuilder:
         grid: list[list[TileType]],
         start: tuple[int, int],
     ) -> set[tuple[int, int]]:
-        """Flood-fill every non-wall cell reachable from start."""
+        """Flood-fill every non-wall cell reachable from a start cell.
+
+        Args:
+            grid: Maze tile grid.
+            start: Starting row/column pair.
+
+        Returns:
+            Set of connected walkable coordinates including start.
+        """
         height = len(grid)
         width = len(grid[0])
         seen = {start}
@@ -188,7 +233,14 @@ class LevelBuilder:
         self,
         grid: list[list[TileType]],
     ) -> list[tuple[int, int]]:
-        """Return all non-wall positions."""
+        """List every non-wall cell in the grid.
+
+        Args:
+            grid: Maze tile grid.
+
+        Returns:
+            All walkable row/column pairs.
+        """
         return [
             (row_index, col_index)
             for row_index, row in enumerate(grid)

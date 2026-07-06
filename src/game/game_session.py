@@ -19,7 +19,7 @@ class GameplayPhase(Enum):
 
 @dataclass(slots=True)
 class GameSession:
-    """Run-level metadata: lives, level index, timer, and gameplay phase."""
+    """Tracks lives, level index, score, timer, and current gameplay phase."""
 
     DEFAULT_LIVES: ClassVar[int] = 3
     # [wehan] level_max_time config key; seconds (was turns in wehan)
@@ -44,28 +44,51 @@ class GameSession:
     phase_started_at_ms: int = 0
 
     def remaining_time_s(self) -> int:
-        """Return whole seconds left on the current level."""
+        """Return whole seconds left on the level timer.
+
+        Returns:
+            Non-negative seconds remaining.
+        """
         return max(0, self.remaining_time_ms // 1000)
 
     def level_elapsed_s(self) -> int:
-        """Return whole seconds elapsed in the current level timer."""
+        """Return whole seconds elapsed since the level timer started.
+
+        Returns:
+            Non-negative seconds elapsed.
+        """
         return max(0, self.level_time_limit_s - self.remaining_time_s())
 
     def reset_level_timer(self) -> None:
-        """Reset countdown to full level limit."""
+        """Reset the countdown to the full level time limit."""
         self.remaining_time_ms = self.level_time_limit_s * 1000
 
     def update_high_score(self, score: int) -> None:
-        """Track best score seen this session until persistence lands."""
+        """Update the session high score if the given score is higher.
+
+        Args:
+            score: Score to compare against the current high score.
+        """
         if score > self.high_score:
             self.high_score = score
 
     def sync_score(self, world_score: int) -> None:
-        """Persist run score from the active world before teardown."""
+        """Persist the active world's score before teardown.
+
+        Args:
+            world_score: Score from the live game world.
+        """
         self.score = max(self.score, world_score)
 
     def tick_timer(self, dt_s: float) -> bool:
-        """Subtract play time. Return True when timer hits zero."""
+        """Subtract elapsed play time while in the PLAYING phase.
+
+        Args:
+            dt_s: Elapsed time in seconds since the last tick.
+
+        Returns:
+            True when the timer reaches zero during active play.
+        """
         if self.phase != GameplayPhase.PLAYING:
             return False
         elapsed_ms = int(dt_s * 1000)
@@ -75,35 +98,62 @@ class GameSession:
         return self.remaining_time_ms == 0
 
     def enter_ready(self, now_ms: int) -> None:
-        """Enter pre-round ready state."""
+        """Enter the pre-round READY phase.
+
+        Args:
+            now_ms: Current timestamp in milliseconds.
+        """
         self.phase = GameplayPhase.READY
         self.phase_started_at_ms = now_ms
 
     def begin_play(self, now_ms: int) -> None:
-        """Start active gameplay and level timer."""
+        """Start active gameplay and the level timer.
+
+        Args:
+            now_ms: Current timestamp in milliseconds.
+        """
         self.phase = GameplayPhase.PLAYING
         self.phase_started_at_ms = now_ms
 
     def lose_life(self, now_ms: int) -> None:
-        """Decrement lives and enter life-lost phase."""
+        """Decrement lives and enter the life-lost phase.
+
+        Args:
+            now_ms: Current timestamp in milliseconds.
+        """
         self.lives = max(0, self.lives - 1)
         self.phase = GameplayPhase.LIFE_LOST
         self.phase_started_at_ms = now_ms
 
     def enter_game_over(self, now_ms: int) -> None:
-        """Enter terminal game-over phase."""
+        """Enter the terminal game-over phase.
+
+        Args:
+            now_ms: Current timestamp in milliseconds.
+        """
         self.phase = GameplayPhase.GAME_OVER
         self.phase_started_at_ms = now_ms
 
     def enter_level_complete(self, now_ms: int) -> None:
-        """Enter level-complete transition phase."""
+        """Enter the level-complete transition phase.
+
+        Args:
+            now_ms: Current timestamp in milliseconds.
+        """
         self.phase = GameplayPhase.LEVEL_COMPLETE
         self.phase_started_at_ms = now_ms
 
     def advance_level(self) -> None:
-        """Increment level index for the next round."""
+        """Increment the level index for the next round."""
         self.level_number += 1
 
     def phase_elapsed_ms(self, now_ms: int) -> int:
-        """Return milliseconds spent in the current phase."""
+        """Return milliseconds spent in the current phase.
+
+        Args:
+            now_ms: Current timestamp in milliseconds.
+
+        Returns:
+            Non-negative milliseconds since the phase started.
+        """
         return max(0, now_ms - self.phase_started_at_ms)

@@ -1,4 +1,4 @@
-"""Map data structures for Pac-Man."""
+"""Tile type enum for Pac-Man maze grids."""
 
 # [wehan] origin/wehan — TileType grid model.
 
@@ -6,7 +6,7 @@ from enum import Enum
 
 
 class TileType(Enum):
-    """All possible map tile types."""
+    """Symbols used for walls, paths, and pellets in maze data."""
 
     WALL = "#"
     EMPTY = " "

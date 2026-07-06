@@ -16,12 +16,19 @@ from sprites.sprite_types import (
 
 
 class AssetError(Exception):
+    """Raised when a sprite sheet or slice cannot be loaded."""
+
     def __init__(self, detail: str) -> None:
+        """Build an error message from a short detail string.
+
+        Args:
+            detail: What failed during asset loading.
+        """
         super().__init__(f"Asset loading error: {detail}")
 
 
 class Assets:
-    """Sprite sheet loader and gameplay asset catalog."""
+    """Loads sprite sheets and exposes gameplay surfaces."""
 
     ASSETS: ClassVar[Path] = Path(__file__).resolve().parents[2] / "assets"
     CELL_SIZE: ClassVar[int] = 8
@@ -101,6 +108,11 @@ class Assets:
     }
 
     def __init__(self, root: Path | None = None) -> None:
+        """Create an unloaded asset catalog.
+
+        Args:
+            root: Asset directory; defaults to the project ``assets`` folder.
+        """
         self.root = root or self.ASSETS
         self.pacman: dict[Direction, AnimatedSprite] = {}
         self.pacman_death = AnimatedSprite(frames=[])
@@ -120,12 +132,28 @@ class Assets:
         self._loaded = False
 
     def load(self) -> None:
+        """Load sprite sheets once; no-op when already loaded.
+
+        Raises:
+            AssetError: When a required image is missing or corrupt.
+        """
         if self._loaded:
             return
 
         sprites_root = self.root / "sprites"
 
         def load_image(*parts: str) -> Surface:
+            """Load one image under ``sprites/`` relative to the asset root.
+
+            Args:
+                *parts: Path segments after ``sprites/``.
+
+            Returns:
+                Loaded surface with per-pixel alpha.
+
+            Raises:
+                AssetError: When the file does not exist.
+            """
             path = sprites_root.joinpath(*parts)
             if not path.exists():
                 raise AssetError(f"File not found: {path}")
@@ -148,6 +176,20 @@ class Assets:
         width_cells: int | None = None,
         height_cells: int | None = None,
     ) -> Surface:
+        """Cut one sprite from the general sheet and scale to tile size.
+
+        Args:
+            col: Left cell column on the sheet.
+            row: Top cell row on the sheet.
+            width_cells: Slice width in cells; defaults to ``SPRITE_CELLS``.
+            height_cells: Slice height in cells; defaults to ``SPRITE_CELLS``.
+
+        Returns:
+            Copied surface scaled to ``DISPLAY_TILE_SIZE``.
+
+        Raises:
+            AssetError: When the general sheet has not been loaded.
+        """
         if width_cells is None:
             width_cells = self.SPRITE_CELLS
         if height_cells is None:
@@ -171,15 +213,25 @@ class Assets:
         return surface
 
     def _load_frames(self, coords: list[tuple[int, int]]) -> AnimatedSprite:
+        """Build an animation from general-sheet cell coordinates.
+
+        Args:
+            coords: List of ``(col, row)`` frame positions.
+
+        Returns:
+            Animated sprite with one surface per coordinate.
+        """
         frames = [self._slice_cells(col, row) for col, row in coords]
         return AnimatedSprite(frames=frames)
 
     def _load_fruits(self) -> None:
+        """Slice bonus-fruit sprites from the general sheet."""
         for kind, coord in self.FRUIT_COORDS.items():
             col, row = coord
             self.fruits[kind] = self._slice_cells(col, row)
 
     def _load_gameplay_assets(self) -> None:
+        """Load Pac-Man, death animation, dots, and power pellets."""
         for direction, coords in self.PACMAN_COORDS.items():
             self.pacman[direction] = self._load_frames(coords)
         self.pacman_death = self._load_frames(self.DEATH_COORDS)
@@ -204,6 +256,7 @@ class Assets:
         )
 
     def _load_ghosts(self) -> None:
+        """Load normal, frightened, flash, and eyes ghost animations."""
         for kind, coords in self.GHOST_COORDS.items():
             self.ghosts_by_kind[kind] = self._load_frames(coords)
         self.ghost_frightened = self._load_frames(self.FRIGHTENED_COORDS)
@@ -219,6 +272,20 @@ class Assets:
         width_cells: int = 1,
         height_cells: int = 1,
     ) -> Surface:
+        """Cut one tile from the maze parts sheet.
+
+        Args:
+            col: Left cell column on the maze sheet.
+            row: Top cell row on the maze sheet.
+            width_cells: Slice width in cells.
+            height_cells: Slice height in cells.
+
+        Returns:
+            Copied surface scaled to ``DISPLAY_TILE_SIZE``.
+
+        Raises:
+            AssetError: When the maze sheet has not been loaded.
+        """
         if self._maze_sheet is None:
             raise AssetError("Maze parts sheet not loaded")
         rect = pygame.Rect(
@@ -239,7 +306,14 @@ class Assets:
 
     @staticmethod
     def _make_white_tile(surface: Surface) -> Surface:
-        """Tint every non-black pixel to pure white for level-clear flash."""
+        """Tint non-black pixels white for the level-clear flash.
+
+        Args:
+            surface: Source maze tile.
+
+        Returns:
+            Copy of the tile with line art recolored to white.
+        """
         result = surface.copy()
         for x in range(result.get_width()):
             for y in range(result.get_height()):
@@ -249,6 +323,7 @@ class Assets:
         return result
 
     def _load_maze_tiles(self) -> None:
+        """Build blue and white maze tile sets, fills, and junctions."""
         if self._general_sheet is None:
             raise AssetError("General sprites sheet not loaded")
         maze_path = self.root / "sprites" / "maze" / "maze_parts.png"
@@ -330,7 +405,15 @@ class Assets:
         mask: tuple[bool, bool, bool, bool],
         color: tuple[int, int, int],
     ) -> Surface:
-        """Compose a junction tile from centered arms (row 4 / col 4)."""
+        """Compose a junction tile from centered line arms.
+
+        Args:
+            mask: ``(up, down, left, right)`` arms to draw.
+            color: RGB line color.
+
+        Returns:
+            Scaled junction tile surface.
+        """
         up, down, left, right = mask
         cell = 8  # native sheet cell size before display scaling
         mid = cell // 2
@@ -351,7 +434,14 @@ class Assets:
 
     @staticmethod
     def _solid_tile(color: tuple[int, int, int]) -> Surface:
-        """Flat-filled tile for wall cells with no matching line-art shape."""
+        """Create a flat-filled wall tile.
+
+        Args:
+            color: RGB fill color.
+
+        Returns:
+            Square tile at ``DISPLAY_TILE_SIZE``.
+        """
         surface = pygame.Surface(
             (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
         )
@@ -360,7 +450,15 @@ class Assets:
 
     @staticmethod
     def _dot_tile(color: tuple[int, int, int], scale: float = 0.5) -> Surface:
-        """Small centered circle for a lone wall post with no neighbours."""
+        """Create a small centered circle for a lone wall post.
+
+        Args:
+            color: RGB fill color.
+            scale: Circle diameter as a fraction of tile size.
+
+        Returns:
+            Transparent tile with a centered dot.
+        """
         size = Assets.DISPLAY_TILE_SIZE
         surface = pygame.Surface((size, size), pygame.SRCALPHA)
         radius = max(1, round(size * scale / 2))

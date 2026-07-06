@@ -12,7 +12,7 @@ from pygame.surface import Surface
 
 
 class ArcadeTextColor(IntEnum):
-    """Vertical color bands on the arcade text sprite sheet."""
+    """Palette rows on the arcade text sprite sheet."""
 
     WHITE = 0
     RED = 1
@@ -23,7 +23,7 @@ class ArcadeTextColor(IntEnum):
 
 
 class ArcadeTextRenderer:
-    """Arcade text rendering with lazy glyph atlas and bounded caches."""
+    """Renders arcade-style text from a shared glyph atlas."""
 
     TEXT_SHEET_PATH: ClassVar[Path] = (
         Path(__file__).resolve().parents[2]
@@ -52,6 +52,7 @@ class ArcadeTextRenderer:
     )
 
     def __init__(self) -> None:
+        """Initialize empty glyph and render caches."""
         self._glyphs_by_color: dict[ArcadeTextColor, dict[str, Surface]] = {}
         self._atlas_loaded = False
         self._scaled_glyph_cache: dict[
@@ -62,11 +63,18 @@ class ArcadeTextRenderer:
         ] = OrderedDict()
 
     def preload(self) -> None:
-        """Load text atlas up front so first menu frame does not hitch."""
+        """Warm the atlas so the first frame does not hitch."""
         self._ensure_atlas()
 
     def advance(self, scale: int = 3) -> int:
-        """Return fixed monospace advance for one glyph cell."""
+        """Return pixel width of one monospace glyph cell.
+
+        Args:
+            scale: Integer scale factor applied to the base cell size.
+
+        Returns:
+            Advance width in pixels.
+        """
         return self.CELL_SIZE * scale
 
     def render(
@@ -75,7 +83,16 @@ class ArcadeTextRenderer:
         color: ArcadeTextColor = ArcadeTextColor.WHITE,
         scale: int = 3,
     ) -> Surface:
-        """Render text to a cached surface at the given color and scale."""
+        """Build or return cached arcade text at the given color and scale.
+
+        Args:
+            text: Source string; uppercased before lookup.
+            color: Palette row to draw from.
+            scale: Integer scale factor for glyphs.
+
+        Returns:
+            Alpha surface containing the rendered line.
+        """
         self._ensure_atlas()
         upper = text.upper()
         cache_key = (upper, color, scale)
@@ -90,6 +107,16 @@ class ArcadeTextRenderer:
     def _build_surface(
         self, upper: str, color: ArcadeTextColor, scale: int
     ) -> Surface:
+        """Lay out and blit glyphs into a single-line surface.
+
+        Args:
+            upper: Uppercased text to render.
+            color: Palette row to draw from.
+            scale: Integer scale factor for glyphs.
+
+        Returns:
+            Alpha surface with the composed line.
+        """
         advance = self.advance(scale)
         # spaces use half cell width so inline gaps stay tight
         space = max(1, advance // 2)
@@ -128,7 +155,18 @@ class ArcadeTextRenderer:
         color: ArcadeTextColor = ArcadeTextColor.WHITE,
         scale: int = 3,
     ) -> pygame.rect.Rect:
-        """Draw horizontally centered arcade text and return its rect."""
+        """Draw horizontally centered arcade text.
+
+        Args:
+            surface: Destination draw target.
+            text: String to render.
+            y: Vertical center of the text line.
+            color: Palette row to draw from.
+            scale: Integer scale factor for glyphs.
+
+        Returns:
+            Bounding rect of the blitted text.
+        """
         rendered = self.render(text, color, scale)
         rect = rendered.get_rect(center=(surface.get_width() // 2, y))
         surface.blit(rendered, rect)
@@ -146,7 +184,18 @@ class ArcadeTextRenderer:
         label_chars: int = 6,
         gap_chars: int = 2,
     ) -> None:
-        """Draw one aligned label/value row centered on screen."""
+        """Draw a centered label/value row with fixed column widths.
+
+        Args:
+            surface: Destination draw target.
+            label: Left-column text.
+            value: Right-column text.
+            y: Vertical center of the row.
+            color: Palette row to draw from.
+            scale: Integer scale factor for glyphs.
+            label_chars: Fixed label width in glyph cells.
+            gap_chars: Gap between columns in glyph cells.
+        """
         advance = self.advance(scale)
         label_width = label_chars * advance
         gap_width = gap_chars * advance
@@ -163,7 +212,11 @@ class ArcadeTextRenderer:
         surface.blit(value_surface, value_rect)
 
     def _ensure_atlas(self) -> None:
-        """Load and slice the text sheet once."""
+        """Load and slice the text sheet on first use.
+
+        Raises:
+            FileNotFoundError: If the sprite sheet path is missing.
+        """
         if self._atlas_loaded:
             return
 
@@ -189,7 +242,15 @@ class ArcadeTextRenderer:
         self._atlas_loaded = True
 
     def _glyph(self, char: str, color: ArcadeTextColor) -> Surface | None:
-        """Return a single glyph surface for char and color."""
+        """Look up one glyph surface for a character and color.
+
+        Args:
+            char: Single character to resolve.
+            color: Palette row to draw from.
+
+        Returns:
+            Glyph surface, or None if the character is unsupported.
+        """
         self._ensure_atlas()
         return self._glyphs_by_color[color].get(char.upper())
 
@@ -198,7 +259,12 @@ class ArcadeTextRenderer:
         cache_key: tuple[str, ArcadeTextColor, int],
         surface: Surface,
     ) -> None:
-        """Store rendered text with bounded LRU eviction."""
+        """Store a rendered line and evict the oldest entry when full.
+
+        Args:
+            cache_key: Tuple of uppercased text, color, and scale.
+            surface: Rendered line to cache.
+        """
         self._render_cache[cache_key] = surface
         self._render_cache.move_to_end(cache_key)
         while len(self._render_cache) > self.RENDER_CACHE_MAX:
@@ -210,7 +276,16 @@ class ArcadeTextRenderer:
         color: ArcadeTextColor,
         scale: int,
     ) -> Surface | None:
-        """Return cached scaled glyph surface."""
+        """Return a cached scaled glyph, building it on first use.
+
+        Args:
+            char: Single character to scale.
+            color: Palette row to draw from.
+            scale: Integer scale factor for the glyph cell.
+
+        Returns:
+            Scaled glyph surface, or None if the character is unsupported.
+        """
         glyph = self._glyph(char, color)
         if glyph is None:
             return None
@@ -231,7 +306,15 @@ _plus_glyph_cache: dict[tuple[tuple[int, int, int, int], int], Surface] = {}
 
 
 def plus_glyph(color: tuple[int, int, int, int], scale: int) -> Surface:
-    """Return a cached plus sign surface for HUD life overflow."""
+    """Return a cached plus sign for HUD life overflow.
+
+    Args:
+        color: RGBA color for the drawn lines.
+        scale: Integer scale factor for the glyph cell.
+
+    Returns:
+        Alpha surface containing the plus sign.
+    """
     key = (color, scale)
     cached = _plus_glyph_cache.get(key)
     if cached is not None:
@@ -254,7 +337,17 @@ def menu_row_rect(
     start_y: int,
     line_height: int,
 ) -> pygame.Rect:
-    """Return centered row band for menu selection highlight."""
+    """Return the highlight band rect for one menu row.
+
+    Args:
+        surface: Screen used to compute horizontal centering.
+        index: Zero-based row index.
+        start_y: Vertical center of the first row.
+        line_height: Pixel height of each row.
+
+    Returns:
+        Rect covering the row highlight area.
+    """
     width = int(surface.get_width() * 0.9)
     left = (surface.get_width() - width) // 2
     y_center = start_y + index * line_height
@@ -270,7 +363,16 @@ def menu_row_highlight_surface(
     *,
     color: tuple[int, int, int, int] | None = None,
 ) -> Surface:
-    """Return cached semi-transparent menu row highlight band."""
+    """Return a cached semi-transparent menu row highlight band.
+
+    Args:
+        screen_width: Width used to size the highlight strip.
+        line_height: Pixel height of the band.
+        color: Optional RGBA fill; defaults to the menu highlight color.
+
+    Returns:
+        Reusable highlight surface.
+    """
     if color is None:
         color = ArcadeTextRenderer.MENU_ROW_HIGHLIGHT_COLOR
     cache_key = (screen_width, line_height)
@@ -292,7 +394,15 @@ def draw_menu_row_highlight(
     *,
     color: tuple[int, int, int, int] | None = None,
 ) -> None:
-    """Draw semi-transparent highlight band behind a menu row."""
+    """Draw a semi-transparent highlight behind one menu row.
+
+    Args:
+        surface: Destination draw target.
+        index: Zero-based row index.
+        start_y: Vertical center of the first row.
+        line_height: Pixel height of each row.
+        color: Optional RGBA fill; defaults to the menu highlight color.
+    """
     row = menu_row_rect(surface, index, start_y, line_height)
     highlight = menu_row_highlight_surface(
         surface.get_width(), line_height, color=color

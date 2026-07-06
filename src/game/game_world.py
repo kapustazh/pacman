@@ -35,7 +35,7 @@ from sprites.sprite_types import Direction, FRUIT_POINTS, GhostKind
 
 @dataclass(slots=True, frozen=True)
 class ScorePopup:
-    """Short-lived point label shown where a fruit was eaten."""
+    """Floating score label shown briefly after collecting points."""
 
     center: tuple[int, int]
     points: int
@@ -43,7 +43,7 @@ class ScorePopup:
 
 
 class GameWorld:
-    """Owns runtime gameplay entities, groups, and collision state."""
+    """Runtime gameplay state: entities, movement, collisions, and score."""
 
     PLAYER_STEP_MS: ClassVar[int] = 180
     PLAYER_STEP_MS_MIN: ClassVar[int] = 60
@@ -74,6 +74,18 @@ class GameWorld:
         power_pellet_points: int = POWER_PELLET_POINTS,
         ghost_points: int = GHOST_POINTS,
     ) -> None:
+        """Create a world and spawn all entities from a level layout.
+
+        Args:
+            layout: Immutable maze layout with spawns and collectibles.
+            catalog: Loaded sprite assets for actors and tiles.
+            render_config: Grid-to-pixel mapping for entity placement.
+            initial_score: Starting score carried into this level.
+            level_number: One-based level index for fruit scheduling.
+            pellet_points: Points awarded for normal pellets.
+            power_pellet_points: Points awarded for power pellets.
+            ghost_points: Points awarded for eating a frightened ghost.
+        """
         self._layout: LevelLayout = layout
         self._catalog: Assets = catalog
         self._render_config: WorldRenderConfig = render_config
@@ -112,44 +124,84 @@ class GameWorld:
 
     @property
     def all_consumables_cleared(self) -> bool:
-        """Return True when no pellets or power pellets remain on the maze."""
+        """Return whether all pellets and power pellets are gone.
+
+        Returns:
+            True when no collectibles remain on the maze.
+        """
         return not self._pellets
 
     @property
     def player_is_dying(self) -> bool:
-        """Return True while Pac-Man death animation is active."""
+        """Return whether Pac-Man's death animation is playing.
+
+        Returns:
+            True while the death sequence is active.
+        """
         return self._player is not None and self._player.dying
 
     @property
     def player_death_finished(self) -> bool:
-        """Return True once Pac-Man death animation has completed."""
+        """Return whether Pac-Man's death animation has finished.
+
+        Returns:
+            True once the death sequence completes.
+        """
         return self._player is not None and self._player.death_finished
 
     @property
     def level_fruit_surface(self) -> Surface | None:
-        """Return HUD fruit sprite for the active level."""
+        """Return the HUD fruit sprite for the current level.
+
+        Returns:
+            Fruit surface for the level, or None if unavailable.
+        """
         kind = fruit_for_level(self._level_number)
         fruit = self._catalog.fruits.get(kind)
         return fruit
 
     @property
     def invincible(self) -> bool:
+        """Return whether cheat invincibility is enabled.
+
+        Returns:
+            True when Pac-Man cannot be killed by ghosts.
+        """
         return self._invincible
 
     @property
     def ghosts_frozen(self) -> bool:
+        """Return whether cheat ghost-freeze is enabled.
+
+        Returns:
+            True when ghost movement is disabled.
+        """
         return self._ghosts_frozen
 
     @property
     def player_step_ms(self) -> int:
+        """Return Pac-Man's current grid step interval in milliseconds.
+
+        Returns:
+            Milliseconds between player grid steps.
+        """
         return self._player_step_ms
 
     @property
     def speed_cheat_active(self) -> bool:
+        """Return whether the player speed cheat differs from default.
+
+        Returns:
+            True when step interval has been adjusted away from default.
+        """
         return self._player_step_ms != self.PLAYER_STEP_MS
 
     def set_wall_flash(self, white: bool) -> None:
-        """Toggle wall tiles between blue and white maze sprites."""
+        """Toggle wall tiles between blue and white maze sprites.
+
+        Args:
+            white: When True, use white flash sprites; otherwise blue.
+        """
         if self._wall_flash_white == white:
             return
         self._wall_flash_white = white
@@ -157,17 +209,29 @@ class GameWorld:
             wall.set_flash_white(white)
 
     def toggle_invincible(self) -> bool:
-        """Flip cheat invincibility; return the new state."""
+        """Flip cheat invincibility.
+
+        Returns:
+            New invincibility state after toggling.
+        """
         self._invincible = not self._invincible
         return self._invincible
 
     def toggle_ghosts_frozen(self) -> bool:
-        """Flip cheat ghost-freeze; return the new state."""
+        """Flip cheat ghost-freeze.
+
+        Returns:
+            New ghost-freeze state after toggling.
+        """
         self._ghosts_frozen = not self._ghosts_frozen
         return self._ghosts_frozen
 
     def adjust_player_speed(self, delta_ms: int) -> None:
-        """Cheat: change Pac-Man step interval (lower ms = faster)."""
+        """Adjust Pac-Man step interval for the speed cheat.
+
+        Args:
+            delta_ms: Change in milliseconds; lower values move faster.
+        """
         self._player_step_ms = max(
             self.PLAYER_STEP_MS_MIN,
             min(
@@ -177,7 +241,7 @@ class GameWorld:
         )
 
     def freeze_gameplay(self) -> None:
-        """Pause gameplay."""
+        """Pause movement and clear pending input."""
         self.frozen = True
         self._requested_direction = None
         self._step_accumulator_ms = 0.0
@@ -185,16 +249,20 @@ class GameWorld:
         self._sync_visual_centers()
 
     def unfreeze_gameplay(self) -> None:
-        """Resume gameplay after a pause (death, level transition, etc.)."""
+        """Resume movement after a pause."""
         self.frozen = False
 
     def pause_gameplay(self, duration_ms: int) -> None:
-        """Freeze briefly (ghost eaten); update() resumes automatically."""
+        """Freeze gameplay for a fixed duration.
+
+        Args:
+            duration_ms: Pause length in milliseconds; update() auto-resumes.
+        """
         self.freeze_gameplay()
         self._pause_until_ms = pygame.time.get_ticks() + duration_ms
 
     def start_auto_movement(self) -> None:
-        """Begin classic auto-walk after READY clears."""
+        """Start default auto-walk after the READY phase ends."""
         self._travel_direction = self.DEFAULT_TRAVEL_DIRECTION
         self._step_accumulator_ms = 0.0
         self._ghost_step_accumulator_ms = 0.0
@@ -203,7 +271,12 @@ class GameWorld:
             self._player.face(self._travel_direction)
 
     def update(self, dt: float, now_ms: int) -> None:
-        """Update animated sprites."""
+        """Advance animations, ghost mode, and transient UI state.
+
+        Args:
+            dt: Frame delta time in seconds.
+            now_ms: Current timestamp in milliseconds.
+        """
         if self._pause_until_ms and now_ms >= self._pause_until_ms:
             self._pause_until_ms = 0
             self.unfreeze_gameplay()
@@ -220,7 +293,7 @@ class GameWorld:
         _prune_score_popups(self, now_ms)
 
     def _apply_step_visual(self) -> None:
-        """Lerp actor sprites between grid steps; logic stays on cell."""
+        """Interpolate actor sprites between discrete grid steps."""
         if self.frozen:
             return
         t = min(1.0, self._step_accumulator_ms / self.player_step_ms)
@@ -235,11 +308,15 @@ class GameWorld:
                 ghost.apply_visual_lerp(ghost_t)
 
     def draw(self, surface: Surface) -> None:
-        """Draw all sprites once in z-layer order."""
+        """Draw all sprites in layer order.
+
+        Args:
+            surface: Destination pygame surface.
+        """
         self.all_sprites.draw(surface)
 
     def respawn_player(self) -> None:
-        """Move Pac-Man back to the level spawn after losing a life."""
+        """Reset Pac-Man to the level spawn after losing a life."""
         if self._player is None:
             return
         spawn = self._layout.player_spawn
@@ -247,7 +324,7 @@ class GameWorld:
         self._player.reset_after_death(spawn, center)
 
     def respawn_ghosts(self) -> None:
-        """Return every ghost to its home cell after losing a life."""
+        """Return every ghost to its home cell and clear frightened mode."""
         self._frightened_until_ms = 0
         self.frightened = False
         for kind, ghost in self._ghosts.items():
@@ -262,7 +339,7 @@ class GameWorld:
         self._fruit_spawn_index = 0
 
     def teardown(self) -> None:
-        """Kill all sprites and empty all groups."""
+        """Destroy all sprites and clear world state."""
         for sprite in list(self.all_sprites.sprites()):
             sprite.kill()
         self.all_sprites.empty()
@@ -281,6 +358,7 @@ class GameWorld:
         self._fruit_kill_at_ms = 0
 
     def _consume_current_cell(self) -> None:
+        """Eat pellet or power pellet at Pac-Man's current cell."""
         if self._player is None:
             return
         pellet = self._pellets.pop(self._player.cell, None)
@@ -292,7 +370,7 @@ class GameWorld:
         _collect_fruit(self)
 
     def _sync_visual_centers(self) -> None:
-        """Snap visual interpolation when movement pauses."""
+        """Snap actor visuals to grid centers when movement pauses."""
         if self._player is not None:
             self._player.begin_step()
         for ghost in self._ghosts.values():
@@ -301,6 +379,11 @@ class GameWorld:
 
 
 def _spawn_from_layout(world: GameWorld) -> None:
+    """Instantiate walls, pellets, ghosts, and the player from layout.
+
+    Args:
+        world: Target world whose sprite groups are populated.
+    """
     cfg = world._render_config
     # Enclosed holes inside wall formations get a 2x2-tile solid fill
     # first, reaching the centre lines of the surrounding wall tiles so
@@ -378,13 +461,27 @@ def _spawn_from_layout(world: GameWorld) -> None:
 
 
 def request_turn(world: GameWorld, direction: Direction) -> None:
-    """Buffer a direction change from player input."""
+    """Buffer a direction change from player input.
+
+    Args:
+        world: Active game world receiving the input.
+        direction: Requested travel direction.
+    """
     if world.frozen or world.player_is_dying:
         return
     world._requested_direction = direction
 
 
 def _move_player(world: GameWorld, direction: Direction) -> bool:
+    """Move Pac-Man one grid step if the target cell is walkable.
+
+    Args:
+        world: Active game world.
+        direction: Direction to attempt.
+
+    Returns:
+        True when the move succeeded.
+    """
     if world._player is None or world._player.dying:
         return False
 
@@ -406,6 +503,11 @@ def _move_player(world: GameWorld, direction: Direction) -> bool:
 
 
 def _auto_step(world: GameWorld) -> None:
+    """Try a buffered turn, otherwise continue in the travel direction.
+
+    Args:
+        world: Active game world.
+    """
     if world._requested_direction is not None:
         if _move_player(world, world._requested_direction):
             world._travel_direction = world._requested_direction
@@ -414,18 +516,34 @@ def _auto_step(world: GameWorld) -> None:
 
 
 def _begin_player_visual_step(world: GameWorld) -> None:
+    """Start visual interpolation for Pac-Man's next grid step.
+
+    Args:
+        world: Active game world.
+    """
     if world._player is not None:
         world._player.begin_step()
 
 
 def _begin_ghost_visual_step(world: GameWorld) -> None:
+    """Start visual interpolation for every visible ghost.
+
+    Args:
+        world: Active game world.
+    """
     for ghost in world._ghosts.values():
         if not ghost.hidden:
             ghost.begin_step()
 
 
 def update_player_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
-    """Advance Pac-Man on grid while PLAYING."""
+    """Advance Pac-Man on the grid while gameplay is active.
+
+    Args:
+        world: Active game world.
+        dt_s: Elapsed time in seconds since the last update.
+        now_ms: Current timestamp in milliseconds.
+    """
     if world.frozen or world._player is None or world._player.dying:
         return
     world._step_now_ms = now_ms
@@ -438,7 +556,13 @@ def update_player_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
 
 
 def update_ghost_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
-    """Advance ghosts on fixed grid step while PLAYING."""
+    """Advance ghosts on their fixed grid step while gameplay is active.
+
+    Args:
+        world: Active game world.
+        dt_s: Elapsed time in seconds since the last update.
+        now_ms: Current timestamp in milliseconds.
+    """
     if world.frozen or world._player is None or world._player.dying:
         return
     world._step_now_ms = now_ms
@@ -451,6 +575,12 @@ def update_ghost_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
 
 
 def spawn_fruit(world: GameWorld, now_ms: int) -> None:
+    """Place the level's bonus fruit at the fruit spawn cell.
+
+    Args:
+        world: Active game world.
+        now_ms: Current timestamp in milliseconds.
+    """
     _kill_fruit(world)
     kind = fruit_for_level(world._level_number)
     surface = world._catalog.fruits.get(kind)
@@ -471,6 +601,11 @@ def spawn_fruit(world: GameWorld, now_ms: int) -> None:
 
 
 def _kill_fruit(world: GameWorld) -> None:
+    """Remove the active bonus fruit sprite, if any.
+
+    Args:
+        world: Active game world.
+    """
     if world._fruit is None:
         return
     world._fruit.kill()
@@ -483,7 +618,13 @@ def update_fruit_spawns(
     level_elapsed_s: int,
     now_ms: int,
 ) -> None:
-    """Spawn bonus fruit at configured level-play seconds."""
+    """Spawn or expire bonus fruit based on the level schedule.
+
+    Args:
+        world: Active game world.
+        level_elapsed_s: Seconds elapsed since level play began.
+        now_ms: Current timestamp in milliseconds.
+    """
     spawn_times = spawn_seconds_for_level(world._level_number)
     while (
         world._fruit_spawn_index < len(spawn_times)
@@ -498,7 +639,13 @@ def update_fruit_spawns(
 def add_score_popup(
     world: GameWorld, center: tuple[int, int], points: int
 ) -> None:
-    """Show a floating point label just below a pixel position."""
+    """Show a short-lived floating score label near a pixel position.
+
+    Args:
+        world: Active game world.
+        center: Anchor pixel position for the popup.
+        points: Score value to display.
+    """
     tile_px = world._render_config.tile_px
     world.score_popups.append(
         ScorePopup(
@@ -512,6 +659,11 @@ def add_score_popup(
 
 
 def _collect_fruit(world: GameWorld) -> None:
+    """Award points when Pac-Man occupies the same cell as the fruit.
+
+    Args:
+        world: Active game world.
+    """
     if world._player is None or world._fruit is None:
         return
     if world._player.cell != world._fruit.cell:
@@ -522,6 +674,12 @@ def _collect_fruit(world: GameWorld) -> None:
 
 
 def _prune_score_popups(world: GameWorld, now_ms: int) -> None:
+    """Drop expired floating score labels.
+
+    Args:
+        world: Active game world.
+        now_ms: Current timestamp in milliseconds.
+    """
     if not world.score_popups:
         return
     world.score_popups = [

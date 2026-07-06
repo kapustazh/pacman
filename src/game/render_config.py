@@ -10,7 +10,7 @@ from sprites.sprite_types import Direction
 
 @dataclass(frozen=True, slots=True)
 class MazeBounds:
-    """Screen-space bounds for the centered maze playfield."""
+    """Screen-space rectangle for the centered maze playfield."""
 
     x: int
     y: int
@@ -19,25 +19,40 @@ class MazeBounds:
 
     @property
     def center(self) -> tuple[int, int]:
-        """Return pixel center of the maze playfield."""
+        """Return the pixel center of the maze playfield.
+
+        Returns:
+            (x, y) center point in screen coordinates.
+        """
         return (self.x + self.width // 2, self.y + self.height // 2)
 
     @property
     def bottom(self) -> int:
-        """Return bottom edge of the maze playfield."""
+        """Return the bottom edge of the maze playfield.
+
+        Returns:
+            Y coordinate of the lower boundary.
+        """
         return self.y + self.height
 
 
 @dataclass(frozen=True, slots=True)
 class WorldRenderConfig:
-    """Pixel scale and screen offset for grid-to-surface conversion."""
+    """Pixel scale and screen offset for converting grid cells to pixels."""
 
     tile_px: int = 16
     origin_x: int = 0
     origin_y: int = 0
 
     def maze_bounds(self, layout: LevelLayout) -> MazeBounds:
-        """Return screen-space bounds for this config and layout."""
+        """Compute screen bounds for a layout at this render config.
+
+        Args:
+            layout: Level grid whose width and height define the maze size.
+
+        Returns:
+            Pixel rectangle covering the full maze playfield.
+        """
         return MazeBounds(
             x=self.origin_x,
             y=self.origin_y,
@@ -52,7 +67,16 @@ class WorldRenderConfig:
         screen_size: tuple[int, int],
         tile_px: int = 16,
     ) -> WorldRenderConfig:
-        """Build centered config for a layout on screen."""
+        """Build a render config that centers the maze on screen.
+
+        Args:
+            layout: Level grid whose size determines maze dimensions.
+            screen_size: Screen width and height in pixels.
+            tile_px: Pixel size of one grid cell.
+
+        Returns:
+            Config with origin offsets that center the maze.
+        """
         width_px = layout.width * tile_px
         height_px = layout.height * tile_px
         screen_w, screen_h = screen_size
@@ -72,7 +96,15 @@ DIRECTION_DELTA: dict[Direction, tuple[int, int]] = {
 
 
 def cell_center(config: WorldRenderConfig, cell: CellPos) -> tuple[int, int]:
-    """Convert grid cell to pixel center."""
+    """Convert a grid cell to its pixel center on screen.
+
+    Args:
+        config: Tile size and maze origin offset.
+        cell: Grid position to convert.
+
+    Returns:
+        (x, y) pixel center of the cell.
+    """
     tile_px = config.tile_px
     return (
         config.origin_x + cell.col * tile_px + tile_px // 2,

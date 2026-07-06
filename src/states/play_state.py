@@ -34,6 +34,16 @@ CHEAT_MESSAGE_SCALE: int = 2
 def _cheat_labels(
     *, invincible: bool, frozen: bool, speed_active: bool
 ) -> list[str]:
+    """Build HUD labels for active cheat toggles.
+
+    Args:
+        invincible: Whether invincibility cheat is on.
+        frozen: Whether ghost-freeze cheat is on.
+        speed_active: Whether speed cheat is on.
+
+    Returns:
+        Display labels for each active cheat.
+    """
     labels: list[str] = []
     if invincible:
         labels.append("INVINCIBLE")
@@ -45,9 +55,10 @@ def _cheat_labels(
 
 
 class PlayState(GameState):
-    """Gameplay scene backed by GameWorld."""
+    """Active gameplay scene backed by GameWorld and GameSession."""
 
     def __init__(self) -> None:
+        """Initialize empty world, session, and loading state."""
         self._world: GameWorld | None = None
         self._session: GameSession | None = None
         self._level_index: int = 0
@@ -63,7 +74,12 @@ class PlayState(GameState):
         context: GameContext,
         enter_data: StateEnterData | None = None,
     ) -> None:
-        """Create a fresh world from smoke level boilerplate."""
+        """Create session state and start loading the first level.
+
+        Args:
+            context: Shared game context with config, assets, and scores.
+            enter_data: Optional payload from the previous scene (unused).
+        """
         catalog = context.assets
         life_icon = catalog.pacman[Direction.LEFT].frames[1]
         self._hud = HudOverlay(
@@ -87,7 +103,11 @@ class PlayState(GameState):
         self._start_loading(context)
 
     def leave(self, context: GameContext) -> None:
-        """Tear down world resources."""
+        """Tear down world resources and reset play state.
+
+        Args:
+            context: Shared game context (unused).
+        """
         if self._world is not None:
             self._world.teardown()
             self._world = None
@@ -102,7 +122,12 @@ class PlayState(GameState):
         events: list[pygame.event.Event],
         context: GameContext,
     ) -> None:
-        """Route play input to world or scene transitions."""
+        """Route keyboard input to movement, cheats, pause, and phase skips.
+
+        Args:
+            events: Pygame events for this frame.
+            context: Shared game context for scene transitions.
+        """
         for event in events:
             if event.type != pygame.KEYDOWN:
                 continue
@@ -122,7 +147,10 @@ class PlayState(GameState):
             if event.key == pygame.K_f and self._world is not None:
                 self._world.toggle_ghosts_frozen()
                 continue
-            if event.key in (pygame.K_PLUS, pygame.K_EQUALS) and self._world is not None:
+            if (
+                event.key in (pygame.K_PLUS, pygame.K_EQUALS)
+                and self._world is not None
+            ):
                 self._world.adjust_player_speed(-GameWorld.PLAYER_SPEED_STEP_MS)
                 continue
             if event.key == pygame.K_MINUS and self._world is not None:
@@ -149,7 +177,13 @@ class PlayState(GameState):
                 request_turn(self._world, direction)
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """Advance gameplay phase, timer, and world animation."""
+        """Advance loading, gameplay phase logic, and world animation.
+
+        Args:
+            dt: Elapsed seconds since the last frame.
+            now_ms: Monotonic clock in milliseconds.
+            context: Shared game context for scene transitions.
+        """
         if self._loading_thread is not None:
             self._poll_loading(context, now_ms)
             return
@@ -171,6 +205,12 @@ class PlayState(GameState):
         self._sync_session_score()
 
     def _update_ready(self, dt: float, now_ms: int) -> None:
+        """Wait out the ready delay, then start movement.
+
+        Args:
+            dt: Elapsed seconds since the last frame.
+            now_ms: Monotonic clock in milliseconds.
+        """
         if self._session is None or self._world is None:
             return
         if (
@@ -182,6 +222,12 @@ class PlayState(GameState):
         self._world.update(dt, now_ms)
 
     def _update_playing(self, dt: float, now_ms: int) -> None:
+        """Run movement, timer, fruit spawns, and win/lose checks.
+
+        Args:
+            dt: Elapsed seconds since the last frame.
+            now_ms: Monotonic clock in milliseconds.
+        """
         if self._session is None or self._world is None:
             return
         if self._world.player_is_dying:
@@ -211,6 +257,11 @@ class PlayState(GameState):
             self._world.update(dt, now_ms)
 
     def _update_life_lost(self, now_ms: int) -> None:
+        """Finish the life-lost delay and respawn or end the run.
+
+        Args:
+            now_ms: Monotonic clock in milliseconds.
+        """
         if self._session is None:
             return
         if (
@@ -225,6 +276,13 @@ class PlayState(GameState):
         now_ms: int,
         context: GameContext,
     ) -> None:
+        """Animate level-complete effects and advance when the timer ends.
+
+        Args:
+            dt: Elapsed seconds since the last frame.
+            now_ms: Monotonic clock in milliseconds.
+            context: Shared game context for scene transitions.
+        """
         if self._session is None or self._world is None:
             return
         self._world.update(dt, now_ms)
@@ -236,7 +294,12 @@ class PlayState(GameState):
             self._advance_level_or_win(context, now_ms)
 
     def _advance_level_or_win(self, context: GameContext, now_ms: int) -> None:
-        """Move to the next level, or the win screen if none remain."""
+        """Load the next level or open the win screen.
+
+        Args:
+            context: Shared game context for scene transitions.
+            now_ms: Monotonic clock in milliseconds (unused).
+        """
         assert self._session is not None
         levels = context.config.get("levels", [])
         if self._level_index + 1 >= len(levels):
@@ -248,6 +311,12 @@ class PlayState(GameState):
         self._reload_world(context)
 
     def _update_game_over(self, now_ms: int, context: GameContext) -> None:
+        """Wait out the game-over delay, then open the end screen.
+
+        Args:
+            now_ms: Monotonic clock in milliseconds.
+            context: Shared game context for scene transitions.
+        """
         if self._session is None:
             return
         if (
@@ -257,7 +326,12 @@ class PlayState(GameState):
             self._open_end_screen(context, won=False)
 
     def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw world, classic HUD bands, and phase message."""
+        """Draw loading UI or the maze, HUD, and cheat overlay.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context with assets and text renderer.
+        """
         if self._loading_thread is not None:
             self._draw_loading(surface, context)
             self._draw_cheat_message(surface, context)
@@ -277,7 +351,12 @@ class PlayState(GameState):
     def _draw_cheat_message(
         self, surface: Surface, context: GameContext
     ) -> None:
-        """Show currently active cheat toggles in the bottom-right corner."""
+        """Draw active cheat labels in the bottom-right corner.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context with text renderer.
+        """
         if self._world is None:
             return
         labels = _cheat_labels(
@@ -301,7 +380,12 @@ class PlayState(GameState):
         surface.blit(rendered, rect)
 
     def _draw_loading(self, surface: Surface, context: GameContext) -> None:
-        """Animate a message while the maze generates off the main thread."""
+        """Show animated loading text while the maze generates.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context with assets and text renderer.
+        """
         now_ms = pygame.time.get_ticks()
         dots = "." * (1 + (now_ms // LOADING_DOT_CYCLE_MS) % 3)
         context.text.draw_centered_arcade_text(
@@ -317,14 +401,19 @@ class PlayState(GameState):
         surface.blit(frame, rect)
 
     def _sync_session_score(self) -> None:
-        """Keep session score/high-score in sync with world during update."""
+        """Mirror world score and high score into the session."""
         if self._session is None or self._world is None:
             return
         self._session.sync_score(self._world.score)
         self._session.update_high_score(self._session.score)
 
     def _build_world(self, context: GameContext, layout: LevelLayout) -> None:
-        """Spawn a fresh GameWorld from an already-generated layout."""
+        """Construct GameWorld and HUD fruit icon from a loaded layout.
+
+        Args:
+            context: Shared game context with config and assets.
+            layout: Generated level layout to instantiate.
+        """
         assert self._session is not None
         catalog = context.assets
         render_config = WorldRenderConfig.centered(
@@ -349,14 +438,22 @@ class PlayState(GameState):
             self._hud.set_fruit_icon(self._world.level_fruit_surface)
 
     def _reload_world(self, context: GameContext) -> None:
-        """Tear down world and start loading the next level."""
+        """Tear down the current world and start loading the next level.
+
+        Args:
+            context: Shared game context for level loading.
+        """
         if self._world is not None:
             self._world.teardown()
             self._world = None
         self._start_loading(context)
 
     def _start_loading(self, context: GameContext) -> None:
-        """Generate the maze off the main thread so the window stays live."""
+        """Generate the maze on a background thread.
+
+        Args:
+            context: Shared game context with level config.
+        """
         self._pending_layout = None
         self._loading_error = None
         config = context.config
@@ -364,6 +461,7 @@ class PlayState(GameState):
         seed = self._level_seed
 
         def generate() -> None:
+            """Load level layout on the worker thread."""
             try:
                 self._pending_layout = load_level(config, level_index, seed)
             except BaseException as exc:  # noqa: BLE001 - surfaced below
@@ -373,7 +471,15 @@ class PlayState(GameState):
         self._loading_thread.start()
 
     def _poll_loading(self, context: GameContext, now_ms: int) -> None:
-        """Finish building the world once the background generation ends."""
+        """Finish world setup after background level generation completes.
+
+        Args:
+            context: Shared game context for world construction.
+            now_ms: Monotonic clock used to enter the ready phase.
+
+        Raises:
+            BaseException: Re-raises any error captured during generation.
+        """
         if self._loading_thread is None or self._loading_thread.is_alive():
             return
         self._loading_thread = None
@@ -386,7 +492,11 @@ class PlayState(GameState):
         self._session.enter_ready(now_ms)
 
     def _handle_life_lost(self, now_ms: int) -> None:
-        """Lose one life when timer expires or ghost collision."""
+        """Freeze play and enter life-lost or game-over phase.
+
+        Args:
+            now_ms: Monotonic clock in milliseconds.
+        """
         if self._session is None:
             return
         if self._world is not None:
@@ -396,7 +506,11 @@ class PlayState(GameState):
             self._session.enter_game_over(now_ms)
 
     def _finish_life_lost(self, now_ms: int) -> None:
-        """Respawn after death or end the run."""
+        """Respawn actors after a death or end the run when out of lives.
+
+        Args:
+            now_ms: Monotonic clock used to enter the next phase.
+        """
         if self._session is None:
             return
         if self._session.lives <= 0:
@@ -411,7 +525,12 @@ class PlayState(GameState):
         self._session.enter_ready(now_ms)
 
     def _open_end_screen(self, context: GameContext, *, won: bool) -> None:
-        """Transition to end screen with final score."""
+        """Switch to the end screen with the final score.
+
+        Args:
+            context: Shared game context for scene transitions.
+            won: Whether the player cleared all levels.
+        """
         from states.game_over_state import GameOverState
 
         score = self._session.score if self._session is not None else 0
@@ -436,4 +555,12 @@ _KEY_TO_DIRECTION: dict[int, Direction] = {
 
 
 def _direction_from_key(key: int) -> Direction | None:
+    """Map a pygame key code to a movement direction.
+
+    Args:
+        key: Pygame key constant from a keydown event.
+
+    Returns:
+        Matching direction, or None if the key is not a movement binding.
+    """
     return _KEY_TO_DIRECTION.get(key)

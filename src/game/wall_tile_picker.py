@@ -41,12 +41,30 @@ def pick_for_neighbors(
     left: bool,
     right: bool,
 ) -> TileKind:
-    """Return wall tile kind for four neighbor wall flags."""
+    """Map four wall-neighbor flags to a maze tile kind.
+
+    Args:
+        up: Whether the cell above is a wall.
+        down: Whether the cell below is a wall.
+        left: Whether the cell to the left is a wall.
+        right: Whether the cell to the right is a wall.
+
+    Returns:
+        Autotile kind for the neighbor pattern, or a solid wall fallback.
+    """
     return BY_NEIGHBORS.get((up, down, left, right), TileKind.WALL)
 
 
 def pick(layout: LevelLayout, cell: CellPos) -> TileKind:
-    """Pick maze wall sprite from neighbor walls around a grid cell."""
+    """Choose a wall sprite for one grid cell from its neighbors.
+
+    Args:
+        layout: Level grid used to inspect adjacent cells.
+        cell: Wall cell whose tile art is needed.
+
+    Returns:
+        Autotile kind matching local wall connectivity.
+    """
     up = _has_wall_neighbor(layout, CellPos(cell.row - 1, cell.col))
     down = _has_wall_neighbor(layout, CellPos(cell.row + 1, cell.col))
     left = _has_wall_neighbor(layout, CellPos(cell.row, cell.col - 1))
@@ -55,7 +73,15 @@ def pick(layout: LevelLayout, cell: CellPos) -> TileKind:
 
 
 def _has_wall_neighbor(layout: LevelLayout, pos: CellPos) -> bool:
-    """Return True only for in-bounds wall cells (OOB is open for tile art)."""
+    """Return whether an adjacent cell is an in-bounds wall.
+
+    Args:
+        layout: Level grid to query.
+        pos: Neighbor position to inspect; out-of-bounds counts as open.
+
+    Returns:
+        True when the neighbor exists and is a wall tile.
+    """
     if pos.row < 0 or pos.col < 0:
         return False
     if pos.row >= layout.height:

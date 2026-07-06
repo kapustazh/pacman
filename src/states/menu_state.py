@@ -21,7 +21,7 @@ _KEY_COMMANDS: dict[int, str] = {
 
 
 class MenuState(GameState):
-    """Main menu scene with keyboard navigation."""
+    """Main menu with keyboard-navigated options."""
 
     TITLE_Y: ClassVar[int] = 280
     MENU_START_Y: ClassVar[int] = 520
@@ -36,29 +36,52 @@ class MenuState(GameState):
     )
 
     def __init__(self) -> None:
+        """Initialize selection on the first menu row."""
         self._selected_index = 0
 
     def select(self, index: int) -> None:
-        """Highlight menu row at index."""
+        """Move the highlight to a menu row.
+
+        Args:
+            index: Zero-based row index to select.
+        """
         self._selected_index = index
 
     def move(self, delta: int) -> None:
-        """Move selection up or down, wrapping at list ends."""
+        """Move the highlight up or down with wraparound.
+
+        Args:
+            delta: Row offset; negative moves up, positive moves down.
+        """
         self._selected_index = (self._selected_index + delta) % len(
             self.OPTIONS
         )
 
     def activate_selected(self, context: GameContext) -> None:
-        """Activate currently highlighted row."""
+        """Run the action for the highlighted row.
+
+        Args:
+            context: Shared game context for scene transitions.
+        """
         self.activate_index(self._selected_index, context)
 
     def activate_index(self, index: int, context: GameContext) -> None:
-        """Activate row at index when in range."""
+        """Run the action for one row when the index is valid.
+
+        Args:
+            index: Zero-based row index to activate.
+            context: Shared game context for scene transitions.
+        """
         if 0 <= index < len(self.OPTIONS):
             self._activate_action(self.OPTIONS[index][1], context)
 
     def _activate_action(self, action: str, context: GameContext) -> None:
-        """Run handler for named menu action."""
+        """Dispatch a named menu action to its handler.
+
+        Args:
+            action: Internal action key from the options table.
+            context: Shared game context for scene transitions.
+        """
         handlers = {
             "start": self._start_game,
             "highscores": self._open_highscores,
@@ -74,18 +97,32 @@ class MenuState(GameState):
         context: GameContext,
         enter_data: StateEnterData | None = None,
     ) -> None:
-        """Reset menu selection."""
+        """Reset selection to the first row.
+
+        Args:
+            context: Shared game context (unused).
+            enter_data: Optional payload from the previous scene (unused).
+        """
         self._selected_index = 0
 
     def leave(self, context: GameContext) -> None:
-        """Leave menu."""
+        """No-op; scene has no teardown work.
+
+        Args:
+            context: Shared game context (unused).
+        """
 
     def handle_events(
         self,
         events: list[pygame.event.Event],
         context: GameContext,
     ) -> None:
-        """Handle keyboard menu navigation."""
+        """Route keyboard input to menu navigation.
+
+        Args:
+            events: Pygame events for this frame.
+            context: Shared game context for scene transitions.
+        """
         for event in events:
             if event.type == pygame.KEYDOWN:
                 self._handle_menu_key(event, context)
@@ -95,7 +132,12 @@ class MenuState(GameState):
         event: pygame.event.Event,
         context: GameContext,
     ) -> None:
-        """Dispatch one KEYDOWN event through shared menu key bindings."""
+        """Handle one key press for menu navigation or activation.
+
+        Args:
+            event: Keydown event to interpret.
+            context: Shared game context for scene transitions.
+        """
         match _KEY_COMMANDS.get(event.key):
             case "up":
                 self.move(-1)
@@ -113,10 +155,21 @@ class MenuState(GameState):
                     self.activate_index(index, context)
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """Menu has no simulation."""
+        """No-op; menu has no simulation.
+
+        Args:
+            dt: Elapsed seconds since the last frame (unused).
+            now_ms: Monotonic clock in milliseconds (unused).
+            context: Shared game context (unused).
+        """
 
     def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw title and menu options."""
+        """Draw the title and selectable menu rows.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context with text renderer.
+        """
         context.text.draw_centered_arcade_text(
             surface,
             "PAC-MAN",
@@ -143,19 +196,39 @@ class MenuState(GameState):
             )
 
     def _start_game(self, context: GameContext) -> None:
+        """Switch to gameplay.
+
+        Args:
+            context: Shared game context for scene transitions.
+        """
         from states.play_state import PlayState
 
         context.scene_manager.change(PlayState())
 
     def _open_highscores(self, context: GameContext) -> None:
+        """Push the high scores screen.
+
+        Args:
+            context: Shared game context for scene transitions.
+        """
         from states.highscores_state import HighscoresState
 
         context.scene_manager.push(HighscoresState())
 
     def _open_instructions(self, context: GameContext) -> None:
+        """Push the instructions screen.
+
+        Args:
+            context: Shared game context for scene transitions.
+        """
         from states.instructions_state import InstructionsState
 
         context.scene_manager.push(InstructionsState())
 
     def _exit_game(self, context: GameContext) -> None:
+        """Request application shutdown.
+
+        Args:
+            context: Shared game context for scene transitions.
+        """
         context.scene_manager.request_shutdown()

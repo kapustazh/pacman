@@ -23,6 +23,7 @@ HIGHSCORES_FILE = "highscores.json"
 
 
 def main() -> None:
+    """Initialize pygame, load assets, and run the game loop."""
     if len(sys.argv) != 2:
         print("Usage: python3 pac-man.py config.json")
         sys.exit(1)

@@ -9,13 +9,23 @@ class SpriteError(Exception):
 
 @dataclass(slots=True)
 class AnimatedSprite:
-    """Animation built from a list of frame surfaces."""
+    """Cycles through frame surfaces on a fixed timer."""
 
     frames: list[Surface] = field(default_factory=list)
     frame_duration_ms: int = 150
 
     def frame_at(self, now_ms: int) -> Surface:
-        """Return animation frame for current monotonic pygame time."""
+        """Pick the frame for the current animation time.
+
+        Args:
+            now_ms: Monotonic pygame clock in milliseconds.
+
+        Returns:
+            Surface for the active frame.
+
+        Raises:
+            SpriteError: When no frames were loaded.
+        """
         if not self.frames:
             raise SpriteError("Animated sprite has no frames")
         frame_index = (now_ms // self.frame_duration_ms) % len(self.frames)

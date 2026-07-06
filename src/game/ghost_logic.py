@@ -39,7 +39,16 @@ def _path_bfs(
     target: CellPos,
     layout: LevelLayout,
 ) -> list[CellPos]:
-    """Shortest path from start to target on the level grid (BFS)."""
+    """Find the shortest walkable path between two grid cells.
+
+    Args:
+        start: Starting cell.
+        target: Destination cell.
+        layout: Level grid used for wall checks.
+
+    Returns:
+        Ordered path from start to target, or empty when unreachable.
+    """
     queue: deque[CellPos] = deque([start])
     came_from: dict[CellPos, CellPos | None] = {start: None}
 
@@ -72,7 +81,17 @@ def _random_step(
     layout: LevelLayout,
     allow_back: bool = False,
 ) -> CellPos | None:
-    """Random walkable neighbour; honour no-reverse unless allow_back."""
+    """Pick a random walkable neighbor, avoiding reverse unless allowed.
+
+    Args:
+        cell: Current ghost cell.
+        last: Previous cell used to block immediate reversal.
+        layout: Level grid used for wall checks.
+        allow_back: When True, permit moving back onto the previous cell.
+
+    Returns:
+        Chosen neighbor cell, or None when no move exists.
+    """
     options: list[CellPos] = []
     for row_delta, col_delta in _NEIGHBORS:
         nxt = CellPos(cell.row + row_delta, cell.col + col_delta)
@@ -91,7 +110,15 @@ def _random_step(
 def _current_direction(
     cell: CellPos, last_cell: CellPos
 ) -> tuple[int, int] | None:
-    """Return the current movement direction based on previous position."""
+    """Derive the current movement direction from the last step.
+
+    Args:
+        cell: Current cell.
+        last_cell: Previous cell.
+
+    Returns:
+        (row_delta, col_delta) when valid, otherwise None.
+    """
     row_delta = cell.row - last_cell.row
     col_delta = cell.col - last_cell.col
     if (row_delta, col_delta) in DIRECTION_ORDER:
@@ -105,7 +132,17 @@ def _valid_directions(
     layout: LevelLayout,
     allow_reverse: bool = False,
 ) -> list[tuple[int, int]]:
-    """Return valid directions in a fixed priority order."""
+    """List walkable directions in classic Pac-Man priority order.
+
+    Args:
+        cell: Current cell.
+        last_cell: Previous cell used to block reversal.
+        layout: Level grid used for wall checks.
+        allow_reverse: When True, include the reverse direction.
+
+    Returns:
+        Valid (row_delta, col_delta) pairs in priority order.
+    """
     current_direction = _current_direction(cell, last_cell)
     reverse_direction = None
     if current_direction is not None:
@@ -124,7 +161,16 @@ def _valid_directions(
 def _is_junction(
     cell: CellPos, last_cell: CellPos, layout: LevelLayout
 ) -> bool:
-    """Return True if the ghost has multiple forward choices."""
+    """Return whether a ghost has more than one forward choice.
+
+    Args:
+        cell: Current cell.
+        last_cell: Previous cell used for direction checks.
+        layout: Level grid used for wall checks.
+
+    Returns:
+        True when multiple non-reverse directions are available.
+    """
     return len(_valid_directions(cell, last_cell, layout)) >= 2
 
 
@@ -134,9 +180,16 @@ def _choose_pacman_step(
     target: CellPos,
     layout: LevelLayout,
 ) -> CellPos | None:
-    """
-    Choose the next grid cell using the original Pac-Man
-    junction-based movement algorithm.
+    """Choose the next cell using classic junction-greedy ghost movement.
+
+    Args:
+        cell: Current ghost cell.
+        last_cell: Previous cell.
+        target: Chase target cell.
+        layout: Level grid used for wall checks.
+
+    Returns:
+        Next cell to enter, or None when blocked.
     """
     current_direction = _current_direction(cell, last_cell)
 
@@ -180,9 +233,16 @@ def _next_chase_step(
     target: CellPos,
     layout: LevelLayout,
 ) -> CellPos | None:
-    """
-    One junction-greedy step toward target,
-    fall back to random no-reverse.
+    """Take one chase step toward a target, falling back to random movement.
+
+    Args:
+        cell: Current ghost cell.
+        last: Previous cell.
+        target: Chase target cell.
+        layout: Level grid used for wall checks.
+
+    Returns:
+        Next cell to enter, or None when no move exists.
     """
     step = _choose_pacman_step(cell, last, target, layout)
     if step is not None:
@@ -196,7 +256,17 @@ def _next_flee_step(
     player: CellPos,
     layout: LevelLayout,
 ) -> CellPos | None:
-    """Step away from player, avoiding the BFS path back toward them."""
+    """Step away from the player while avoiding the direct return path.
+
+    Args:
+        cell: Current ghost cell.
+        last: Previous cell.
+        player: Player cell used to compute flee direction.
+        layout: Level grid used for wall checks.
+
+    Returns:
+        Next cell to enter, or None when no move exists.
+    """
     avoid: CellPos | None = None
     flee_path = _path_bfs(player, cell, layout)
     if len(flee_path) >= 2:
@@ -224,7 +294,19 @@ def _chase_target(
     home: CellPos,
     layout: LevelLayout,
 ) -> CellPos:
-    """Classic per-ghost chase target (Blinky/Pinky/Inky/Clyde)."""
+    """Compute the classic per-ghost chase target cell.
+
+    Args:
+        kind: Ghost personality determining targeting behavior.
+        player_cell: Current player position.
+        travel_direction: Player's current travel direction.
+        ghost_cell: Current ghost position.
+        home: Ghost's home corner cell.
+        layout: Level grid used to clamp invalid targets.
+
+    Returns:
+        Target cell for chase or scatter pathing.
+    """
     row_delta, col_delta = DIRECTION_DELTA[travel_direction]
     if kind == GhostKind.BLINKY:
         target = player_cell
@@ -256,7 +338,16 @@ def _next_return_step(
     home: CellPos,
     layout: LevelLayout,
 ) -> CellPos | None:
-    """One step along the shortest path back to the home corner."""
+    """Take one step along the shortest path back to a ghost home cell.
+
+    Args:
+        cell: Current ghost cell.
+        home: Home corner destination.
+        layout: Level grid used for pathfinding.
+
+    Returns:
+        Next cell on the return path, or None when already home or blocked.
+    """
     path = _path_bfs(cell, home, layout)
     if len(path) >= 2:
         return path[1]
@@ -264,11 +355,13 @@ def _next_return_step(
 
 
 def move_ghosts(world: GameWorld) -> None:
-    """Step every visible ghost once per ghost grid step (PLAYER_STEP_MS).
+    """Advance every visible ghost one grid step.
 
-    Frightened ghosts move at a fraction of that rate (classic Pac-Man
-    slows fleeing ghosts down), so Pac-Man can outrun and catch them;
-    eaten ghosts returning home are never slowed.
+    Frightened ghosts move at a reduced rate so Pac-Man can catch them;
+    eaten ghosts returning home are not slowed.
+
+    Args:
+        world: Active game world.
     """
     if world._player is None or world._ghosts_frozen:
         return
@@ -331,6 +424,11 @@ def move_ghosts(world: GameWorld) -> None:
 
 
 def activate_frightened_mode(world: GameWorld) -> None:
+    """Start frightened mode for all visible ghosts after a power pellet.
+
+    Args:
+        world: Active game world.
+    """
     now_ms = pygame.time.get_ticks()
     world._frightened_until_ms = now_ms + world.FRIGHTENED_DURATION_MS
     world.frightened = True
@@ -340,6 +438,12 @@ def activate_frightened_mode(world: GameWorld) -> None:
 
 
 def update_frightened_state(world: GameWorld, now_ms: int) -> None:
+    """Refresh frightened and end-of-mode flash state for all ghosts.
+
+    Args:
+        world: Active game world.
+        now_ms: Current timestamp in milliseconds.
+    """
     remaining = world._frightened_until_ms - now_ms
     world.frightened = remaining > 0
     flashing = world.frightened and remaining <= world.FRIGHTENED_FLASH_MS
@@ -349,6 +453,11 @@ def update_frightened_state(world: GameWorld, now_ms: int) -> None:
 
 
 def resolve_actor_collisions(world: GameWorld) -> None:
+    """Handle player-ghost collisions for eat or death outcomes.
+
+    Args:
+        world: Active game world.
+    """
     if world._player is None or world._player.dying:
         return
     for ghost in world._ghosts.values():
@@ -369,6 +478,12 @@ def resolve_actor_collisions(world: GameWorld) -> None:
 
 
 def start_player_death(world: GameWorld, now_ms: int) -> None:
+    """Freeze gameplay and begin Pac-Man's death animation.
+
+    Args:
+        world: Active game world.
+        now_ms: Current timestamp in milliseconds.
+    """
     if world._player is None:
         return
     world.freeze_gameplay()

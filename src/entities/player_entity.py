@@ -9,7 +9,7 @@ from sprites.sprite_types import Direction
 
 
 class PlayerEntity(Sprite):
-    """Animated Pac-Man sprite."""
+    """Pygame sprite for Pac-Man movement, animation, and death."""
 
     DEATH_FRAME_MS: ClassVar[int] = 200
 
@@ -21,6 +21,15 @@ class PlayerEntity(Sprite):
         direction: Direction = Direction.RIGHT,
         death_animation: AnimatedSprite | None = None,
     ) -> None:
+        """Create a player sprite at the given grid cell and pixel center.
+
+        Args:
+            animations_by_direction: Walk-cycle animations keyed by facing.
+            cell: Initial maze grid position.
+            center: Initial pixel center on screen.
+            direction: Starting facing direction.
+            death_animation: Optional frames played when Pac-Man dies.
+        """
         super().__init__()
         self.cell = cell
         self.center = center
@@ -37,11 +46,20 @@ class PlayerEntity(Sprite):
         self.rect = self.image.get_rect(center=center)
 
     def face(self, direction: Direction) -> None:
-        """Set current animation direction."""
+        """Update the facing direction used for walk animation.
+
+        Args:
+            direction: New facing direction.
+        """
         self._direction = direction
 
     def move_to(self, cell: CellPos, center: tuple[int, int]) -> None:
-        """Move player to grid cell and pixel center."""
+        """Advance the player one grid step and snap the sprite rect.
+
+        Args:
+            cell: Destination maze grid position.
+            center: Destination pixel center on screen.
+        """
         self.cell = cell
         self.center = center
         self._moved_this_step = True
@@ -49,7 +67,11 @@ class PlayerEntity(Sprite):
             self.rect = self.image.get_rect(center=self._visual_center(1.0))
 
     def start_death(self, now_ms: int) -> None:
-        """Begin Pac-Man death animation at current position."""
+        """Start the death animation from the current position.
+
+        Args:
+            now_ms: Game clock time in milliseconds.
+        """
         self.dying = True
         self.death_finished = False
         self._death_started_ms = now_ms
@@ -63,7 +85,12 @@ class PlayerEntity(Sprite):
         cell: CellPos,
         center: tuple[int, int],
     ) -> None:
-        """Respawn player at spawn cell after losing a life."""
+        """Respawn Pac-Man after a life is lost.
+
+        Args:
+            cell: Spawn maze grid position.
+            center: Spawn pixel center on screen.
+        """
         self.cell = cell
         self.center = center
         self._prev_center = center
@@ -75,11 +102,15 @@ class PlayerEntity(Sprite):
         self.rect = self.image.get_rect(center=center)
 
     def begin_step(self) -> None:
-        """Mark grid-step start for visual interpolation."""
+        """Record the current center as the interpolation start point."""
         self._prev_center = self.center
 
     def apply_visual_lerp(self, t: float) -> None:
-        """Slide sprite between prev and current cell centers."""
+        """Interpolate the sprite rect between step start and end.
+
+        Args:
+            t: Blend factor from 0.0 (previous center) to 1.0 (current).
+        """
         if self.dying:
             return
         rect = self.rect
@@ -90,6 +121,14 @@ class PlayerEntity(Sprite):
             rect.center = center
 
     def _visual_center(self, t: float) -> tuple[int, int]:
+        """Blend previous and current pixel centers for smooth motion.
+
+        Args:
+            t: Blend factor from 0.0 to 1.0.
+
+        Returns:
+            Interpolated (x, y) pixel center.
+        """
         px, py = self._prev_center
         cx, cy = self.center
         return (
@@ -98,7 +137,12 @@ class PlayerEntity(Sprite):
         )
 
     def update(self, dt: float, now_ms: int) -> None:
-        """Update player animation frame."""
+        """Advance walk or death animation for the current frame.
+
+        Args:
+            dt: Elapsed time since the last update in seconds.
+            now_ms: Game clock time in milliseconds.
+        """
         if self.dying:
             self._update_death(now_ms)
             return
@@ -113,6 +157,11 @@ class PlayerEntity(Sprite):
                 self.rect.size = frame.get_size()
 
     def _update_death(self, now_ms: int) -> None:
+        """Advance the death animation and mark completion when done.
+
+        Args:
+            now_ms: Game clock time in milliseconds.
+        """
         if self._death_animation is None or not self._death_animation.frames:
             self.death_finished = True
             return
