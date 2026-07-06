@@ -112,6 +112,8 @@ class Assets:
         self.power_pellet_surface: Surface = Surface((1, 1))
         self.maze_tiles: dict[TileKind, Surface] = {}
         self.maze_white_tiles: dict[TileKind, Surface] = {}
+        self.wall_fill: Surface = Surface((1, 1))
+        self.wall_fill_white: Surface = Surface((1, 1))
         self.fruits: dict[FruitKind, Surface] = {}
         self._general_sheet: Surface | None = None
         self._maze_sheet: Surface | None = None
@@ -274,6 +276,12 @@ class Assets:
             blue_surface = self._slice_cells(
                 col, row, width_cells=1, height_cells=1
             )
+            # black background transparent, so line art layered over the
+            # interior fill doesn't punch black squares into it
+            # (convert() drops per-pixel alpha, otherwise the colorkey
+            # would be ignored)
+            blue_surface = blue_surface.convert()
+            blue_surface.set_colorkey((0, 0, 0))
             self.maze_tiles[tile_kind] = blue_surface
         for tile_kind, coords in self.MAZE_PARTS_WHITE_KIND_COORDS.items():
             if tile_kind == TileKind.WALL:
@@ -283,9 +291,9 @@ class Assets:
                 continue
             col, row = coords
             sheet_surface = self._slice_maze_cells(col, row)
-            self.maze_white_tiles[tile_kind] = self._make_white_tile(
-                sheet_surface
-            )
+            white_surface = self._make_white_tile(sheet_surface).convert()
+            white_surface.set_colorkey((0, 0, 0))
+            self.maze_white_tiles[tile_kind] = white_surface
         self.maze_tiles[TileKind.PILLAR] = self._dot_tile(wall_color)
         self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile(
             (255, 255, 255)
@@ -300,6 +308,14 @@ class Assets:
             self.maze_white_tiles[tile_kind] = self._junction_tile(
                 mask, (255, 255, 255)
             )
+        # Interior-hole fill spans 2x2 tiles: it reaches the centre lines
+        # of the surrounding wall tiles, merging adjacent holes into one
+        # solid mass bounded exactly by the blue wall lines.
+        fill_px = self.DISPLAY_TILE_SIZE * 2
+        self.wall_fill = pygame.Surface((fill_px, fill_px))
+        self.wall_fill.fill(self.WALL_FILL_COLOR)
+        self.wall_fill_white = pygame.Surface((fill_px, fill_px))
+        self.wall_fill_white.fill((255, 255, 255))
 
     # Light blue sampled from the text sheet's 4th color band (CYAN).
     WALL_FILL_COLOR: ClassVar[tuple[int, int, int]] = (0, 255, 255)
@@ -310,6 +326,7 @@ class Assets:
         TileKind.T_DOWN: (False, True, True, True),
         TileKind.T_LEFT: (True, True, True, False),
         TileKind.T_RIGHT: (True, True, False, True),
+        TileKind.CROSS: (True, True, True, True),
     }
 
     @staticmethod

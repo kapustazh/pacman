@@ -28,6 +28,9 @@ class LevelLayout:
     player_spawn: CellPos
     ghost_spawns: tuple[tuple[GhostKind, CellPos], ...]
     fruit_spawn: CellPos
+    # Floor cells the player can never reach: holes enclosed inside wall
+    # formations. Rendered as solid wall-mass fill.
+    unreachable_floor: frozenset[CellPos] = frozenset()
 
     @property
     def height(self) -> int:

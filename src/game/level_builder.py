@@ -72,6 +72,12 @@ class LevelBuilder:
             for kind, corner in zip(_GHOST_ORDER, ghost_starts)
         )
 
+        unreachable_floor = frozenset(
+            CellPos(row, col)
+            for row, col in self._walkable_positions(grid)
+            if (row, col) not in reachable
+        )
+
         return LevelLayout(
             cells=tuple(tuple(row) for row in grid),
             pellet_cells=frozenset(pellets),
@@ -79,6 +85,7 @@ class LevelBuilder:
             player_spawn=player_spawn,
             ghost_spawns=ghost_spawns,
             fruit_spawn=player_spawn,
+            unreachable_floor=unreachable_floor,
         )
 
     def _place_pacgums(

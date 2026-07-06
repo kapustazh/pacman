@@ -269,6 +269,18 @@ class GameWorld:
 
 def _spawn_from_layout(world: GameWorld) -> None:
     cfg = world._render_config
+    # Enclosed holes inside wall formations get a 2x2-tile solid fill
+    # first, reaching the centre lines of the surrounding wall tiles so
+    # the whole formation reads as one solid mass. Wall line art is added
+    # afterwards and draws on top (same layer, insertion order).
+    for pos in world._layout.unreachable_floor:
+        fill = WallTileEntity(
+            world._catalog.wall_fill,
+            world._catalog.wall_fill_white,
+            cell_center(cfg, pos),
+        )
+        world._wall_sprites.append(fill)
+        world.all_sprites.add(fill, layer=fill.layer)
     for row_index, row in enumerate(world._layout.cells):
         for col_index, tile in enumerate(row):
             pos = CellPos(row_index, col_index)
