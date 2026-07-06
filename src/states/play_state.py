@@ -68,6 +68,7 @@ class PlayState(GameState):
         self._loading_thread: threading.Thread | None = None
         self._pending_layout: LevelLayout | None = None
         self._loading_error: BaseException | None = None
+        self._load_id: int = 0
 
     def enter(
         self,
@@ -116,6 +117,10 @@ class PlayState(GameState):
         self._level_seed = 42
         self._hud = None
         self._maze_bounds = None
+        self._load_id += 1
+        self._loading_thread = None
+        self._pending_layout = None
+        self._loading_error = None
 
     def handle_events(
         self,
@@ -454,6 +459,8 @@ class PlayState(GameState):
         Args:
             context: Shared game context with level config.
         """
+        self._load_id += 1
+        load_id = self._load_id
         self._pending_layout = None
         self._loading_error = None
         config = context.config
@@ -463,9 +470,15 @@ class PlayState(GameState):
         def generate() -> None:
             """Load level layout on the worker thread."""
             try:
-                self._pending_layout = load_level(config, level_index, seed)
+                layout = load_level(config, level_index, seed)
             except BaseException as exc:  # noqa: BLE001 - surfaced below
+                if load_id != self._load_id:
+                    return
                 self._loading_error = exc
+                return
+            if load_id != self._load_id:
+                return
+            self._pending_layout = layout
 
         self._loading_thread = threading.Thread(target=generate, daemon=True)
         self._loading_thread.start()
@@ -485,7 +498,8 @@ class PlayState(GameState):
         self._loading_thread = None
         if self._loading_error is not None:
             raise self._loading_error
-        assert self._pending_layout is not None and self._session is not None
+        if self._pending_layout is None or self._session is None:
+            return
         self._build_world(context, self._pending_layout)
         self._pending_layout = None
         self._session.reset_level_timer()
