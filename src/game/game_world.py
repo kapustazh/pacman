@@ -19,7 +19,7 @@ from game.fruit_schedule import (
     spawn_seconds_for_level,
 )
 from game.level import CellPos, LevelLayout
-from game.render_config import WorldRenderConfig, cell_center, direction_delta
+from game.render_config import DIRECTION_DELTA, WorldRenderConfig, cell_center
 from game.wall_tile_picker import pick
 from game.ghost_logic import (
     activate_frightened_mode,
@@ -57,40 +57,6 @@ class GameWorld:
     CHASE_STEPS: ClassVar[int] = 20
     SCATTER_STEPS: ClassVar[int] = 20
 
-    __slots__ = (
-        "_catalog",
-        "_fruit",
-        "_fruit_kill_at_ms",
-        "_fruit_spawn_index",
-        "_ghost_home",
-        "_ghosts",
-        "_frightened_until_ms",
-        "_scatter_mode",
-        "_scatter_step_count",
-        "_ghost_step_count",
-        "_invincible",
-        "_ghosts_frozen",
-        "_layout",
-        "_level_number",
-        "_player",
-        "_render_config",
-        "pellet_points",
-        "power_pellet_points",
-        "ghost_points",
-        "_travel_direction",
-        "_requested_direction",
-        "_step_accumulator_ms",
-        "_remaining_consumables",
-        "_score",
-        "_score_popups",
-        "_frozen",
-        "_step_now_ms",
-        "_wall_flash_white",
-        "_wall_sprites",
-        "all_sprites",
-        "consumables",
-    )
-
     def __init__(
         self,
         layout: LevelLayout,
@@ -98,25 +64,17 @@ class GameWorld:
         render_config: WorldRenderConfig,
         initial_score: int = 0,
         level_number: int = 1,
-        pellet_points: int | None = None,
-        power_pellet_points: int | None = None,
-        ghost_points: int | None = None,
+        pellet_points: int = PELLET_POINTS,
+        power_pellet_points: int = POWER_PELLET_POINTS,
+        ghost_points: int = GHOST_POINTS,
     ) -> None:
         self._layout: LevelLayout = layout
         self._catalog: Assets = catalog
         self._render_config: WorldRenderConfig = render_config
         self._level_number: int = level_number
-        self.pellet_points = (
-            self.PELLET_POINTS if pellet_points is None else pellet_points
-        )
-        self.power_pellet_points = (
-            self.POWER_PELLET_POINTS
-            if power_pellet_points is None
-            else power_pellet_points
-        )
-        self.ghost_points = (
-            self.GHOST_POINTS if ghost_points is None else ghost_points
-        )
+        self.pellet_points = pellet_points
+        self.power_pellet_points = power_pellet_points
+        self.ghost_points = ghost_points
         self.all_sprites: LayeredUpdates[Sprite] = LayeredUpdates()
         self.consumables: Group[PelletEntity] = Group()
         self._remaining_consumables: set[CellPos] = set(layout.pellet_cells)
@@ -133,9 +91,9 @@ class GameWorld:
         self._fruit: PelletEntity | None = None
         self._fruit_spawn_index: int = 0
         self._fruit_kill_at_ms: int = 0
-        self._score: int = initial_score
-        self._score_popups: list[ScorePopup] = []
-        self._frozen: bool = False
+        self.score: int = initial_score
+        self.score_popups: list[ScorePopup] = []
+        self.frozen: bool = False
         self._step_now_ms: int = 0
         self._wall_flash_white: bool = False
         self._wall_sprites: list[WallTileEntity] = []
@@ -145,24 +103,14 @@ class GameWorld:
         _spawn_from_layout(self)
 
     @property
-    def score(self) -> int:
-        """Return current score."""
-        return self._score
-
-    @property
     def all_consumables_cleared(self) -> bool:
         """Return True when no pellets or power pellets remain on the maze."""
         return not self._remaining_consumables
 
     @property
-    def is_frozen(self) -> bool:
-        """Return True when movement and input are paused."""
-        return self._frozen
-
-    @property
     def player_is_dying(self) -> bool:
         """Return True while Pac-Man death animation is active."""
-        return self._player is not None and self._player.is_dying
+        return self._player is not None and self._player.dying
 
     @property
     def player_death_finished(self) -> bool:
@@ -174,12 +122,7 @@ class GameWorld:
         """Return HUD fruit sprite for the active level."""
         kind = fruit_for_level(self._level_number)
         fruit = self._catalog.fruits.get(kind)
-        return None if fruit is None else fruit.surface
-
-    @property
-    def score_popups(self) -> tuple[ScorePopup, ...]:
-        """Return active floating score labels."""
-        return tuple(self._score_popups)
+        return fruit
 
     def set_wall_flash(self, white: bool) -> None:
         """Toggle wall tiles between blue and white maze sprites."""
@@ -201,14 +144,14 @@ class GameWorld:
 
     def freeze_gameplay(self) -> None:
         """Pause gameplay."""
-        self._frozen = True
+        self.frozen = True
         self._requested_direction = None
         self._step_accumulator_ms = 0.0
         self._sync_visual_centers()
 
     def unfreeze_gameplay(self) -> None:
         """Resume gameplay after a pause (death, level transition, etc.)."""
-        self._frozen = False
+        self.frozen = False
 
     def start_auto_movement(self) -> None:
         """Begin classic auto-walk after READY clears."""
@@ -222,7 +165,7 @@ class GameWorld:
         if self._player is not None:
             self._player.update(dt, now_ms)
         for ghost in self._ghosts.values():
-            if not ghost.is_hidden:
+            if not ghost.hidden:
                 ghost.update(dt, now_ms)
         self._apply_step_visual()
         update_frightened_state(self, now_ms)
@@ -230,13 +173,13 @@ class GameWorld:
 
     def _apply_step_visual(self) -> None:
         """Lerp actor sprites between grid steps; logic stays on cell."""
-        if self._frozen:
+        if self.frozen:
             return
         t = min(1.0, self._step_accumulator_ms / self.PLAYER_STEP_MS)
         if self._player is not None:
             self._player.apply_visual_lerp(t)
         for ghost in self._ghosts.values():
-            if not ghost.is_hidden:
+            if not ghost.hidden:
                 ghost.apply_visual_lerp(t)
 
     def draw(self, surface: Surface) -> None:
@@ -261,7 +204,7 @@ class GameWorld:
             self.all_sprites.add(ghost, layer=ghost.layer)
 
     def reset_fruit_spawns(self) -> None:
-        """Clear bonus-fruit state so spawn times re-evaluate from level start."""
+        """Clear fruits after spawn."""
         _kill_fruit(self)
         self._fruit_spawn_index = 0
 
@@ -276,8 +219,8 @@ class GameWorld:
         self._ghost_home.clear()
         self._fruit = None
         self._remaining_consumables.clear()
-        self._score_popups.clear()
-        self._frozen = False
+        self.score_popups.clear()
+        self.frozen = False
         self._wall_flash_white = False
         self._wall_sprites.clear()
         self._frightened_until_ms = 0
@@ -301,7 +244,7 @@ class GameWorld:
             if pellet.cell not in self._remaining_consumables:
                 continue
             self._remaining_consumables.remove(pellet.cell)
-            self._score += pellet.points
+            self.score += pellet.points
             if pellet.cell in self._layout.power_pellet_cells:
                 activate_frightened_mode(self)
             pellet.kill()
@@ -313,7 +256,7 @@ class GameWorld:
         if self._player is not None:
             self._player.begin_step()
         for ghost in self._ghosts.values():
-            if not ghost.is_hidden:
+            if not ghost.hidden:
                 ghost.begin_step()
 
 
@@ -334,7 +277,6 @@ def _spawn_from_layout(world: GameWorld) -> None:
             wall = WallTileEntity(
                 blue_surface,
                 white_surface,
-                pos,
                 cell_center(cfg, pos),
             )
             world._wall_sprites.append(wall)
@@ -363,12 +305,12 @@ def _spawn_from_layout(world: GameWorld) -> None:
     for kind, cell in world._layout.ghost_spawns:
         ghost = GhostEntity(
             kind,
-            world._catalog.ghosts.by_kind[kind],
-            world._catalog.ghosts.frightened,
+            world._catalog.ghosts_by_kind[kind],
+            world._catalog.ghost_frightened,
             cell,
             cell_center(cfg, cell),
-            flash_animation=world._catalog.ghosts.frightened_flash,
-            eyes_animation=world._catalog.ghosts.eyes,
+            flash_animation=world._catalog.ghost_frightened_flash,
+            eyes_animation=world._catalog.ghost_eyes,
         )
         world._ghosts[kind] = ghost
         world._ghost_home[kind] = cell
@@ -389,16 +331,16 @@ def _spawn_from_layout(world: GameWorld) -> None:
 
 def request_turn(world: GameWorld, direction: Direction) -> None:
     """Buffer a direction change from player input."""
-    if world._frozen or world.player_is_dying:
+    if world.frozen or world.player_is_dying:
         return
     world._requested_direction = direction
 
 
 def _move_player(world: GameWorld, direction: Direction) -> bool:
-    if world._player is None or world._player.is_dying:
+    if world._player is None or world._player.dying:
         return False
 
-    row_delta, col_delta = direction_delta(direction)
+    row_delta, col_delta = DIRECTION_DELTA[direction]
     target = CellPos(
         world._player.cell.row + row_delta,
         world._player.cell.col + col_delta,
@@ -427,13 +369,13 @@ def _begin_visual_step(world: GameWorld) -> None:
     if world._player is not None:
         world._player.begin_step()
     for ghost in world._ghosts.values():
-        if not ghost.is_hidden:
+        if not ghost.hidden:
             ghost.begin_step()
 
 
 def update_player_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
     """Advance player on grid at fixed speed while PLAYING."""
-    if world._frozen or world._player is None or world._player.is_dying:
+    if world.frozen or world._player is None or world._player.dying:
         return
     world._step_now_ms = now_ms
     world._step_accumulator_ms += dt_s * 1000.0
@@ -448,12 +390,12 @@ def update_player_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
 def spawn_fruit(world: GameWorld, now_ms: int) -> None:
     _kill_fruit(world)
     kind = fruit_for_level(world._level_number)
-    fruit_sprite = world._catalog.fruits.get(kind)
-    if fruit_sprite is None:
+    surface = world._catalog.fruits.get(kind)
+    if surface is None:
         return
     cell = world._layout.fruit_spawn
     world._fruit = PelletEntity(
-        fruit_sprite.surface,
+        surface,
         cell,
         cell_center(world._render_config, cell),
         FRUIT_POINTS[kind],
@@ -494,14 +436,14 @@ def _collect_fruit(world: GameWorld) -> None:
         return
     points = world._fruit.points
     fruit_center_px = world._fruit.center
-    world._score += points
+    world.score += points
     tile_px = world._render_config.tile_px
     popup_center = (
         fruit_center_px[0],
         fruit_center_px[1] + tile_px // 2 + 2,
     )
     expires_at_ms = pygame.time.get_ticks() + world.SCORE_POPUP_DURATION_MS
-    world._score_popups.append(
+    world.score_popups.append(
         ScorePopup(
             center=popup_center,
             points=points,
@@ -512,8 +454,8 @@ def _collect_fruit(world: GameWorld) -> None:
 
 
 def _prune_score_popups(world: GameWorld, now_ms: int) -> None:
-    if not world._score_popups:
+    if not world.score_popups:
         return
-    world._score_popups = [
-        popup for popup in world._score_popups if now_ms < popup.expires_at_ms
+    world.score_popups = [
+        popup for popup in world.score_popups if now_ms < popup.expires_at_ms
     ]

@@ -28,6 +28,7 @@ LOADING_PACMAN_Y: int = 440
 LOADING_DOT_CYCLE_MS: int = 400
 CHEAT_MESSAGE_DURATION_MS: int = 1500
 CHEAT_MESSAGE_MARGIN: int = 12
+CHEAT_MESSAGE_SCALE: int = 2
 
 
 class PlayState(GameState):
@@ -180,7 +181,7 @@ class PlayState(GameState):
             if self._world.player_death_finished:
                 self._handle_life_lost(now_ms)
             return
-        if not self._world.is_frozen:
+        if not self._world.frozen:
             timer_expired = self._session.tick_timer(dt)
             update_player_movement(self._world, dt, now_ms)
             update_fruit_spawns(
@@ -250,6 +251,7 @@ class PlayState(GameState):
         """Draw world, classic HUD bands, and phase message."""
         if self._loading_thread is not None:
             self._draw_loading(surface, context)
+            self._draw_cheat_message(surface, context)
             return
         if (
             self._world is None
@@ -279,9 +281,9 @@ class PlayState(GameState):
         if pygame.time.get_ticks() >= self._cheat_message_until_ms:
             self._cheat_message = None
             return
-        rendered = context.text.font(ArcadeTextColor.RED, scale=1).render(
-            self._cheat_message
-        )
+        rendered = context.text.font(
+            ArcadeTextColor.RED, scale=CHEAT_MESSAGE_SCALE
+        ).render(self._cheat_message)
         rect = rendered.get_rect(
             bottomleft=(
                 CHEAT_MESSAGE_MARGIN,

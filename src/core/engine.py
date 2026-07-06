@@ -20,8 +20,6 @@ BG_COLOR = (0, 0, 0)
 class GameEngine:
     """Main pygame loop delegating behavior to SceneManager."""
 
-    __slots__ = ("_clock", "_context", "_scene_manager", "_target_fps")
-
     def __init__(
         self,
         screen: Surface,

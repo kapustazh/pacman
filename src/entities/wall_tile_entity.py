@@ -1,38 +1,21 @@
 from pygame.sprite import Sprite
 from pygame.surface import Surface
 
-from entities.sprite_layer import SpriteLayer
-from game.level import CellPos
-
 
 class WallTileEntity(Sprite):
     """Static wall tile sprite."""
-
-    __slots__ = (
-        "_blue_surface",
-        "_flash_white",
-        "_white_surface",
-        "cell",
-        "center",
-        "image",
-        "layer",
-        "rect",
-    )
 
     def __init__(
         self,
         blue_surface: Surface,
         white_surface: Surface,
-        cell: CellPos,
         center: tuple[int, int],
     ) -> None:
         super().__init__()
-        self.cell = cell
-        self.center = center
         self._blue_surface = blue_surface
         self._white_surface = white_surface
         self._flash_white = False
-        self.layer = int(SpriteLayer.BACKGROUND)
+        self.layer = 0  # z-order: background draws below consumables/actors
         self.image = blue_surface
         self.rect = blue_surface.get_rect(center=center)
 

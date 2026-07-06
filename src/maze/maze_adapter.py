@@ -24,6 +24,8 @@ class MazeAdaptor:
                 size=(width, height),
                 perfect=False,
                 seed=seed,
+                entry_cell=(0, 0),  # testing
+                exit_cell=(0, 1),  # testing
             )
             return self.convert_maze(generator.maze)
         except Exception as Error:

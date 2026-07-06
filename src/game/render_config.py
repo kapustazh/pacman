@@ -71,10 +71,6 @@ DIRECTION_DELTA: dict[Direction, tuple[int, int]] = {
 }
 
 
-def direction_delta(direction: Direction) -> tuple[int, int]:
-    return DIRECTION_DELTA[direction]
-
-
 def cell_center(config: WorldRenderConfig, cell: CellPos) -> tuple[int, int]:
     """Convert grid cell to pixel center."""
     tile_px = config.tile_px

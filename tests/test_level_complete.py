@@ -29,9 +29,9 @@ from game.game_world import (  # noqa: E402
 from config.config import DEFAULT_CONFIG  # noqa: E402
 from game.level import CellPos, load_level  # noqa: E402
 from game.render_config import (  # noqa: E402
+    DIRECTION_DELTA,
     WorldRenderConfig,
     cell_center,
-    direction_delta,
 )
 from sprites.assets import Assets  # noqa: E402
 from sprites.sprite_types import Direction, TileKind  # noqa: E402
@@ -125,16 +125,16 @@ def test_timer_expiry_same_frame_as_last_pellet_completes_level(
 
     assert session.phase == GameplayPhase.LEVEL_COMPLETE
     assert session.lives == GameSession.DEFAULT_LIVES
-    assert game_world.is_frozen
+    assert game_world.frozen
 
 
 def test_unfreeze_gameplay_resumes_movement(game_world: GameWorld) -> None:
     from sprites.sprite_types import Direction
 
     game_world.freeze_gameplay()
-    assert game_world.is_frozen
+    assert game_world.frozen
     game_world.unfreeze_gameplay()
-    assert not game_world.is_frozen
+    assert not game_world.frozen
     request_turn(game_world, Direction.LEFT)
     assert game_world._requested_direction == Direction.LEFT
 
@@ -235,10 +235,10 @@ def test_freeze_gameplay_stops_turn_requests(game_world: GameWorld) -> None:
     from sprites.sprite_types import Direction
 
     game_world.freeze_gameplay()
-    assert game_world.is_frozen
+    assert game_world.frozen
     request_turn(game_world, Direction.LEFT)
     update_player_movement(game_world, 1.0, 0)
-    assert game_world.is_frozen
+    assert game_world.frozen
 
 
 def test_initial_score_carried_into_world() -> None:
@@ -365,12 +365,13 @@ def test_respawn_ghosts_returns_all_to_home(game_world: GameWorld) -> None:
     if game_world._layout.is_wall(away):
         away = CellPos(ghost.cell.row, ghost.cell.col + 1)
     ghost.move_to(away, cell_center(game_world._render_config, away))
-    ghost.hide_eaten()
+    ghost.hidden = True
+    ghost.kill()
 
     game_world.respawn_ghosts()
 
     for kind, entity in game_world._ghosts.items():
-        assert not entity.is_hidden
+        assert not entity.hidden
         assert entity.cell == game_world._ghost_home[kind]
 
 
@@ -384,7 +385,7 @@ def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:
     blocked_dir: Direction | None = None
     cell = player.cell
     for direction in Direction:
-        dr, dc = direction_delta(direction)
+        dr, dc = DIRECTION_DELTA[direction]
         if game_world._layout.is_wall(CellPos(cell.row + dr, cell.col + dc)):
             blocked_dir = direction
             break

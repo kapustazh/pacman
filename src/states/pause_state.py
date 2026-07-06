@@ -19,8 +19,6 @@ class PauseState(GameState):
         ("M MAIN MENU", ArcadeTextColor.ROSE, 2),
     )
 
-    __slots__ = ("_line_surfaces", "_overlay")
-
     def __init__(self) -> None:
         self._overlay: Surface | None = None
         self._line_surfaces: list[tuple[Surface, int]] = []

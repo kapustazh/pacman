@@ -24,8 +24,6 @@ class ArcadeTextColor(IntEnum):
 class ArcadeTextFont:
     """Color/scale-bound view of a renderer for one draw style."""
 
-    __slots__ = ("_color", "_renderer", "_scale")
-
     def __init__(
         self,
         renderer: ArcadeTextRenderer,
@@ -117,19 +115,11 @@ class ArcadeTextRenderer:
     }
     RENDER_CACHE_MAX: ClassVar[int] = 128
     SCALED_GLYPH_CACHE_MAX: ClassVar[int] = 256
-    SCREEN_BACKDROP: ClassVar[tuple[int, int, int]] = (0, 0, 0)
     MENU_ROW_HIGHLIGHT_COLOR: ClassVar[tuple[int, int, int, int]] = (
         40,
         40,
         80,
         120,
-    )
-
-    __slots__ = (
-        "_atlas_loaded",
-        "_glyphs_by_color",
-        "_render_cache",
-        "_scaled_glyph_cache",
     )
 
     def __init__(self) -> None:
@@ -153,10 +143,6 @@ class ArcadeTextRenderer:
     ) -> ArcadeTextFont:
         """Return a font bound to this renderer instance."""
         return ArcadeTextFont(self, color, scale)
-
-    def draw_screen_backdrop(self, surface: Surface) -> None:
-        """Fill screen to hide states beneath on the scene stack."""
-        surface.fill(self.SCREEN_BACKDROP)
 
     def draw_centered_arcade_text(
         self,

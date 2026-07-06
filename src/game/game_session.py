@@ -43,10 +43,6 @@ class GameSession:
     phase: GameplayPhase = GameplayPhase.READY
     phase_started_at_ms: int = 0
 
-    def spare_lives(self) -> int:
-        """Return spare life icons (classic shows lives minus current)."""
-        return max(0, self.lives - 1)
-
     def remaining_time_s(self) -> int:
         """Return whole seconds left on the current level."""
         return max(0, self.remaining_time_ms // 1000)

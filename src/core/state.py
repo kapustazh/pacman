@@ -9,6 +9,13 @@ from core.context import GameContext
 
 StateEnterData = dict[str, object]
 
+BACK_KEYS = (
+    pygame.K_ESCAPE,
+    pygame.K_RETURN,
+    pygame.K_SPACE,
+    pygame.K_BACKSPACE,
+)
+
 
 class GameState(ABC):
     """

@@ -7,15 +7,6 @@ class SpriteError(Exception):
     """Raised when sprite data is invalid."""
 
 
-class AssetSprite:
-    """Single drawable image surface."""
-
-    __slots__ = ("surface",)
-
-    def __init__(self, surface: Surface) -> None:
-        self.surface: Surface = surface
-
-
 @dataclass(slots=True)
 class AnimatedSprite:
     """Animation built from a list of frame surfaces."""

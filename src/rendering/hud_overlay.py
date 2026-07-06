@@ -26,6 +26,7 @@ class HudOverlay:
     HUD_SCALE: ClassVar[int] = 2
     SIDE_MARGIN: ClassVar[int] = 48
     LIFE_ICON_GAP: ClassVar[int] = 4
+    FRUIT_ICON_GAP: ClassVar[int] = 12
     MAX_LIFE_ICONS: ClassVar[int] = 3
     MESSAGE_SCALE: ClassVar[int] = 3
     SCORE_POPUP_SCALE: ClassVar[int] = 1
@@ -36,17 +37,6 @@ class HudOverlay:
         GameplayPhase.LEVEL_COMPLETE: ArcadeTextColor.YELLOW,
     }
     YELLOW: ClassVar[tuple[int, int, int, int]] = (255, 255, 0, 255)
-
-    __slots__ = (
-        "_font",
-        "_fruit_icon",
-        "_label_surfaces",
-        "_level_surface_cache",
-        "_life_icon",
-        "_phase_message_surfaces",
-        "_text",
-        "_value_surface_cache",
-    )
 
     def __init__(
         self,
@@ -137,18 +127,15 @@ class HudOverlay:
         """Draw spare life icons and current level below the maze."""
         bottom_y = maze_bounds.bottom + self.BOTTOM_EDGE
         self._draw_life_icons(surface, session.lives, maze_bounds.x, bottom_y)
-        if self._fruit_icon is not None:
-            fruit_rect = self._fruit_icon.get_rect(
-                midleft=(
-                    maze_bounds.x + maze_bounds.width // 2 + 24,
-                    bottom_y,
-                ),
-            )
-            surface.blit(self._fruit_icon, fruit_rect)
         level_surface = self._cached_level_surface(session.level_number)
         level_rect = level_surface.get_rect(
             midright=(maze_bounds.x + maze_bounds.width, bottom_y),
         )
+        if self._fruit_icon is not None:
+            fruit_rect = self._fruit_icon.get_rect(
+                midright=(level_rect.left - self.FRUIT_ICON_GAP, bottom_y),
+            )
+            surface.blit(self._fruit_icon, fruit_rect)
         surface.blit(level_surface, level_rect)
 
     def _draw_score_column(

@@ -1,13 +1,12 @@
 # [transition UI] sprite sheet loader for pygame assets.
 
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
 
 import pygame
 from pygame.surface import Surface
 
-from sprites.sprites import AnimatedSprite, AssetSprite
+from sprites.sprites import AnimatedSprite
 from sprites.sprite_types import (
     Direction,
     FruitKind,
@@ -19,20 +18,6 @@ from sprites.sprite_types import (
 class AssetError(Exception):
     def __init__(self, detail: str) -> None:
         super().__init__(f"Asset loading error: {detail}")
-
-
-@dataclass(slots=True)
-class GhostSprites:
-    by_kind: dict[GhostKind, AnimatedSprite] = field(default_factory=dict)
-    frightened: AnimatedSprite = field(
-        default_factory=lambda: AnimatedSprite(frames=[]),
-    )
-    frightened_flash: AnimatedSprite = field(
-        default_factory=lambda: AnimatedSprite(frames=[]),
-    )
-    eyes: AnimatedSprite = field(
-        default_factory=lambda: AnimatedSprite(frames=[]),
-    )
 
 
 class Assets:
@@ -115,38 +100,22 @@ class Assets:
         TileKind.CORNER_BR: (5, 4),
     }
 
-    __slots__ = (
-        "_fruits_loaded",
-        "_general_sheet",
-        "_maze_sheet",
-        "_ghosts_loaded",
-        "_loaded",
-        "dot_surface",
-        "fruits",
-        "ghosts",
-        "maze_tiles",
-        "maze_white_tiles",
-        "pacman",
-        "pacman_death",
-        "power_pellet_surface",
-        "root",
-    )
-
     def __init__(self, root: Path | None = None) -> None:
         self.root = root or self.ASSETS
         self.pacman: dict[Direction, AnimatedSprite] = {}
         self.pacman_death = AnimatedSprite(frames=[])
-        self.ghosts = GhostSprites()
+        self.ghosts_by_kind: dict[GhostKind, AnimatedSprite] = {}
+        self.ghost_frightened = AnimatedSprite(frames=[])
+        self.ghost_frightened_flash = AnimatedSprite(frames=[])
+        self.ghost_eyes = AnimatedSprite(frames=[])
         self.dot_surface: Surface = Surface((1, 1))
         self.power_pellet_surface: Surface = Surface((1, 1))
         self.maze_tiles: dict[TileKind, Surface] = {}
         self.maze_white_tiles: dict[TileKind, Surface] = {}
-        self.fruits: dict[FruitKind, AssetSprite] = {}
+        self.fruits: dict[FruitKind, Surface] = {}
         self._general_sheet: Surface | None = None
         self._maze_sheet: Surface | None = None
         self._loaded = False
-        self._ghosts_loaded = False
-        self._fruits_loaded = False
 
     def load(self) -> None:
         if self._loaded:
@@ -166,8 +135,6 @@ class Assets:
             self._load_ghosts()
             self._load_fruits()
             self._load_maze_tiles()
-            self._ghosts_loaded = True
-            self._fruits_loaded = True
             self._loaded = True
         except pygame.error as exc:
             raise AssetError(str(exc)) from exc
@@ -205,9 +172,10 @@ class Assets:
         frames = [self._slice_cells(col, row) for col, row in coords]
         return AnimatedSprite(frames=frames)
 
-    def _load_sprite(self, coord: tuple[int, int]) -> AssetSprite:
-        col, row = coord
-        return AssetSprite(self._slice_cells(col, row))
+    def _load_fruits(self) -> None:
+        for kind, coord in self.FRUIT_COORDS.items():
+            col, row = coord
+            self.fruits[kind] = self._slice_cells(col, row)
 
     def _load_gameplay_assets(self) -> None:
         for direction, coords in self.PACMAN_COORDS.items():
@@ -235,16 +203,12 @@ class Assets:
 
     def _load_ghosts(self) -> None:
         for kind, coords in self.GHOST_COORDS.items():
-            self.ghosts.by_kind[kind] = self._load_frames(coords)
-        self.ghosts.frightened = self._load_frames(self.FRIGHTENED_COORDS)
-        self.ghosts.frightened_flash = self._load_frames(
+            self.ghosts_by_kind[kind] = self._load_frames(coords)
+        self.ghost_frightened = self._load_frames(self.FRIGHTENED_COORDS)
+        self.ghost_frightened_flash = self._load_frames(
             self.FRIGHTENED_FLASH_COORDS
         )
-        self.ghosts.eyes = self._load_frames(self.EYES_COORDS)
-
-    def _load_fruits(self) -> None:
-        for kind, coord in self.FRUIT_COORDS.items():
-            self.fruits[kind] = self._load_sprite(coord)
+        self.ghost_eyes = self._load_frames(self.EYES_COORDS)
 
     def _slice_maze_cells(
         self,

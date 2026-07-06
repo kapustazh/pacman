@@ -169,15 +169,15 @@ def test_eaten_ghost_becomes_eyes_and_returns_home() -> None:
 
     resolve_actor_collisions(world)
 
-    assert ghost.is_returning is True
+    assert ghost.returning is True
     assert ghost._frightened is False
 
     home = world._ghost_home[kind]
     for _ in range(200):
-        if not ghost.is_returning:
+        if not ghost.returning:
             break
         move_ghosts(world)
-    assert ghost.is_returning is False
+    assert ghost.returning is False
     assert ghost.cell == home
 
 

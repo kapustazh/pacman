@@ -6,6 +6,7 @@ from game.level import CellPos, LevelLayout
 from maze.map_data import TileType
 from sprites.sprite_types import TileKind
 
+# up, down, left, right
 BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
     (False, True, False, True): TileKind.CORNER_TL,
     (False, True, True, False): TileKind.CORNER_TR,

@@ -19,17 +19,10 @@ Transition = tuple[
 class SceneManager:
     """Stack-based scene manager for game states."""
 
-    __slots__ = ("_pending", "_shutdown_requested", "_stack")
-
     def __init__(self) -> None:
         self._stack: list[GameState] = []
         self._pending: deque[Transition] = deque()
-        self._shutdown_requested = False
-
-    @property
-    def shutdown_requested(self) -> bool:
-        """Return True when engine should stop."""
-        return self._shutdown_requested
+        self.shutdown_requested = False
 
     def top(self) -> GameState | None:
         """Return active top state."""
@@ -75,7 +68,7 @@ class SceneManager:
                 case "shutdown":
                     while self._stack:
                         self._leave_top_state(context)
-                    self._shutdown_requested = True
+                    self.shutdown_requested = True
                     self._pending.clear()
                     return
                 case "pop":
@@ -113,11 +106,11 @@ class SceneManager:
 
     def _pop_state(self, context: GameContext) -> None:
         if not self._stack:
-            self._shutdown_requested = True
+            self.shutdown_requested = True
             return
         self._leave_top_state(context)
         if not self._stack:
-            self._shutdown_requested = True
+            self.shutdown_requested = True
 
     def _leave_top_state(self, context: GameContext) -> None:
         state = self._stack.pop()

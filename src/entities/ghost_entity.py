@@ -2,7 +2,6 @@
 
 from pygame.sprite import Sprite
 
-from entities.sprite_layer import SpriteLayer
 from game.level import CellPos
 from sprites.sprites import AnimatedSprite
 from sprites.sprite_types import GhostKind
@@ -12,25 +11,6 @@ class GhostEntity(Sprite):
     """Static ghost sprite; movement deferred."""
 
     FLASH_INTERVAL_MS = 200
-
-    __slots__ = (
-        "_animation",
-        "_eyes_animation",
-        "_flashing",
-        "_flash_animation",
-        "_frightened_animation",
-        "_frightened",
-        "_hidden",
-        "_returning",
-        "_prev_center",
-        "cell",
-        "center",
-        "image",
-        "kind",
-        "last_cell",
-        "layer",
-        "rect",
-    )
 
     def __init__(
         self,
@@ -54,21 +34,11 @@ class GhostEntity(Sprite):
         self._eyes_animation = eyes_animation or animation
         self._frightened = False
         self._flashing = False
-        self._returning = False
-        self._hidden = False
-        self.layer = int(SpriteLayer.ACTORS)
+        self.returning = False
+        self.hidden = False
+        self.layer = 2  # z-order: actors draw above background/consumables
         self.image = animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
-
-    @property
-    def is_hidden(self) -> bool:
-        """Return True when ghost was eaten and not yet respawned."""
-        return self._hidden
-
-    @property
-    def is_returning(self) -> bool:
-        """Return True while eaten-ghost eyes are travelling back home."""
-        return self._returning
 
     def set_frightened(self, frightened: bool, flashing: bool = False) -> None:
         """Switch between normal, frightened and flashing appearance."""
@@ -77,13 +47,13 @@ class GhostEntity(Sprite):
 
     def start_returning_home(self) -> None:
         """Switch to eyes-only and travel back to home instead of hiding."""
-        self._returning = True
+        self.returning = True
         self._frightened = False
         self._flashing = False
 
     def arrive_home(self) -> None:
         """End the eyes-only trip; resume normal appearance at home."""
-        self._returning = False
+        self.returning = False
 
     def move_to(self, cell: CellPos, center: tuple[int, int]) -> None:
         """Move ghost one grid step."""
@@ -113,29 +83,24 @@ class GhostEntity(Sprite):
             round(py + (cy - py) * t),
         )
 
-    def hide_eaten(self) -> None:
-        """Remove ghost from play until respawn."""
-        self._hidden = True
-        self.kill()
-
     def respawn_at(self, cell: CellPos, center: tuple[int, int]) -> None:
         """Return ghost to home corner after being eaten."""
         self.cell = cell
         self.last_cell = cell
         self.center = center
         self._prev_center = center
-        self._hidden = False
+        self.hidden = False
         self._frightened = False
         self._flashing = False
-        self._returning = False
+        self.returning = False
         self.image = self._animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
 
     def update(self, dt: float, now_ms: int) -> None:
         """Update ghost animation frame."""
-        if self._hidden:
+        if self.hidden:
             return
-        if self._returning:
+        if self.returning:
             animation = self._eyes_animation
         elif self._frightened and self._flashing:
             toggle = (now_ms // self.FLASH_INTERVAL_MS) % 2

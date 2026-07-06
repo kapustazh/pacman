@@ -1,14 +1,11 @@
 from pygame.sprite import Sprite
 from pygame.surface import Surface
 
-from entities.sprite_layer import SpriteLayer
 from game.level import CellPos
 
 
 class PelletEntity(Sprite):
     """Static consumable sprite."""
-
-    __slots__ = ("cell", "center", "image", "layer", "points", "rect")
 
     def __init__(
         self,
@@ -21,6 +18,6 @@ class PelletEntity(Sprite):
         self.cell = cell
         self.center = center
         self.points = points
-        self.layer = int(SpriteLayer.CONSUMABLES)
+        self.layer = 1  # z-order: consumables draw above background
         self.image = image
         self.rect = image.get_rect(center=center)

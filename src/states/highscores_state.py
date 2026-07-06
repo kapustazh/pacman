@@ -4,15 +4,8 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
+from core.state import BACK_KEYS, GameState, StateEnterData
 from states.text import ArcadeTextColor
-
-_BACK_KEYS = (
-    pygame.K_ESCAPE,
-    pygame.K_RETURN,
-    pygame.K_SPACE,
-    pygame.K_BACKSPACE,
-)
 
 
 class HighscoresState(GameState):
@@ -43,7 +36,7 @@ class HighscoresState(GameState):
     ) -> None:
         """Return to menu on back input."""
         for event in events:
-            if event.type == pygame.KEYDOWN and event.key in _BACK_KEYS:
+            if event.type == pygame.KEYDOWN and event.key in BACK_KEYS:
                 context.scene_manager.pop()
                 return
 

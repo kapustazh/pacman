@@ -24,8 +24,6 @@ class GameOverState(GameState):
     PROMPT_SCALE: ClassVar[int] = 2
     NAME_SCALE: ClassVar[int] = 3
 
-    __slots__ = ("_name", "_score", "_won")
-
     def __init__(self) -> None:
         self._name = ""
         self._score = 0

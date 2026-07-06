@@ -33,11 +33,6 @@ class LevelBuilder:
         # [wehan] player and ghost spawn placement
         player_start = self._nearest_walkable(grid, height // 2, width // 2)
 
-        # This maze generator can leave small pockets of open floor
-        # disconnected from the main maze. Anything placed outside the
-        # region reachable from the player's start would be permanently
-        # uncollectable (or, for ghosts, stuck), so every later placement
-        # is restricted to this reachable set.
         reachable = self._reachable_positions(grid, player_start)
 
         corner_targets = [
@@ -55,7 +50,6 @@ class LevelBuilder:
         reserved = set(ghost_starts)
         reserved.add(player_start)
 
-        # [wehan] pacgum placement
         self._place_pacgums(grid, reserved, reachable)
         self._place_super_pacgums(grid, corner_positions)
 
@@ -95,9 +89,7 @@ class LevelBuilder:
     ) -> None:
         """Place normal pacgums in corridors the player can actually reach."""
         candidates = [
-            (row, col)
-            for row, col in reachable
-            if (row, col) not in reserved
+            (row, col) for row, col in reachable if (row, col) not in reserved
         ]
         random.shuffle(candidates)
         limit = min(self.pacgum_count, len(candidates))

@@ -9,9 +9,8 @@ from typing import TYPE_CHECKING
 
 import pygame
 
-from entities.ghost_entity import GhostEntity
 from game.level import CellPos, LevelLayout
-from game.render_config import cell_center, direction_delta
+from game.render_config import DIRECTION_DELTA, cell_center
 from sprites.sprite_types import Direction, GhostKind
 
 if TYPE_CHECKING:
@@ -89,7 +88,9 @@ def _random_step(
     return random.choice(options)
 
 
-def _current_direction(cell: CellPos, last_cell: CellPos) -> tuple[int, int] | None:
+def _current_direction(
+    cell: CellPos, last_cell: CellPos
+) -> tuple[int, int] | None:
     """Return the current movement direction based on previous position."""
     row_delta = cell.row - last_cell.row
     col_delta = cell.col - last_cell.col
@@ -120,7 +121,9 @@ def _valid_directions(
     return valid_directions
 
 
-def _is_junction(cell: CellPos, last_cell: CellPos, layout: LevelLayout) -> bool:
+def _is_junction(
+    cell: CellPos, last_cell: CellPos, layout: LevelLayout
+) -> bool:
     """Return True if the ghost has multiple forward choices."""
     return len(_valid_directions(cell, last_cell, layout)) >= 2
 
@@ -137,7 +140,9 @@ def _choose_pacman_step(
     """
     current_direction = _current_direction(cell, last_cell)
 
-    if current_direction is not None and not _is_junction(cell, last_cell, layout):
+    if current_direction is not None and not _is_junction(
+        cell, last_cell, layout
+    ):
         nxt = CellPos(
             cell.row + current_direction[0],
             cell.col + current_direction[1],
@@ -147,7 +152,9 @@ def _choose_pacman_step(
 
     directions = _valid_directions(cell, last_cell, layout)
     if not directions:
-        directions = _valid_directions(cell, last_cell, layout, allow_reverse=True)
+        directions = _valid_directions(
+            cell, last_cell, layout, allow_reverse=True
+        )
     if not directions:
         return None
 
@@ -173,7 +180,10 @@ def _next_chase_step(
     target: CellPos,
     layout: LevelLayout,
 ) -> CellPos | None:
-    """One junction-greedy step toward target; fall back to random no-reverse."""
+    """
+    One junction-greedy step toward target,
+    fall back to random no-reverse.
+    """
     step = _choose_pacman_step(cell, last, target, layout)
     if step is not None:
         return step
@@ -215,7 +225,7 @@ def _chase_target(
     layout: LevelLayout,
 ) -> CellPos:
     """Classic per-ghost chase target (Blinky/Pinky/Inky/Clyde)."""
-    row_delta, col_delta = direction_delta(travel_direction)
+    row_delta, col_delta = DIRECTION_DELTA[travel_direction]
     if kind == GhostKind.BLINKY:
         target = player_cell
     elif kind == GhostKind.PINKY:
@@ -253,13 +263,6 @@ def _next_return_step(
     return None
 
 
-def _arrive_home(world: GameWorld, ghost: GhostEntity) -> None:
-    """End an eaten ghost's return trip; resume frightened or normal look."""
-    ghost.arrive_home()
-    if is_frightened(world):
-        ghost.set_frightened(True)
-
-
 def move_ghosts(world: GameWorld) -> None:
     """Step every visible ghost once per player grid step.
 
@@ -277,19 +280,23 @@ def move_ghosts(world: GameWorld) -> None:
         world._ghost_step_count % world.FRIGHTENED_GHOST_SPEED_DIVISOR == 0
     )
     for kind, ghost in world._ghosts.items():
-        if ghost.is_hidden:
+        if ghost.hidden:
             continue
         home = world._ghost_home.get(kind, ghost.cell)
-        if ghost.is_returning:
+        if ghost.returning:
             if ghost.cell == home:
-                _arrive_home(world, ghost)
+                ghost.arrive_home()
+                if is_frightened(world):
+                    ghost.set_frightened(True)
                 continue
             step = _next_return_step(ghost.cell, home, layout)
             if step is not None:
                 ghost.last_cell = ghost.cell
                 ghost.move_to(step, cell_center(world._render_config, step))
                 if step == home:
-                    _arrive_home(world, ghost)
+                    ghost.arrive_home()
+                    if is_frightened(world):
+                        ghost.set_frightened(True)
             continue
         if fleeing:
             if not frightened_step_due:
@@ -339,7 +346,7 @@ def activate_frightened_mode(world: GameWorld) -> None:
     now_ms = pygame.time.get_ticks()
     world._frightened_until_ms = now_ms + world.FRIGHTENED_DURATION_MS
     for ghost in world._ghosts.values():
-        if not ghost.is_hidden:
+        if not ghost.hidden:
             ghost.set_frightened(True)
 
 
@@ -352,25 +359,21 @@ def update_frightened_state(world: GameWorld, now_ms: int) -> None:
     frightened = remaining > 0
     flashing = frightened and remaining <= world.FRIGHTENED_FLASH_MS
     for ghost in world._ghosts.values():
-        if not ghost.is_hidden:
+        if not ghost.hidden:
             ghost.set_frightened(frightened, flashing)
 
 
-def eat_ghost(world: GameWorld, ghost: GhostEntity) -> None:
-    world._score += world.ghost_points
-    ghost.start_returning_home()
-
-
 def resolve_actor_collisions(world: GameWorld) -> None:
-    if world._player is None or world._player.is_dying:
+    if world._player is None or world._player.dying:
         return
     for ghost in world._ghosts.values():
-        if ghost.is_hidden or ghost.is_returning:
+        if ghost.hidden or ghost.returning:
             continue
         if ghost.cell != world._player.cell:
             continue
         if is_frightened(world):
-            eat_ghost(world, ghost)
+            world.score += world.ghost_points
+            ghost.start_returning_home()
         elif not world._invincible:
             start_player_death(world, world._step_now_ms)
             return

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import ClassVar
 
 import pygame
@@ -22,31 +21,15 @@ _KEY_COMMANDS: dict[int, str] = {
 }
 
 
-@dataclass(frozen=True, slots=True)
-class MenuEntry:
-    """Single keyboard-navigated menu row."""
-
-    label: str
-    action: str
-
-
 class SelectableMenuState(GameState):
     """Shared keyboard-navigated option list."""
 
     MENU_LINE_HEIGHT: ClassVar[int] = 56
     MENU_SCALE: ClassVar[int] = 3
 
-    __slots__ = (
-        "_action_handlers",
-        "_entries",
-        "_menu_start_y",
-        "_selected_index",
-        "_shortcuts",
-    )
-
     def __init__(
         self,
-        entries: tuple[MenuEntry, ...],
+        entries: tuple[tuple[str, str], ...],
         menu_start_y: int,
         action_handlers: dict[str, Callable[[GameContext], None]],
         shortcuts: dict[int, tuple[int, str]] | None = None,
@@ -77,7 +60,7 @@ class SelectableMenuState(GameState):
     def activate_index(self, index: int, context: GameContext) -> None:
         """Activate row at index when in range."""
         if 0 <= index < len(self._entries):
-            self.activate_action(self._entries[index].action, context)
+            self.activate_action(self._entries[index][1], context)
 
     def activate_action(self, action: str, context: GameContext) -> None:
         """Run handler for named menu action."""
@@ -153,7 +136,7 @@ class SelectableMenuState(GameState):
         text = context.text
         options = self._entries
 
-        for index, option in enumerate(options):
+        for index, (label, _action) in enumerate(options):
             y = self._menu_start_y + index * self.MENU_LINE_HEIGHT
             if index == self._selected_index:
                 draw_menu_row_highlight(
@@ -164,7 +147,7 @@ class SelectableMenuState(GameState):
                 )
             text.draw_centered_arcade_text(
                 surface,
-                option.label,
+                label,
                 y,
                 ArcadeTextColor.WHITE,
                 self.MENU_SCALE,
