@@ -255,12 +255,6 @@ class Assets:
         if not maze_path.exists():
             raise AssetError(f"File not found: {maze_path}")
         self._maze_sheet = pygame.image.load(maze_path).convert_alpha()
-        vertical_col, vertical_row = self.TILE_KIND_COORDS[TileKind.VERTICAL]
-        wall_color = self._dominant_color(
-            self._slice_cells(
-                vertical_col, vertical_row, width_cells=1, height_cells=1
-            )
-        )
         for tile_kind, coords in self.TILE_KIND_COORDS.items():
             if tile_kind == TileKind.WALL:
                 # No line-art shape exists for a fully-enclosed wall cell in
@@ -294,17 +288,17 @@ class Assets:
             white_surface = self._make_white_tile(sheet_surface).convert()
             white_surface.set_colorkey((0, 0, 0))
             self.maze_white_tiles[tile_kind] = white_surface
-        self.maze_tiles[TileKind.PILLAR] = self._dot_tile(wall_color)
-        self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile(
-            (255, 255, 255)
-        )
+        self.maze_tiles[TileKind.PILLAR] = self._dot_tile(self.WALL_LINE_COLOR)
+        self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile((255, 255, 255))
         # T-junctions and the 4-way cross have no matching cell in the
         # sheet's double-line maze, so build them from the same row-4/col-4
         # line pixels the HORIZONTAL and VERTICAL slices use — one arm per
         # wall neighbour. This tiles seamlessly with the sliced straights
         # and corners and removes the old solid-block fallback.
         for tile_kind, mask in self.JUNCTION_MASKS.items():
-            self.maze_tiles[tile_kind] = self._junction_tile(mask, wall_color)
+            self.maze_tiles[tile_kind] = self._junction_tile(
+                mask, self.WALL_LINE_COLOR
+            )
             self.maze_white_tiles[tile_kind] = self._junction_tile(
                 mask, (255, 255, 255)
             )
@@ -319,6 +313,8 @@ class Assets:
 
     # Light blue sampled from the text sheet's 4th color band (CYAN).
     WALL_FILL_COLOR: ClassVar[tuple[int, int, int]] = (0, 255, 255)
+    # Dark blue from general_sprites wall line art (VERTICAL/HORIZONTAL cells).
+    WALL_LINE_COLOR: ClassVar[tuple[int, int, int]] = (33, 33, 255)
 
     # (up, down, left, right) arms present, matching wall_tile_picker.
     JUNCTION_MASKS: ClassVar[dict[TileKind, tuple[bool, bool, bool, bool]]] = {
@@ -370,15 +366,3 @@ class Assets:
         radius = max(1, round(size * scale / 2))
         pygame.draw.circle(surface, color, (size // 2, size // 2), radius)
         return surface
-
-    @staticmethod
-    def _dominant_color(surface: Surface) -> tuple[int, int, int]:
-        """Most common non-black opaque pixel color, to match the wall hue."""
-        counts: dict[tuple[int, int, int], int] = {}
-        for x in range(surface.get_width()):
-            for y in range(surface.get_height()):
-                r, g, b, a = surface.get_at((x, y))
-                if a == 0 or r + g + b < 20:
-                    continue
-                counts[(r, g, b)] = counts.get((r, g, b), 0) + 1
-        return max(counts, key=counts.__getitem__) if counts else (0, 0, 0)

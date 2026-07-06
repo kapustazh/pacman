@@ -264,7 +264,7 @@ def _next_return_step(
 
 
 def move_ghosts(world: GameWorld) -> None:
-    """Step every visible ghost once per player grid step.
+    """Step every visible ghost once per ghost grid step (PLAYER_STEP_MS).
 
     Frightened ghosts move at a fraction of that rate (classic Pac-Man
     slows fleeing ghosts down), so Pac-Man can outrun and catch them;

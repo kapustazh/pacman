@@ -15,6 +15,7 @@ from game.game_world import (
     GameWorld,
     request_turn,
     update_fruit_spawns,
+    update_ghost_movement,
     update_player_movement,
 )
 from game.level import LevelLayout, load_level
@@ -30,6 +31,19 @@ CHEAT_MESSAGE_MARGIN: int = 12
 CHEAT_MESSAGE_SCALE: int = 2
 
 
+def _cheat_labels(
+    *, invincible: bool, frozen: bool, speed_active: bool
+) -> list[str]:
+    labels: list[str] = []
+    if invincible:
+        labels.append("INVINCIBLE")
+    if frozen:
+        labels.append("FREEZE")
+    if speed_active:
+        labels.append("SPEED")
+    return labels
+
+
 class PlayState(GameState):
     """Gameplay scene backed by GameWorld."""
 
@@ -43,8 +57,6 @@ class PlayState(GameState):
         self._loading_thread: threading.Thread | None = None
         self._pending_layout: LevelLayout | None = None
         self._loading_error: BaseException | None = None
-        # cheats used this run, in first-use order; drawn bottom-right
-        self._cheats_used: list[str] = []
 
     def enter(
         self,
@@ -72,7 +84,6 @@ class PlayState(GameState):
         )
         self._level_index = 0
         self._level_seed = int(context.config.get("seed", 42))
-        self._cheats_used.clear()
         self._start_loading(context)
 
     def leave(self, context: GameContext) -> None:
@@ -107,15 +118,18 @@ class PlayState(GameState):
                 return
             if event.key == pygame.K_i and self._world is not None:
                 self._world.toggle_invincible()
-                self._record_cheat("INVINCIBLE")
                 continue
             if event.key == pygame.K_f and self._world is not None:
                 self._world.toggle_ghosts_frozen()
-                self._record_cheat("FREEZE")
+                continue
+            if event.key in (pygame.K_PLUS, pygame.K_EQUALS) and self._world is not None:
+                self._world.adjust_player_speed(-GameWorld.PLAYER_SPEED_STEP_MS)
+                continue
+            if event.key == pygame.K_MINUS and self._world is not None:
+                self._world.adjust_player_speed(GameWorld.PLAYER_SPEED_STEP_MS)
                 continue
             if event.key == pygame.K_l and self._session is not None:
                 self._session.lives += 1
-                self._record_cheat("LIFE")
                 continue
             if (
                 event.key == pygame.K_n
@@ -123,7 +137,6 @@ class PlayState(GameState):
                 and self._world is not None
             ):
                 self._advance_level_or_win(context, pygame.time.get_ticks())
-                self._record_cheat("SKIP")
                 continue
             direction = _direction_from_key(event.key)
             if (
@@ -179,6 +192,7 @@ class PlayState(GameState):
         if not self._world.frozen:
             timer_expired = self._session.tick_timer(dt)
             update_player_movement(self._world, dt, now_ms)
+            update_ghost_movement(self._world, dt, now_ms)
             update_fruit_spawns(
                 self._world,
                 self._session.level_elapsed_s(),
@@ -260,19 +274,21 @@ class PlayState(GameState):
         self._hud.draw(surface, self._session, self._maze_bounds)
         self._draw_cheat_message(surface, context)
 
-    def _record_cheat(self, name: str) -> None:
-        """Remember a used cheat for the run's bottom-right list."""
-        if name not in self._cheats_used:
-            self._cheats_used.append(name)
-
     def _draw_cheat_message(
         self, surface: Surface, context: GameContext
     ) -> None:
-        """List every cheat used this run in the bottom-right corner."""
-        if not self._cheats_used:
+        """Show currently active cheat toggles in the bottom-right corner."""
+        if self._world is None:
+            return
+        labels = _cheat_labels(
+            invincible=self._world.invincible,
+            frozen=self._world.ghosts_frozen,
+            speed_active=self._world.speed_cheat_active,
+        )
+        if not labels:
             return
         rendered = context.text.render(
-            "CHEATS - " + " ".join(self._cheats_used),
+            "CHEATS - " + " ".join(labels),
             ArcadeTextColor.RED,
             CHEAT_MESSAGE_SCALE,
         )

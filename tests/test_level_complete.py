@@ -14,6 +14,7 @@ from game.game_world import (  # noqa: E402
     GameWorld,
     request_turn,
     spawn_fruit,
+    update_ghost_movement,
     update_player_movement,
 )
 from config.config import DEFAULT_CONFIG  # noqa: E402
@@ -370,6 +371,11 @@ def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:
 
     ghost_cell_before = ghost.cell
     update_player_movement(
+        game_world,
+        game_world.PLAYER_STEP_MS / 1000.0,
+        1_000,
+    )
+    update_ghost_movement(
         game_world,
         game_world.PLAYER_STEP_MS / 1000.0,
         1_000,

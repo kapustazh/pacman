@@ -46,6 +46,9 @@ class GameWorld:
     """Owns runtime gameplay entities, groups, and collision state."""
 
     PLAYER_STEP_MS: ClassVar[int] = 180
+    PLAYER_STEP_MS_MIN: ClassVar[int] = 60
+    PLAYER_STEP_MS_MAX: ClassVar[int] = 360
+    PLAYER_SPEED_STEP_MS: ClassVar[int] = 20
     DEFAULT_TRAVEL_DIRECTION: ClassVar[Direction] = Direction.RIGHT
     PELLET_POINTS: ClassVar[int] = 10
     POWER_PELLET_POINTS: ClassVar[int] = 50
@@ -91,6 +94,7 @@ class GameWorld:
         self._ghost_step_count: int = 0
         self._invincible: bool = False
         self._ghosts_frozen: bool = False
+        self._player_step_ms: int = self.PLAYER_STEP_MS
         self._fruit: PelletEntity | None = None
         self._fruit_spawn_index: int = 0
         self._fruit_kill_at_ms: int = 0
@@ -101,6 +105,7 @@ class GameWorld:
         self._wall_flash_white: bool = False
         self._wall_sprites: list[WallTileEntity] = []
         self._step_accumulator_ms: float = 0.0
+        self._ghost_step_accumulator_ms: float = 0.0
         self._travel_direction: Direction = self.DEFAULT_TRAVEL_DIRECTION
         self._requested_direction: Direction | None = None
         _spawn_from_layout(self)
@@ -127,6 +132,22 @@ class GameWorld:
         fruit = self._catalog.fruits.get(kind)
         return fruit
 
+    @property
+    def invincible(self) -> bool:
+        return self._invincible
+
+    @property
+    def ghosts_frozen(self) -> bool:
+        return self._ghosts_frozen
+
+    @property
+    def player_step_ms(self) -> int:
+        return self._player_step_ms
+
+    @property
+    def speed_cheat_active(self) -> bool:
+        return self._player_step_ms != self.PLAYER_STEP_MS
+
     def set_wall_flash(self, white: bool) -> None:
         """Toggle wall tiles between blue and white maze sprites."""
         if self._wall_flash_white == white:
@@ -145,11 +166,22 @@ class GameWorld:
         self._ghosts_frozen = not self._ghosts_frozen
         return self._ghosts_frozen
 
+    def adjust_player_speed(self, delta_ms: int) -> None:
+        """Cheat: change Pac-Man step interval (lower ms = faster)."""
+        self._player_step_ms = max(
+            self.PLAYER_STEP_MS_MIN,
+            min(
+                self.PLAYER_STEP_MS_MAX,
+                self._player_step_ms + delta_ms,
+            ),
+        )
+
     def freeze_gameplay(self) -> None:
         """Pause gameplay."""
         self.frozen = True
         self._requested_direction = None
         self._step_accumulator_ms = 0.0
+        self._ghost_step_accumulator_ms = 0.0
         self._sync_visual_centers()
 
     def unfreeze_gameplay(self) -> None:
@@ -165,6 +197,7 @@ class GameWorld:
         """Begin classic auto-walk after READY clears."""
         self._travel_direction = self.DEFAULT_TRAVEL_DIRECTION
         self._step_accumulator_ms = 0.0
+        self._ghost_step_accumulator_ms = 0.0
         self._mode_started_ms = pygame.time.get_ticks()
         if self._player is not None:
             self._player.face(self._travel_direction)
@@ -190,12 +223,16 @@ class GameWorld:
         """Lerp actor sprites between grid steps; logic stays on cell."""
         if self.frozen:
             return
-        t = min(1.0, self._step_accumulator_ms / self.PLAYER_STEP_MS)
+        t = min(1.0, self._step_accumulator_ms / self.player_step_ms)
         if self._player is not None:
             self._player.apply_visual_lerp(t)
+        ghost_t = min(
+            1.0,
+            self._ghost_step_accumulator_ms / self.PLAYER_STEP_MS,
+        )
         for ghost in self._ghosts.values():
             if not ghost.hidden:
-                ghost.apply_visual_lerp(t)
+                ghost.apply_visual_lerp(ghost_t)
 
     def draw(self, surface: Surface) -> None:
         """Draw all sprites once in z-layer order."""
@@ -261,10 +298,6 @@ class GameWorld:
         for ghost in self._ghosts.values():
             if not ghost.hidden:
                 ghost.begin_step()
-
-
-# [transition] module helpers extracted from wehan GameState
-# (request_turn, update_player_movement, _spawn_from_layout)
 
 
 def _spawn_from_layout(world: GameWorld) -> None:
@@ -380,24 +413,39 @@ def _auto_step(world: GameWorld) -> None:
     _move_player(world, world._travel_direction)
 
 
-def _begin_visual_step(world: GameWorld) -> None:
+def _begin_player_visual_step(world: GameWorld) -> None:
     if world._player is not None:
         world._player.begin_step()
+
+
+def _begin_ghost_visual_step(world: GameWorld) -> None:
     for ghost in world._ghosts.values():
         if not ghost.hidden:
             ghost.begin_step()
 
 
 def update_player_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
-    """Advance player on grid at fixed speed while PLAYING."""
+    """Advance Pac-Man on grid while PLAYING."""
     if world.frozen or world._player is None or world._player.dying:
         return
     world._step_now_ms = now_ms
     world._step_accumulator_ms += dt_s * 1000.0
-    while world._step_accumulator_ms >= world.PLAYER_STEP_MS:
-        world._step_accumulator_ms -= world.PLAYER_STEP_MS
-        _begin_visual_step(world)
+    while world._step_accumulator_ms >= world.player_step_ms:
+        world._step_accumulator_ms -= world.player_step_ms
+        _begin_player_visual_step(world)
         _auto_step(world)
+        resolve_actor_collisions(world)
+
+
+def update_ghost_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
+    """Advance ghosts on fixed grid step while PLAYING."""
+    if world.frozen or world._player is None or world._player.dying:
+        return
+    world._step_now_ms = now_ms
+    world._ghost_step_accumulator_ms += dt_s * 1000.0
+    while world._ghost_step_accumulator_ms >= world.PLAYER_STEP_MS:
+        world._ghost_step_accumulator_ms -= world.PLAYER_STEP_MS
+        _begin_ghost_visual_step(world)
         move_ghosts(world)
         resolve_actor_collisions(world)
 
