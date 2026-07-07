@@ -241,9 +241,11 @@ class LevelBuilder:
         Returns:
             All walkable row/column pairs.
         """
-        return [
-            (row_index, col_index)
-            for row_index, row in enumerate(grid)
-            for col_index, tile in enumerate(row)
-            if tile != TileType.WALL
-        ]
+        positions = []
+
+        for row_index, row in enumerate(grid):
+            for col_index, tile in enumerate(row):
+                if tile != TileType.WALL:
+                    positions.append((row_index, col_index))
+
+        return positions
