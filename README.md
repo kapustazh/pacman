@@ -4,7 +4,7 @@
 
 ## Description
 
-This project recreates Pac-Man using procedural maze generation, BFS-based ghost AI, persistent highscores and modular software architecture.
+This project recreates Pac-Man using procedural maze generation, original Pac-Man inspired ghost AI, persistent highscores and modular software architecture.
 
 ### Features
 
@@ -17,7 +17,7 @@ This project recreates Pac-Man using procedural maze generation, BFS-based ghost
 | Level retry | Reuses the current level seed, so retries reload the same maze |
 | Player movement | WASD movement through corridors only |
 | Ghost movement | Autonomous grid-based movement |
-| Ghost AI | BFS pathfinding with different chase targets |
+| Ghost AI | Junction-based local greedy movement with individual chase targets |
 | Frightened mode | Activated by Super Pacgums |
 | Respawn | Eaten ghosts temporarily disappear and return after a delay |
 | Highscores | Persistent JSON leaderboard |
@@ -182,45 +182,183 @@ Render
 The player wins a level after collecting all Pacgums.
 Lives and score carry across levels.
 
-### Ghost AI
+## Ghost AI
 
-Unlike many student implementations where every ghost simply follows the player, this
-project assigns each ghost an individual targeting strategy while sharing a common
-Breadth-First Search (BFS) pathfinding algorithm.
+Ghost behaviour is managed by `GameState`, while each ghost is responsible for selecting its own target and deciding its next movement.
 
-| Ghost | Behaviour |
-|--------|-----------|
-| **Blinky** | Directly targets the player's current position. |
-| **Pinky** | Predicts the player's movement and targets tiles ahead. |
-| **Inky** | Uses predictive targeting with a small random offset. |
-| **Clyde** | Switches between chasing the player and returning home based on distance. |
-
-The pathfinding algorithm remains the same for every ghost. Different behaviour is
-achieved by changing the target position rather than the search algorithm.
-
-### Behavior States
+The implementation adopts the original Pac-Man movement philosophy while introducing several project-specific adaptations to satisfy the subject requirements, particularly for frightened behaviour and respawning.
 
 ```text
-CHASE
- ↓
-SCATTER
- ↓
-FRIGHTENED
- ↓
-RESPAWN
+
+                        Ghost Behaviour Priority
+
+                              Ghost Update
+                                   │
+                                   ▼
+                       Is the ghost active?
+                        ┌─────────┴─────────┐
+                        │                   │
+                       No                  Yes
+                        │                   │
+              Waiting for Respawn    Is ghost frightened?
+                                          │
+                               ┌──────────┴──────────┐
+                               │                     │
+                              Yes                   No
+                               │                     │
+                      Frightened Behaviour     Global Behaviour
+                                                    │
+                                         ┌──────────┴──────────┐
+                                         │                     │
+                                     Scatter               Chase
+                                         │                     │
+                                         └──────────┬──────────┘
+                                                    ▼
+                                           Target Selection
+                                                    ▼
+                                    Junction-Based Local Greedy
+                                                    ▼
+                                              Move One Tile
 ```
 
-| State | Description |
-|-------|-------------|
-| **Chase** | Ghosts compute a target and use **Breadth-First Search (BFS)** to follow the shortest path. |
-| **Scatter** | Ghosts temporarily return to their home corner, creating alternating pressure similar to the original *Pac-Man*. |
-| **Frightened** | Eating a Super Pacgum changes every ghost into frightened mode. Instead of chasing the player, ghosts attempt to move away while avoiding immediate backtracking whenever possible. |
-| **Respawn** | After being eaten, a ghost becomes inactive, waits for a respawn delay, returns to its spawn location, and resumes normal behaviour. |
+**Figure 1.** Decision hierarchy of the ghost AI.
+Individual ghost states (e.g., frightened and respawning) take priority over the global game behaviour. Chase and Scatter share the same movement algorithm but differ in their target selection strategy.
 
+
+Ghost behaviour consists of two independent layers.
+
+### Global Behaviour
+
+The global behaviour is controlled by `GameState` and affects every active ghost simultaneously.
+
+| Mode | Description |
+|------|-------------|
+| Chase | Ghosts pursue the player using individual targeting strategies. |
+| Scatter | Ghosts temporarily stop chasing the player and return toward their assigned home corner. |
+
+### Individual State
+
+Each ghost also maintains its own individual state.
+
+| State | Description |
+|--------|-------------|
+| Active | The ghost participates in Chase or Scatter mode. |
+| Frightened | Triggered after a Super Pacgum is eaten. The ghost attempts to escape from the player. |
+| Respawning | The ghost is temporarily inactive after being eaten and returns after a respawn delay. |
+
+Individual states always have higher priority than the global behaviour.
+
+---
+
+### Chase Mode
+
+Each ghost uses its own target selection strategy.
+
+| Ghost | Personality | Chase Behaviour |
+|-------|-------------|-----------------|
+| **Blinky** | Aggressive | Directly follows the player. |
+| **Pinky** | Ambusher | Tries to intercept the player by aiming ahead of their movement. |
+| **Inky** | Unpredictable | Predicts the player's movement but adds randomness to make its behaviour less predictable. |
+| **Clyde** | Shy | Chases the player from a distance but retreats to its corner when the player gets too close. |
+
+The chase behaviour is divided into two stages:
+1. **Target selection**, where each ghost calculates a different destination according to its personality.
+2. **Movement selection**, where every ghost uses the same junction-based local greedy algorithm to move one tile toward its current target.
+
+Instead of computing a complete shortest path every turn, ghosts:
+1. Continue moving straight through corridors whenever possible.
+2. Make decisions only at junctions.
+3. Ignore the immediate reverse direction unless no alternative exists.
+4. Compare the squared Euclidean distance from each candidate tile to the current target.
+5. Choose the direction producing the smallest distance.
+6. Resolve equal distances using the original Pac-Man priority:
+
+```
+Up → Left → Down → Right
+```
+
+This produces smoother and less predictable movement than continuously recomputing a shortest path while remaining computationally lightweight.
+
+---
+
+### Scatter Mode
+
+Ghosts periodically switch between Chase and Scatter mode.
+
+During Scatter mode, each ghost temporarily stops targeting the player and instead moves toward its assigned home corner (which also serves as its spawn position in this implementation).
+
+This periodically reduces the pressure on the player and recreates the alternating offensive and defensive behaviour found in the original Pac-Man.
+
+---
+
+### Frightened Mode
+
+Eating a Super Pacgum makes every active ghost edible.
+
+Unlike the original arcade game, frightened ghosts do not move completely randomly.
+
+Instead, frightened ghosts actively attempt to increase their distance from the player instead of moving completely randomly.
+
+This behaviour was intentionally selected because the project specification explicitly requires edible ghosts to "run away from the player", whereas the original arcade implementation uses purely random movement.
+
+The frightened movement algorithm:
+
+1. Estimates the shortest path between the player and the ghost using Breadth-First Search (BFS).
+2. Avoids moving toward the player's approach direction whenever possible.
+3. Prevents immediate backtracking unless no alternative exists.
+4. Randomly selects from the remaining safe directions.
+
+---
+
+### Respawn
+
+When an edible ghost is captured:
+
+1. The player receives the ghost score bonus.
+2. The ghost becomes inactive.
+3. A respawn timer begins.
+4. After the timer expires, the ghost returns to its original spawn position.
+5. The ghost resumes normal behaviour.
+
+This satisfies the project requirement that ghosts respawn after a short delay.
+
+---
+
+### Pathfinding
+
+Different movement algorithms are intentionally used for different gameplay situations.
+
+| Situation | Algorithm |
+|-----------|-----------|
+| Chase | Junction-based local greedy movement |
+| Scatter | Junction-based local greedy movement |
+| Frightened | BFS-assisted escape |
+| Respawn | Timer-based respawn |
+
+Normal ghost movement does not use Breadth-First Search.
+
+Instead, Chase and Scatter follow an original Pac-Man inspired junction-based local greedy algorithm.
+
+Breadth-First Search is only used during frightened mode to estimate a safe escape direction.
 
 ---
 
 ## Software Architecture
+
+```text
+                  GameState
+                      │
+        ┌─────────────┴─────────────┐
+        │                           │
+   LevelManager                TerminalRenderer
+        │
+        ▼
+   LevelBuilder
+        │
+        ▼
+ MapData + Player + Ghosts
+```
+**Figure 2.** High-level architecture of the game modules.
 
 ### General Software Architecture
 
@@ -242,7 +380,7 @@ src/
 │
 ├── entities/
 │   ├── player.py              -> Player movement and scoring
-│   └── ghost.py               -> Ghost AI, BFS pathfinding and behaviours
+│   └── ghost.py               -> Ghost AI, target selection and movement behaviours
 │
 ├── managers/
 │   └── highscore_manager.py   -> Load, validate and save highscores
@@ -298,7 +436,7 @@ TerminalRenderer
 - `LevelManager` provides the current level configuration and maze seed.
 - `MazeAdapter` converts the external maze into the internal `TileType` grid.
 - `LevelBuilder` populates the maze with the player, ghosts and collectibles.
-- `Ghost` queries `MapData` for valid movement and uses BFS to determine the next step.
+- `Ghost` queries `MapData` for valid movement and performs junction-based local greedy movement. Breadth-First Search (BFS) is only used during frightened mode to estimate a safe escape direction.
 - `TerminalRenderer` reads the current game state and renders the board without modifying gameplay logic.
 
 ---
@@ -333,6 +471,6 @@ All generated content was reviewed, understood, and adapted before integration i
 
 - Pygame UI + Audio
 - Real-time-based instead of turn-based
-- Public deployment
+- Executable packaging and public deployment
 
 ---

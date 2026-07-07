@@ -1,108 +1,117 @@
-"""Persist and rank Pac-Man high scores."""
-
-# [wehan] origin/wehan — persistent leaderboard.
-
-from __future__ import annotations
+"""Highscore management for Pac-Man."""
 
 import json
 from typing import Any
 
 
 class HighscoreManager:
-    """Load, save, and rank the top ten scores."""
+    """Manage loading, saving, and updating highscore."""
 
     def __init__(self, filename: str) -> None:
-        """Create a manager bound to one JSON file.
-
-        Args:
-            filename: Path used for load and save.
-        """
+        """Initialize highscore manager."""
         self.filename = filename
         self.highscores: list[dict[str, Any]] = []
 
     def load(self) -> None:
-        """Read scores from disk and keep only valid top-ten entries."""
+        """Load highscores from file."""
         try:
             with open(self.filename, "r", encoding="utf-8") as file:
                 data = json.load(file)
-        except (OSError, json.JSONDecodeError):
+                self.highscores = self._validate_highscores(data)
+        except OSError:
             self.highscores = []
             return
-        self.highscores = self._top10(
-            entry
-            for entry in (data if isinstance(data, list) else [])
-            if isinstance(entry, dict)
-            and isinstance(entry.get("name"), str)
-            and isinstance(entry.get("score"), int)
-            and entry.get("score", -1) >= 0
-        )
+        except json.JSONDecodeError:
+            self.highscores = []
+            return
 
     def save(self) -> None:
-        """Write the current top-ten list to disk."""
+        """Save highscores to file."""
         try:
             with open(self.filename, "w", encoding="utf-8") as file:
                 json.dump(self.highscores, file, indent=2)
         except OSError:
             print(f"Warning: could not save highscores to {self.filename}")
 
-    def add_score(self, name: str, score: int) -> None:
-        """Append a score, trim to top ten, and persist.
-
-        Args:
-            name: Player initials or name.
-            score: Points earned this run.
-        """
-        self.highscores.append(
-            {"name": self._clean_name(name), "score": max(0, score)}
-        )
-        self.highscores = self._top10(self.highscores)
-        self.save()
-
     def top_score(self) -> int:
-        """Return the best stored score.
-
-        Returns:
-            Highest score, or 0 when the table is empty.
-        """
+        """Return the current highest score, or 0 if none."""
         return int(self.highscores[0]["score"]) if self.highscores else 0
 
-    @staticmethod
-    def _top10(entries: Any) -> list[dict[str, Any]]:
-        """Sort entries by score and keep the top ten.
+    def add_score(self, name: str, score: int) -> None:
+        """Add score and keep only top 10."""
+        score = max(0, score)
+        clean_name = self._clean_name(name)
 
-        Args:
-            entries: Iterable of ``{name, score}`` dicts.
+        self.highscores.append(
+            {
+                "name": clean_name,
+                "score": score,
+            }
+        )
 
-        Returns:
-            Highest-scoring entries, newest ties preserved by sort stability.
-        """
-        return sorted(
-            entries,
+        self.highscores.sort(
             key=lambda entry: int(entry["score"]),
             reverse=True,
-        )[:10]
+        )
+        self.highscores = self.highscores[:10]
+        self.save()
 
-    @staticmethod
-    def clean_name(name: str) -> str:
-        """Public alias for name cleanup before saving.
+    def _clean_name(self, name: str) -> str:
+        """Clean player name."""
+        cleaned = ""
 
-        Args:
-            name: Raw player input.
+        for char in name:
+            if char.isalnum() or char == " ":
+                cleaned += char
 
-        Returns:
-            Sanitized name safe to store.
-        """
-        return HighscoreManager._clean_name(name)
+        if not cleaned:
+            return "Player"
 
-    @staticmethod
-    def _clean_name(name: str) -> str:
-        """Strip invalid characters and cap length.
+        return cleaned[:10]
 
-        Args:
-            name: Raw player input.
+    def _validate_highscores(
+        self,
+        data: object,
+    ) -> list[dict[str, Any]]:
+        """Validate loaded highscore data."""
+        valid_scores: list[dict[str, Any]] = []
 
-        Returns:
-            Cleaned name, or ``"Player"`` when empty.
-        """
-        cleaned = "".join(c for c in name if c.isalnum() or c == " ")
-        return cleaned[:10] or "Player"
+        if not isinstance(data, list):
+            return valid_scores
+
+        for entry in data:
+            if not isinstance(entry, dict):
+                continue
+
+            name = entry.get("name")
+            score = entry.get("score")
+
+            if not isinstance(name, str):
+                continue
+            if not isinstance(score, int):
+                continue
+            if score < 0:
+                continue
+            valid_scores.append(
+                {
+                    "name": self._clean_name(name),
+                    "score": score,
+                }
+            )
+        valid_scores.sort(
+            key=lambda entry: int(entry["score"]),
+            reverse=True,
+        )
+
+        return valid_scores[:10]
+
+    def print_highscores(self) -> None:
+        """Print highscores."""
+        print("=== HIGHSCORES ===")
+
+        if not self.highscores:
+            print("No highscores yet.")
+            return
+
+        for index, entry in enumerate(self.highscores, start=1):
+            print(f"{index}. {entry['name']} - {entry['score']}")

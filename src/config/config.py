@@ -1,4 +1,4 @@
-"""Load and validate Pac-Man game configuration."""
+"""Configuration loading and validation for Pac-man."""
 
 import json
 from typing import Any
@@ -29,14 +29,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 
 
 def remove_comments(content: str) -> str:
-    """Strip comment lines from a JSON-like config file.
-
-    Args:
-        content: Raw file text.
-
-    Returns:
-        Content with ``#`` comment lines removed.
-    """
+    """Remove lines starting with # from a JSON-like config file."""
     lines: list[str] = []
 
     for line in content.splitlines():
@@ -48,14 +41,7 @@ def remove_comments(content: str) -> str:
 
 
 def load_config(path: str) -> dict[str, Any]:
-    """Load config from disk, falling back to defaults on error.
-
-    Args:
-        path: Path to the JSON config file.
-
-    Returns:
-        Merged and validated configuration dict.
-    """
+    """load config safely. Never crash with traceback."""
     try:
         with open(path, "r", encoding="utf-8") as file:
             raw_content = file.read()
@@ -78,16 +64,7 @@ def load_config(path: str) -> dict[str, Any]:
 
 
 def get_positive_int(data: dict[str, Any], key: str, default: int) -> int:
-    """Read a positive integer from a config dict.
-
-    Args:
-        data: Source configuration.
-        key: Field name to read.
-        default: Value used when the field is missing or invalid.
-
-    Returns:
-        Validated positive integer.
-    """
+    """Read a positive integer from config."""
     value = data.get(key, default)
 
     if not isinstance(value, int) or value <= 0:
@@ -97,14 +74,7 @@ def get_positive_int(data: dict[str, Any], key: str, default: int) -> int:
 
 
 def validate_config(data: dict[str, Any]) -> dict[str, Any]:
-    """Validate known config keys and ignore unknown ones.
-
-    Args:
-        data: Parsed JSON object from the config file.
-
-    Returns:
-        Dict containing only validated settings.
-    """
+    """Validate known config keys and ignore unknown keys."""
     return {
         "highscore_filename": get_string(data, "highscore_filename",
                                          "highscores.json"),
@@ -121,16 +91,7 @@ def validate_config(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_string(data: dict[str, Any], key: str, default: str) -> str:
-    """Read a non-empty string from a config dict.
-
-    Args:
-        data: Source configuration.
-        key: Field name to read.
-        default: Value used when the field is missing or invalid.
-
-    Returns:
-        Validated string.
-    """
+    """Read a string from config"""
     value = data.get(key, default)
 
     if not isinstance(value, str) or not value:
@@ -140,14 +101,7 @@ def get_string(data: dict[str, Any], key: str, default: str) -> str:
 
 
 def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
-    """Read and validate level size definitions.
-
-    Args:
-        data: Source configuration.
-
-    Returns:
-        List of level width/height dicts, or defaults when invalid.
-    """
+    """Read level definitions from config."""
     value = data.get("levels", DEFAULT_CONFIG["levels"])
 
     if not isinstance(value, list) or not value:

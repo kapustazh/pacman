@@ -1,55 +1,33 @@
-"""Bridge external maze generation to Pac-Man tile grids."""
-
-# [wehan] origin/wehan — A-Maze-ing adaptor and wall-code conversion.
+"""Adaptor for the assigned A-Maze-ing package."""
 
 from maze.map_data import TileType
 
 
 class MazeAdaptor:
-    """Convert A-Maze-ing wall codes into Pac-Man ``TileType`` grids."""
-
+    """Convert external maze output into Pac-Man tile grid."""
     NORTH = 1  # 0001
-    EAST = 2  # 0010
+    EAST = 2   # 0010
     SOUTH = 4  # 0100
-    WEST = 8  # 1000
+    WEST = 8   # 1000
 
     def generate(
-        self, width: int, height: int, seed: int
+        self, width: int,
+        height: int,
+        seed: int
     ) -> list[list[TileType]]:
-        """Build a playable maze grid from the external generator.
-
-        Args:
-            width: Maze width in generator cells.
-            height: Maze height in generator cells.
-            seed: Random seed passed to the generator.
-
-        Returns:
-            Tile grid, or a small fallback grid if generation fails.
-        """
+        """Generate a maze using the external package."""
         try:
             from mazegenerator.mazegenerator import MazeGenerator
 
-            generator = MazeGenerator(
-                size=(width, height),
-                perfect=False,
-                seed=seed,
-                entry_cell=(0, 0),  # testing
-                exit_cell=(0, 1),  # testing
-            )
+            generator = MazeGenerator(size=(width, height),
+                                      perfect=False, seed=seed)
             return self.convert_maze(generator.maze)
         except Exception as Error:
             print(f"Warning: maze generator failed: {Error}")
             return self.fallback_grid()
 
     def convert_maze(self, maze: list[list[int]]) -> list[list[TileType]]:
-        """Expand wall-bit maze cells into a Pac-Man tile grid.
-
-        Args:
-            maze: Raw maze from the generator; each cell is a wall bitmask.
-
-        Returns:
-            Expanded grid of ``TileType`` values with corridors carved out.
-        """
+        """Convert wall-code maze into TileType grid."""
         grid_height = len(maze) * 2 + 1
         grid_width = len(maze[0]) * 2 + 1
 
@@ -76,11 +54,16 @@ class MazeAdaptor:
         return grid
 
     def fallback_grid(self) -> list[list[TileType]]:
-        """Return a minimal playable grid when generation fails.
-
-        Returns:
-            5x5 wall grid with a single open center cell.
-        """
-        grid = [[TileType.WALL] * 5 for _ in range(5)]
-        grid[2][2] = TileType.EMPTY
-        return grid
+        """Return a safe fallback grid if generation fails."""
+        return [
+            [TileType.WALL, TileType.WALL, TileType.WALL,
+             TileType.WALL, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.SUPER_PACGUM,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.WALL, TileType.WALL,
+             TileType.WALL, TileType.WALL],
+        ]
