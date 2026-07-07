@@ -20,7 +20,10 @@ class MazeAdaptor:
             from mazegenerator.mazegenerator import MazeGenerator
 
             generator = MazeGenerator(size=(width, height),
-                                      perfect=False, seed=seed)
+                                      perfect=False, seed=seed,
+                                      entry_cell=(0, 0),
+                                      exit_cell=(0, 1))
+            # entry/exit cells fix long maze generation time
             return self.convert_maze(generator.maze)
         except Exception as Error:
             print(f"Warning: maze generator failed: {Error}")
