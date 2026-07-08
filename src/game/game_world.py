@@ -15,8 +15,8 @@ from entities.player_entity import PlayerEntity
 from entities.wall_tile_entity import WallTileEntity
 from game.fruit_schedule import (
     FRUIT_VISIBLE_DURATION_S,
+    fruit_spawn_seconds,
     fruit_for_level,
-    spawn_seconds_for_level,
 )
 from game.level import CellPos, LevelLayout
 from game.render_config import DIRECTION_DELTA, WorldRenderConfig, cell_center
@@ -70,6 +70,7 @@ class GameWorld:
         render_config: WorldRenderConfig,
         initial_score: int = 0,
         level_number: int = 1,
+        level_max_time_s: int = 90,
         pellet_points: int = PELLET_POINTS,
         power_pellet_points: int = POWER_PELLET_POINTS,
         ghost_points: int = GHOST_POINTS,
@@ -82,6 +83,7 @@ class GameWorld:
             render_config: Grid-to-pixel mapping for entity placement.
             initial_score: Starting score carried into this level.
             level_number: One-based level index for fruit scheduling.
+            level_max_time_s: Level time limit for fruit spawn schedule.
             pellet_points: Points awarded for normal pellets.
             power_pellet_points: Points awarded for power pellets.
             ghost_points: Points awarded for eating a frightened ghost.
@@ -90,6 +92,7 @@ class GameWorld:
         self._catalog: Assets = catalog
         self._render_config: WorldRenderConfig = render_config
         self._level_number: int = level_number
+        self._level_max_time_s: int = level_max_time_s
         self.pellet_points = pellet_points
         self.power_pellet_points = power_pellet_points
         self.ghost_points = ghost_points
@@ -625,7 +628,7 @@ def update_fruit_spawns(
         level_elapsed_s: Seconds elapsed since level play began.
         now_ms: Current timestamp in milliseconds.
     """
-    spawn_times = spawn_seconds_for_level(world._level_number)
+    spawn_times = fruit_spawn_seconds(world._level_max_time_s)
     while (
         world._fruit_spawn_index < len(spawn_times)
         and level_elapsed_s >= spawn_times[world._fruit_spawn_index]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from config.config import DEFAULT_CONFIG
-from game.fruit_schedule import fruit_for_level, spawn_seconds_for_level
+from game.fruit_schedule import fruit_for_level, fruit_spawn_seconds
 from game.game_world import GameWorld, spawn_fruit, update_fruit_spawns
 from game.ghost_logic import (
     activate_frightened_mode,
@@ -15,12 +15,17 @@ from sprites.sprite_types import FruitKind, GhostKind
 
 def test_fruit_schedule_level_one() -> None:
     assert fruit_for_level(1) == FruitKind.CHERRY
-    assert spawn_seconds_for_level(1) == (9, 41)
+    assert fruit_spawn_seconds(90) == (22, 45)
 
 
 def test_fruit_schedule_high_levels_use_key() -> None:
     assert fruit_for_level(12) == FruitKind.KEY
-    assert spawn_seconds_for_level(12) == (9, 41)
+    assert fruit_spawn_seconds(90) == (22, 45)
+
+
+def test_fruit_spawn_cutoff_short_level() -> None:
+    assert fruit_spawn_seconds(15) == (3,)
+    assert fruit_spawn_seconds(8) == ()
 
 
 def test_level_ghost_spawns_are_walkable() -> None:
@@ -56,7 +61,7 @@ def test_reset_fruit_spawns_allows_early_spawn_after_life_lost(
     world._player.cell = type(spawn)(spawn.row + 1, spawn.col)
 
     world.reset_fruit_spawns()
-    update_fruit_spawns(world, level_elapsed_s=9, now_ms=9_000)
+    update_fruit_spawns(world, level_elapsed_s=22, now_ms=22_000)
 
     assert world._fruit is not None
     assert world._fruit_spawn_index == 1

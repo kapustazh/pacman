@@ -439,6 +439,7 @@ class PlayState(GameState):
             render_config,
             initial_score=initial_score,
             level_number=level_number,
+            level_max_time_s=int(config.get("level_max_time", 90)),
             pellet_points=int(config.get("points_per_pacgum", 10)),
             power_pellet_points=int(config.get("points_per_super_pacgum", 50)),
             ghost_points=int(config.get("points_per_ghost", 200)),

@@ -1,5 +1,3 @@
-# [transition] SCRUM-35 — bonus fruit schedule tables.
-
 from __future__ import annotations
 
 from sprites.sprite_types import FruitKind
@@ -13,17 +11,26 @@ LEVEL_FRUIT: tuple[FruitKind, ...] = (
     FruitKind.GALAXIAN,
     FruitKind.BELL,
 )
-LEVEL_SPAWN_SECONDS: tuple[tuple[int, ...], ...] = (
-    (9, 41),
-    (15, 41),
-    (15, 41),
-    (15, 41),
-    (9, 41),
-    (9, 41),
-    (9, 41),
-)  # TODO: add spawn times for fruits
-# can conflict with game session timer, need to be adjusted
-FRUIT_VISIBLE_DURATION_S: int = 10  # TODO: review fruit visible duration
+
+FRUIT_VISIBLE_DURATION_S: int = 10
+
+
+def fruit_spawn_seconds(level_max_time_s: int) -> tuple[int, ...]:
+    """Return the seconds at which the fruits will spawn from the level start.
+    The fruits will spawn at 1/4 and 1/2 of the level
+
+    Args:
+        level_max_time_s: The maximum time of the level.
+
+    Returns:
+        A tuple of the seconds at which the fruits will spawn.
+    """
+    slots = (level_max_time_s // 4, level_max_time_s // 2)
+    return tuple(
+        at
+        for at in slots
+        if at > 0 and at + FRUIT_VISIBLE_DURATION_S <= level_max_time_s
+    )
 
 
 def fruit_for_level(level_number: int) -> FruitKind:
@@ -38,17 +45,3 @@ def fruit_for_level(level_number: int) -> FruitKind:
     if level_number <= len(LEVEL_FRUIT):
         return LEVEL_FRUIT[level_number - 1]
     return FruitKind.KEY
-
-
-def spawn_seconds_for_level(level_number: int) -> tuple[int, ...]:
-    """Return fruit spawn times measured from level start.
-
-    Args:
-        level_number: One-based level index.
-
-    Returns:
-        Spawn offsets in seconds for that level's fruit schedule.
-    """
-    if level_number <= len(LEVEL_SPAWN_SECONDS):
-        return LEVEL_SPAWN_SECONDS[level_number - 1]
-    return LEVEL_SPAWN_SECONDS[-1]
