@@ -11,14 +11,13 @@ from game.game_world import ScorePopup
 from game.render_config import MazeBounds
 from states.text import (
     ArcadeTextColor,
-    ArcadeTextFont,
     ArcadeTextRenderer,
     plus_glyph,
 )
 
 
 class HudOverlay:
-    """Classic Pac-Man-style persistent in-game HUD."""
+    """Draws the classic Pac-Man score band, lives, and phase messages."""
 
     TOP_LABEL_Y: ClassVar[int] = 8
     TOP_VALUE_Y: ClassVar[int] = 28
@@ -26,6 +25,7 @@ class HudOverlay:
     HUD_SCALE: ClassVar[int] = 2
     SIDE_MARGIN: ClassVar[int] = 48
     LIFE_ICON_GAP: ClassVar[int] = 4
+    FRUIT_ICON_GAP: ClassVar[int] = 12
     MAX_LIFE_ICONS: ClassVar[int] = 3
     MESSAGE_SCALE: ClassVar[int] = 3
     SCORE_POPUP_SCALE: ClassVar[int] = 1
@@ -37,58 +37,62 @@ class HudOverlay:
     }
     YELLOW: ClassVar[tuple[int, int, int, int]] = (255, 255, 0, 255)
 
-    __slots__ = (
-        "_font",
-        "_fruit_icon",
-        "_label_surfaces",
-        "_level_surface_cache",
-        "_life_icon",
-        "_phase_message_surfaces",
-        "_text",
-        "_value_surface_cache",
-    )
-
     def __init__(
         self,
         text: ArcadeTextRenderer,
         life_icon: Surface | None = None,
         fruit_icon: Surface | None = None,
     ) -> None:
+        """Prepare cached HUD text and optional life and fruit icons.
+
+        Args:
+            text: Renderer used for all HUD labels and values.
+            life_icon: Optional Pac-Man icon drawn for spare lives.
+            fruit_icon: Optional fruit preview for the current level.
+        """
         self._text = text
         self._fruit_icon = fruit_icon
-        self._font: ArcadeTextFont = text.font(
-            ArcadeTextColor.WHITE, self.HUD_SCALE
-        )
         self._label_surfaces: dict[str, Surface] = {
-            label: self._font.render(label) for label in self.STATIC_LABELS
+            label: text.render(label, scale=self.HUD_SCALE)
+            for label in self.STATIC_LABELS
         }
         self._phase_message_surfaces: dict[GameplayPhase, Surface] = {}
         for phase, message in GameSession.PHASE_MESSAGE.items():
             if message is None:
                 continue
             color = self.PHASE_TEXT_COLOR.get(phase, ArcadeTextColor.WHITE)
-            self._phase_message_surfaces[phase] = text.font(
-                color, self.MESSAGE_SCALE
-            ).render(message)
+            self._phase_message_surfaces[phase] = text.render(
+                message, color, self.MESSAGE_SCALE
+            )
         self._level_surface_cache: dict[int, Surface] = {}
         self._value_surface_cache: dict[str, Surface] = {}
         self._life_icon = life_icon
 
     def set_fruit_icon(self, fruit_icon: Surface | None) -> None:
-        """Update HUD fruit preview for the active level."""
+        """Replace the fruit icon shown beside the level number.
+
+        Args:
+            fruit_icon: New fruit surface, or None to hide the icon.
+        """
         self._fruit_icon = fruit_icon
 
     def draw_score_popups(
         self,
         surface: Surface,
-        popups: tuple[ScorePopup, ...],
+        popups: list[ScorePopup],
     ) -> None:
-        """Draw floating point values where fruits were eaten."""
+        """Draw floating point values where pellets or ghosts were eaten.
+
+        Args:
+            surface: Destination screen surface.
+            popups: Active score popups with points and screen positions.
+        """
         if not popups:
             return
-        font = self._text.font(ArcadeTextColor.WHITE, self.SCORE_POPUP_SCALE)
         for popup in popups:
-            rendered = font.render(str(popup.points))
+            rendered = self._text.render(
+                str(popup.points), scale=self.SCORE_POPUP_SCALE
+            )
             rect = rendered.get_rect(midtop=popup.center)
             surface.blit(rendered, rect)
 
@@ -98,7 +102,13 @@ class HudOverlay:
         session: GameSession,
         maze_bounds: MazeBounds,
     ) -> None:
-        """Draw top score band, bottom status band, and phase message."""
+        """Draw the full HUD around the active maze.
+
+        Args:
+            surface: Destination screen surface.
+            session: Current score, lives, level, and gameplay phase.
+            maze_bounds: Screen rectangle occupied by the maze.
+        """
         self._draw_top_band(surface, session)
         self._draw_bottom_band(surface, session, maze_bounds)
         message = GameSession.PHASE_MESSAGE.get(session.phase)
@@ -106,7 +116,12 @@ class HudOverlay:
             self._draw_phase_message(surface, session, maze_bounds, message)
 
     def _draw_top_band(self, surface: Surface, session: GameSession) -> None:
-        """Draw 1UP, HIGH SCORE, and TIME across the top."""
+        """Draw 1UP, high score, and time across the top edge.
+
+        Args:
+            surface: Destination screen surface.
+            session: Current score and timer state.
+        """
         self._draw_score_column(
             surface,
             x=self.SIDE_MARGIN,
@@ -134,21 +149,24 @@ class HudOverlay:
         session: GameSession,
         maze_bounds: MazeBounds,
     ) -> None:
-        """Draw spare life icons and current level below the maze."""
+        """Draw spare lives, fruit icon, and level below the maze.
+
+        Args:
+            surface: Destination screen surface.
+            session: Current lives and level number.
+            maze_bounds: Screen rectangle occupied by the maze.
+        """
         bottom_y = maze_bounds.bottom + self.BOTTOM_EDGE
         self._draw_life_icons(surface, session.lives, maze_bounds.x, bottom_y)
-        if self._fruit_icon is not None:
-            fruit_rect = self._fruit_icon.get_rect(
-                midleft=(
-                    maze_bounds.x + maze_bounds.width // 2 + 24,
-                    bottom_y,
-                ),
-            )
-            surface.blit(self._fruit_icon, fruit_rect)
         level_surface = self._cached_level_surface(session.level_number)
         level_rect = level_surface.get_rect(
             midright=(maze_bounds.x + maze_bounds.width, bottom_y),
         )
+        if self._fruit_icon is not None:
+            fruit_rect = self._fruit_icon.get_rect(
+                midright=(level_rect.left - self.FRUIT_ICON_GAP, bottom_y),
+            )
+            surface.blit(self._fruit_icon, fruit_rect)
         surface.blit(level_surface, level_rect)
 
     def _draw_score_column(
@@ -161,7 +179,16 @@ class HudOverlay:
         centered: bool = False,
         right_aligned: bool = False,
     ) -> None:
-        """Draw one label/value HUD column."""
+        """Draw one label and value column in the top HUD band.
+
+        Args:
+            surface: Destination screen surface.
+            x: Horizontal anchor for the column.
+            label: Static label text key, such as ``1UP``.
+            value: Preformatted value string to display.
+            centered: Anchor the column at ``x`` center.
+            right_aligned: Anchor the column at ``x`` right edge.
+        """
         label_surface = self._label_surfaces[label]
         value_surface = self._cached_value_surface(value)
 
@@ -185,7 +212,14 @@ class HudOverlay:
         x: int,
         y: int,
     ) -> None:
-        """Draw spare life icons; above cap show 3 icons, plus and counter."""
+        """Draw spare life icons, collapsing overflow into a plus counter.
+
+        Args:
+            surface: Destination screen surface.
+            lives: Total lives remaining, including the active life.
+            x: Left edge for the first icon.
+            y: Vertical center for icons and overflow text.
+        """
         if lives <= 0 or self._life_icon is None:
             return
 
@@ -200,13 +234,16 @@ class HudOverlay:
         if spare <= self.MAX_LIFE_ICONS:
             return
 
-        font = self._text.font(ArcadeTextColor.YELLOW, self.HUD_SCALE)
         gap = self.LIFE_ICON_GAP
         x += gap
         plus = plus_glyph(self.YELLOW, self.HUD_SCALE)
         plus_rect = plus.get_rect(midleft=(x, y))
         surface.blit(plus, plus_rect)
-        count_surface = font.render(str(spare - self.MAX_LIFE_ICONS))
+        count_surface = self._text.render(
+            str(spare - self.MAX_LIFE_ICONS),
+            ArcadeTextColor.YELLOW,
+            self.HUD_SCALE,
+        )
         count_rect = count_surface.get_rect(midleft=(plus_rect.right + gap, y))
         surface.blit(count_surface, count_rect)
 
@@ -217,7 +254,14 @@ class HudOverlay:
         maze_bounds: MazeBounds,
         message: str,
     ) -> None:
-        """Draw centered phase overlay over the maze."""
+        """Draw a centered phase overlay such as READY or GAME OVER.
+
+        Args:
+            surface: Destination screen surface.
+            session: Current gameplay phase used to pick cached text.
+            maze_bounds: Screen rectangle used to center the message.
+            message: Phase message string; must match a cached phase entry.
+        """
         rendered = self._phase_message_surfaces.get(session.phase)
         if rendered is None:
             return
@@ -225,29 +269,59 @@ class HudOverlay:
         surface.blit(rendered, rect)
 
     def _cached_level_surface(self, level_number: int) -> Surface:
-        """Return cached level label surface."""
+        """Return a cached ``LEVEL N`` label surface.
+
+        Args:
+            level_number: Level index shown in the bottom HUD.
+
+        Returns:
+            Rendered level label surface.
+        """
         cached = self._level_surface_cache.get(level_number)
         if cached is not None:
             return cached
-        surface = self._font.render(f"LEVEL {level_number}")
+        surface = self._text.render(
+            f"LEVEL {level_number}", scale=self.HUD_SCALE
+        )
         self._level_surface_cache[level_number] = surface
         return self._level_surface_cache[level_number]
 
     def _cached_value_surface(self, value: str) -> Surface:
-        """Return cached HUD value surface keyed by formatted string."""
+        """Return a cached HUD value surface for a formatted string.
+
+        Args:
+            value: Preformatted score or time text.
+
+        Returns:
+            Rendered value surface.
+        """
         cached = self._value_surface_cache.get(value)
         if cached is not None:
             return cached
-        surface = self._font.render(value)
+        surface = self._text.render(value, scale=self.HUD_SCALE)
         self._value_surface_cache[value] = surface
         return self._value_surface_cache[value]
 
 
 def _format_score(score: int) -> str:
-    """Format score as six-digit zero-padded string."""
+    """Format a score as a six-digit zero-padded string.
+
+    Args:
+        score: Raw score value.
+
+    Returns:
+        Score string clamped to non-negative values.
+    """
     return f"{max(0, score):06d}"
 
 
 def _format_time(remaining_s: int) -> str:
-    """Format remaining seconds as three-digit zero-padded string."""
+    """Format remaining seconds as a three-digit zero-padded string.
+
+    Args:
+        remaining_s: Seconds left on the level timer.
+
+    Returns:
+        Timer string clamped to non-negative values.
+    """
     return f"{max(0, remaining_s):03d}"

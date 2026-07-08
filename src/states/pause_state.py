@@ -9,7 +9,7 @@ from states.text import ArcadeTextColor
 
 
 class PauseState(GameState):
-    """Modal pause overlay over gameplay."""
+    """Modal pause overlay shown above active gameplay."""
 
     OVERLAY_COLOR = (0, 0, 0, 180)
     LINE_HEIGHT = 64
@@ -19,9 +19,8 @@ class PauseState(GameState):
         ("M MAIN MENU", ArcadeTextColor.ROSE, 2),
     )
 
-    __slots__ = ("_line_surfaces", "_overlay")
-
     def __init__(self) -> None:
+        """Initialize empty overlay and text caches."""
         self._overlay: Surface | None = None
         self._line_surfaces: list[tuple[Surface, int]] = []
 
@@ -30,7 +29,12 @@ class PauseState(GameState):
         context: GameContext,
         enter_data: StateEnterData | None = None,
     ) -> None:
-        """Create pause overlay and cache text once."""
+        """Build the dim overlay and cache pause text once.
+
+        Args:
+            context: Shared game context with screen size and text renderer.
+            enter_data: Optional payload from the previous scene (unused).
+        """
         self._overlay = Surface(context.screen.get_size(), pygame.SRCALPHA)
         self._overlay.fill(self.OVERLAY_COLOR)
 
@@ -43,11 +47,15 @@ class PauseState(GameState):
         text = context.text
         for index, (line, color, scale) in enumerate(self.LINES):
             y = start_y + index * self.LINE_HEIGHT
-            rendered = text.font(color, scale).render(line)
+            rendered = text.render(line, color, scale)
             self._line_surfaces.append((rendered, y))
 
     def leave(self, context: GameContext) -> None:
-        """Release cached pause resources."""
+        """Release cached overlay and text surfaces.
+
+        Args:
+            context: Shared game context (unused).
+        """
         self._overlay = None
         self._line_surfaces.clear()
 
@@ -56,7 +64,12 @@ class PauseState(GameState):
         events: list[pygame.event.Event],
         context: GameContext,
     ) -> None:
-        """Resume or return to main menu."""
+        """Resume play or return to the main menu.
+
+        Args:
+            events: Pygame events for this frame.
+            context: Shared game context for scene transitions.
+        """
         for event in events:
             if event.type != pygame.KEYDOWN:
                 continue
@@ -70,10 +83,21 @@ class PauseState(GameState):
                 return
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """Pause freezes underlying play state."""
+        """No-op; underlying play state stays frozen.
+
+        Args:
+            dt: Elapsed seconds since the last frame (unused).
+            now_ms: Monotonic clock in milliseconds (unused).
+            context: Shared game context (unused).
+        """
 
     def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw cached pause overlay."""
+        """Draw the dim overlay and cached pause lines.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context (unused).
+        """
         if self._overlay is not None:
             surface.blit(self._overlay, (0, 0))
 

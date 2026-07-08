@@ -18,9 +18,7 @@ BG_COLOR = (0, 0, 0)
 
 
 class GameEngine:
-    """Main pygame loop delegating behavior to SceneManager."""
-
-    __slots__ = ("_clock", "_context", "_scene_manager", "_target_fps")
+    """Runs the pygame loop and delegates to the active scene stack."""
 
     def __init__(
         self,
@@ -32,6 +30,17 @@ class GameEngine:
         initial_state: GameState,
         target_fps: int = 120,
     ) -> None:
+        """Wire shared context and push the first scene.
+
+        Args:
+            screen: Main display surface.
+            assets: Loaded sprite catalog.
+            text: Arcade font renderer.
+            highscores: Persistent score table.
+            config: Gameplay settings from config file.
+            initial_state: Scene shown on startup.
+            target_fps: Frame rate cap for the main loop.
+        """
         self._clock = pygame.time.Clock()
         self._scene_manager = SceneManager()
         self._context = GameContext(
@@ -47,7 +56,7 @@ class GameEngine:
         self._scene_manager.flush(self._context)
 
     def run(self) -> None:
-        """Run main game loop until a state or QUIT event requests shutdown."""
+        """Poll events, update scenes, and flip the display until quit."""
         while not self._scene_manager.shutdown_requested:
             dt = self._clock.tick(self._target_fps) / 1000.0
             now_ms = pygame.time.get_ticks()
@@ -77,7 +86,7 @@ class GameEngine:
             pygame.display.flip()
 
     def _draw_stack(self) -> None:
-        """Draw scene stack, skipping layers covered by opaque states."""
+        """Draw visible scenes from the first opaque layer downward."""
         stack = self._scene_manager.stack_bottom_up()
         if not stack:
             return

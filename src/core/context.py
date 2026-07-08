@@ -15,7 +15,16 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class GameContext:
-    """Shared runtime services passed into states."""
+    """Shared services passed into every scene.
+
+    Attributes:
+        screen: Main pygame display surface.
+        assets: Loaded sprite catalog.
+        text: Arcade font renderer.
+        scene_manager: Scene stack and transitions.
+        highscores: Persistent score table.
+        config: Gameplay settings from config file.
+    """
 
     screen: Surface
     assets: Assets

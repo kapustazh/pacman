@@ -2,6 +2,8 @@ from enum import Enum, auto
 
 
 class Direction(Enum):
+    """Cardinal movement directions."""
+
     UP = auto()
     DOWN = auto()
     LEFT = auto()
@@ -9,6 +11,8 @@ class Direction(Enum):
 
 
 class GhostKind(Enum):
+    """The four classic ghost characters."""
+
     BLINKY = "blinky"
     PINKY = "pinky"
     INKY = "inky"
@@ -16,6 +20,8 @@ class GhostKind(Enum):
 
 
 class FruitKind(Enum):
+    """Bonus fruit types and their display order by level."""
+
     CHERRY = "cherry"
     STRAWBERRY = "strawberry"
     ORANGE = "orange"
@@ -27,7 +33,7 @@ class FruitKind(Enum):
 
 
 class TileKind(Enum):
-    """Semantic maze wall tile mapped to spritesheet coordinates."""
+    """Wall tile shapes used for maze autotiling."""
 
     WALL = auto()
     HORIZONTAL = auto()
@@ -36,6 +42,12 @@ class TileKind(Enum):
     CORNER_TR = auto()
     CORNER_BL = auto()
     CORNER_BR = auto()
+    PILLAR = auto()
+    T_UP = auto()
+    T_DOWN = auto()
+    T_LEFT = auto()
+    T_RIGHT = auto()
+    CROSS = auto()
 
 
 FRUIT_POINTS: dict[FruitKind, int] = {

@@ -2,29 +2,15 @@
 
 from pygame.sprite import Sprite
 
-from entities.sprite_layer import SpriteLayer
 from game.level import CellPos
 from sprites.sprites import AnimatedSprite
 from sprites.sprite_types import GhostKind
 
 
 class GhostEntity(Sprite):
-    """Static ghost sprite; movement deferred."""
+    """Pygame sprite for a ghost with mode-specific animations."""
 
-    __slots__ = (
-        "_animation",
-        "_frightened_animation",
-        "_frightened",
-        "_hidden",
-        "_prev_center",
-        "cell",
-        "center",
-        "image",
-        "kind",
-        "last_cell",
-        "layer",
-        "rect",
-    )
+    FLASH_INTERVAL_MS = 200
 
     def __init__(
         self,
@@ -33,7 +19,20 @@ class GhostEntity(Sprite):
         frightened_animation: AnimatedSprite,
         cell: CellPos,
         center: tuple[int, int],
+        flash_animation: AnimatedSprite | None = None,
+        eyes_animation: AnimatedSprite | None = None,
     ) -> None:
+        """Create a ghost sprite at the given grid cell and pixel center.
+
+        Args:
+            kind: Ghost personality used by gameplay logic.
+            animation: Normal chase animation.
+            frightened_animation: Blue vulnerable animation.
+            cell: Initial maze grid position.
+            center: Initial pixel center on screen.
+            flash_animation: Alternate frightened frame for end-of-power flash.
+            eyes_animation: Eyes-only animation when returning home.
+        """
         super().__init__()
         self.kind = kind
         self.cell = cell
@@ -42,34 +41,58 @@ class GhostEntity(Sprite):
         self._prev_center = center
         self._animation = animation
         self._frightened_animation = frightened_animation
+        self._flash_animation = flash_animation or frightened_animation
+        self._eyes_animation = eyes_animation or animation
         self._frightened = False
-        self._hidden = False
-        self.layer = int(SpriteLayer.ACTORS)
+        self._flashing = False
+        self.returning = False
+        self.hidden = False
+        self.layer = 2  # z-order: actors draw above background/consumables
         self.image = animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
 
-    @property
-    def is_hidden(self) -> bool:
-        """Return True when ghost was eaten and not yet respawned."""
-        return self._hidden
+    def set_frightened(self, frightened: bool, flashing: bool = False) -> None:
+        """Switch between normal, frightened, and flashing appearance.
 
-    def set_frightened(self, frightened: bool) -> None:
-        """Switch between normal and frightened appearance."""
+        Args:
+            frightened: Whether the ghost is vulnerable to being eaten.
+            flashing: Whether to alternate frightened and flash frames.
+        """
         self._frightened = frightened
+        self._flashing = flashing
+
+    def start_returning_home(self) -> None:
+        """Show eyes-only and begin travel back to the ghost house."""
+        self.returning = True
+        self._frightened = False
+        self._flashing = False
+
+    def arrive_home(self) -> None:
+        """End the eyes-only trip and resume normal appearance."""
+        self.returning = False
 
     def move_to(self, cell: CellPos, center: tuple[int, int]) -> None:
-        """Move ghost one grid step."""
+        """Advance the ghost one grid step and update the sprite rect.
+
+        Args:
+            cell: Destination maze grid position.
+            center: Destination pixel center on screen.
+        """
         self.cell = cell
         self.center = center
         if self.image is not None:
             self.rect = self.image.get_rect(center=self._visual_center(1.0))
 
     def begin_step(self) -> None:
-        """Mark grid-step start for visual interpolation."""
+        """Record the current center as the interpolation start point."""
         self._prev_center = self.center
 
     def apply_visual_lerp(self, t: float) -> None:
-        """Slide sprite between prev and current cell centers."""
+        """Interpolate the sprite rect between step start and end.
+
+        Args:
+            t: Blend factor from 0.0 (previous center) to 1.0 (current).
+        """
         rect = self.rect
         if rect is None:
             return
@@ -78,6 +101,14 @@ class GhostEntity(Sprite):
             rect.center = center
 
     def _visual_center(self, t: float) -> tuple[int, int]:
+        """Blend previous and current pixel centers for smooth motion.
+
+        Args:
+            t: Blend factor from 0.0 to 1.0.
+
+        Returns:
+            Interpolated (x, y) pixel center.
+        """
         px, py = self._prev_center
         cx, cy = self.center
         return (
@@ -85,29 +116,46 @@ class GhostEntity(Sprite):
             round(py + (cy - py) * t),
         )
 
-    def hide_eaten(self) -> None:
-        """Remove ghost from play until respawn."""
-        self._hidden = True
-        self.kill()
-
     def respawn_at(self, cell: CellPos, center: tuple[int, int]) -> None:
-        """Return ghost to home corner after being eaten."""
+        """Return the ghost to its home corner after being eaten.
+
+        Args:
+            cell: Home maze grid position.
+            center: Home pixel center on screen.
+        """
         self.cell = cell
         self.last_cell = cell
         self.center = center
         self._prev_center = center
-        self._hidden = False
+        self.hidden = False
         self._frightened = False
+        self._flashing = False
+        self.returning = False
         self.image = self._animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
 
     def update(self, dt: float, now_ms: int) -> None:
-        """Update ghost animation frame."""
-        if self._hidden:
+        """Advance the animation frame for the ghost's current mode.
+
+        Args:
+            dt: Elapsed time since the last update in seconds.
+            now_ms: Game clock time in milliseconds.
+        """
+        if self.hidden:
             return
-        animation = (
-            self._frightened_animation if self._frightened else self._animation
-        )
+        if self.returning:
+            animation = self._eyes_animation
+        elif self._frightened and self._flashing:
+            toggle = (now_ms // self.FLASH_INTERVAL_MS) % 2
+            animation = (
+                self._flash_animation
+                if toggle == 0
+                else self._frightened_animation
+            )
+        elif self._frightened:
+            animation = self._frightened_animation
+        else:
+            animation = self._animation
         frame = animation.frame_at(now_ms)
         if frame is not self.image:
             self.image = frame

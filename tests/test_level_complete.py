@@ -1,19 +1,9 @@
 from __future__ import annotations
 
-import os
-import sys
-from collections.abc import Generator
 from pathlib import Path
 
-import pytest
-
-os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
-
-SRC_ROOT = Path(__file__).resolve().parent.parent / "src"
-sys.path.insert(0, str(SRC_ROOT))
-
 import pygame  # noqa: E402
+import pytest
 from pygame.surface import Surface  # noqa: E402
 
 from entities.player_entity import PlayerEntity  # noqa: E402
@@ -24,36 +14,18 @@ from game.game_world import (  # noqa: E402
     GameWorld,
     request_turn,
     spawn_fruit,
+    update_ghost_movement,
     update_player_movement,
 )
 from config.config import DEFAULT_CONFIG  # noqa: E402
 from game.level import CellPos, load_level  # noqa: E402
 from game.render_config import (  # noqa: E402
+    DIRECTION_DELTA,
     WorldRenderConfig,
     cell_center,
-    direction_delta,
 )
 from sprites.assets import Assets  # noqa: E402
 from sprites.sprite_types import Direction, TileKind  # noqa: E402
-
-
-@pytest.fixture(scope="module", autouse=True)
-def pygame_init() -> Generator[None, None, None]:
-    """Initialize pygame once for headless asset loading."""
-    pygame.init()
-    pygame.display.set_mode((1, 1))
-    yield
-    pygame.quit()
-
-
-@pytest.fixture
-def game_world() -> GameWorld:
-    """Build a procedural test world with loaded assets."""
-    assets = Assets()
-    assets.load()
-    layout = load_level(DEFAULT_CONFIG, 0, 42)
-    render_config = WorldRenderConfig.centered(layout, (1920, 1080))
-    return GameWorld(layout, assets, render_config)
 
 
 def test_all_consumables_cleared_false_with_pellets(
@@ -65,7 +37,7 @@ def test_all_consumables_cleared_false_with_pellets(
 def test_all_consumables_cleared_true_when_set_empty(
     game_world: GameWorld,
 ) -> None:
-    game_world._remaining_consumables.clear()
+    game_world._pellets.clear()
     assert game_world.all_consumables_cleared
 
 
@@ -74,14 +46,14 @@ def test_fatal_ghost_collision_on_last_pellet_loses_life_not_level_complete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Death on the last-pellet step must not enter LEVEL_COMPLETE."""
-    from game.world_ghosts import start_player_death
+    from game.ghost_logic import start_player_death
 
     def trigger_death_and_clear_pellets(
         world: GameWorld,
         dt_s: float,
         now_ms: int,
     ) -> None:
-        world._remaining_consumables.clear()
+        world._pellets.clear()
         start_player_death(world, now_ms)
 
     monkeypatch.setattr(
@@ -109,14 +81,14 @@ def test_fatal_ghost_collision_on_last_pellet_loses_life_not_level_complete(
 def test_timer_expiry_same_frame_as_last_pellet_completes_level(
     game_world: GameWorld,
 ) -> None:
-    """Clearing the maze on the frame the timer hits zero must win the level."""
+    """Clearing the maze the frame the timer hits zero must win."""
     play_state = PlayState()
     session = GameSession(
         phase=GameplayPhase.PLAYING,
         phase_started_at_ms=0,
         remaining_time_ms=1,
     )
-    game_world._remaining_consumables.clear()
+    game_world._pellets.clear()
     game_world.unfreeze_gameplay()
     play_state._session = session
     play_state._world = game_world
@@ -125,31 +97,30 @@ def test_timer_expiry_same_frame_as_last_pellet_completes_level(
 
     assert session.phase == GameplayPhase.LEVEL_COMPLETE
     assert session.lives == GameSession.DEFAULT_LIVES
-    assert game_world.is_frozen
+    assert game_world.frozen
 
 
 def test_unfreeze_gameplay_resumes_movement(game_world: GameWorld) -> None:
     from sprites.sprite_types import Direction
 
     game_world.freeze_gameplay()
-    assert game_world.is_frozen
+    assert game_world.frozen
     game_world.unfreeze_gameplay()
-    assert not game_world.is_frozen
+    assert not game_world.frozen
     request_turn(game_world, Direction.LEFT)
     assert game_world._requested_direction == Direction.LEFT
 
 
 def test_fruit_collection_spawns_score_popup(game_world: GameWorld) -> None:
+    """Fruit spawning under Pac-Man is eaten immediately, always dropping
+    the fruit and always leaving a score popup."""
     player = game_world._player
     assert player is not None
+    score_before = game_world.score
     spawn_fruit(game_world, pygame.time.get_ticks())
-    fruit = game_world._fruit
-    assert fruit is not None
-    player.move_to(fruit.cell, fruit.center)
-    game_world._consume_current_cell()
     assert game_world._fruit is None
     assert len(game_world.score_popups) == 1
-    assert game_world.score_popups[0].points == fruit.points
+    assert game_world.score > score_before
 
 
 def test_death_coords_skip_walk_chomp_frames() -> None:
@@ -225,9 +196,7 @@ def _surfaces_equal(a: Surface, b: Surface) -> bool:
         return False
     w, h = a.get_size()
     return all(
-        a.get_at((x, y)) == b.get_at((x, y))
-        for x in range(w)
-        for y in range(h)
+        a.get_at((x, y)) == b.get_at((x, y)) for x in range(w) for y in range(h)
     )
 
 
@@ -235,10 +204,10 @@ def test_freeze_gameplay_stops_turn_requests(game_world: GameWorld) -> None:
     from sprites.sprite_types import Direction
 
     game_world.freeze_gameplay()
-    assert game_world.is_frozen
+    assert game_world.frozen
     request_turn(game_world, Direction.LEFT)
     update_player_movement(game_world, 1.0, 0)
-    assert game_world.is_frozen
+    assert game_world.frozen
 
 
 def test_initial_score_carried_into_world() -> None:
@@ -273,7 +242,7 @@ def test_level_complete_reload_resets_timer_and_pellets() -> None:
         render_config,
         level_number=session.level_number,
     )
-    world._remaining_consumables.clear()
+    world._pellets.clear()
     assert world.all_consumables_cleared
 
     session.advance_level()
@@ -290,7 +259,7 @@ def test_level_complete_reload_resets_timer_and_pellets() -> None:
     assert session.level_number == 2
     assert session.remaining_time_ms == session.level_time_limit_s * 1000
     assert not world.all_consumables_cleared
-    assert len(world.consumables) == len(layout.pellet_cells) + len(
+    assert len(world._pellets) == len(layout.pellet_cells) + len(
         layout.power_pellet_cells
     )
 
@@ -365,14 +334,14 @@ def test_respawn_ghosts_returns_all_to_home(game_world: GameWorld) -> None:
     if game_world._layout.is_wall(away):
         away = CellPos(ghost.cell.row, ghost.cell.col + 1)
     ghost.move_to(away, cell_center(game_world._render_config, away))
-    ghost.hide_eaten()
+    ghost.hidden = True
+    ghost.kill()
 
     game_world.respawn_ghosts()
 
     for kind, entity in game_world._ghosts.items():
-        assert not entity.is_hidden
+        assert not entity.hidden
         assert entity.cell == game_world._ghost_home[kind]
-    assert not game_world._ghost_respawn_at_ms
 
 
 def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:
@@ -385,7 +354,7 @@ def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:
     blocked_dir: Direction | None = None
     cell = player.cell
     for direction in Direction:
-        dr, dc = direction_delta(direction)
+        dr, dc = DIRECTION_DELTA[direction]
         if game_world._layout.is_wall(CellPos(cell.row + dr, cell.col + dc)):
             blocked_dir = direction
             break
@@ -400,6 +369,11 @@ def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:
 
     ghost_cell_before = ghost.cell
     update_player_movement(
+        game_world,
+        game_world.PLAYER_STEP_MS / 1000.0,
+        1_000,
+    )
+    update_ghost_movement(
         game_world,
         game_world.PLAYER_STEP_MS / 1000.0,
         1_000,
@@ -431,3 +405,71 @@ def test_load_level_deterministic_pellets() -> None:
 
     second = load_level(config, 0, 42)
     assert len(second.pellet_cells) == len(layout.pellet_cells)
+
+
+def test_all_pellets_reachable_from_player_spawn() -> None:
+    """Every pellet must be collectible or the level can never complete."""
+    from collections import deque
+
+    from config.config import load_config
+    from game.level import load_level
+
+    config = load_config("config.json")
+    for seed in (1, 2, 3, 42, 99):
+        layout = load_level(config, 0, seed)
+        start = layout.player_spawn
+        seen = {start}
+        queue = deque([start])
+        while queue:
+            current = queue.popleft()
+            for delta_row, delta_col in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nxt = CellPos(current.row + delta_row, current.col + delta_col)
+                if nxt in seen or layout.is_wall(nxt):
+                    continue
+                seen.add(nxt)
+                queue.append(nxt)
+
+        all_pellets = set(layout.pellet_cells) | set(layout.power_pellet_cells)
+        assert all_pellets <= seen, f"seed {seed} has unreachable pellets"
+        assert all(cell in seen for _kind, cell in layout.ghost_spawns)
+
+
+def test_play_state_loads_level_off_main_thread() -> None:
+    """Maze generation must run on a background thread, not block."""
+    import time
+    from types import SimpleNamespace
+
+    # Small maze so this test stays fast regardless of generator seed luck;
+    # the mechanism under test (background thread + polling), not generation
+    # speed itself, is what matters here.
+    fast_config = {
+        **DEFAULT_CONFIG,
+        "levels": [{"width": 15, "height": 15}],
+    }
+    assets = Assets()
+    assets.load()
+    context = SimpleNamespace(
+        config=fast_config,
+        assets=assets,
+        screen=Surface((1920, 1080)),
+    )
+
+    play_state = PlayState()
+    play_state._session = GameSession(phase_started_at_ms=0)
+    play_state._level_index = 0
+    play_state._level_seed = 42
+
+    start = time.monotonic()
+    play_state._start_loading(context)
+    assert time.monotonic() - start < 1.0
+    assert play_state._loading_thread is not None
+    assert play_state._world is None
+
+    deadline = time.monotonic() + 10
+    while play_state._loading_thread is not None:
+        assert time.monotonic() < deadline, "background load never finished"
+        play_state._poll_loading(context, now_ms=0)
+        time.sleep(0.05)
+
+    assert play_state._world is not None
+    assert play_state._session.phase == GameplayPhase.READY

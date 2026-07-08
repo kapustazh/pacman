@@ -27,14 +27,28 @@ FRUIT_VISIBLE_DURATION_S: int = 10  # TODO: review fruit visible duration
 
 
 def fruit_for_level(level_number: int) -> FruitKind:
-    """Return bonus fruit kind for a 1-based level index."""
+    """Return the bonus fruit kind for a level.
+
+    Args:
+        level_number: One-based level index.
+
+    Returns:
+        Configured fruit for early levels, or a key for later ones.
+    """
     if level_number <= len(LEVEL_FRUIT):
         return LEVEL_FRUIT[level_number - 1]
     return FruitKind.KEY
 
 
 def spawn_seconds_for_level(level_number: int) -> tuple[int, ...]:
-    """Return spawn times in level-play seconds for a 1-based level index."""
+    """Return fruit spawn times measured from level start.
+
+    Args:
+        level_number: One-based level index.
+
+    Returns:
+        Spawn offsets in seconds for that level's fruit schedule.
+    """
     if level_number <= len(LEVEL_SPAWN_SECONDS):
         return LEVEL_SPAWN_SECONDS[level_number - 1]
     return LEVEL_SPAWN_SECONDS[-1]

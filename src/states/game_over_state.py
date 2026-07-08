@@ -9,11 +9,9 @@ from core.context import GameContext
 from core.state import GameState, StateEnterData
 from states.text import ArcadeTextColor
 
-from managers.highscore_manager import HighscoreManager
-
 
 class GameOverState(GameState):
-    """End screen: score, initials entry, then main menu."""
+    """End screen for score display, initials entry, and save."""
 
     TITLE_Y: ClassVar[int] = 280
     SCORE_Y: ClassVar[int] = 370
@@ -24,9 +22,8 @@ class GameOverState(GameState):
     PROMPT_SCALE: ClassVar[int] = 2
     NAME_SCALE: ClassVar[int] = 3
 
-    __slots__ = ("_name", "_score", "_won")
-
     def __init__(self) -> None:
+        """Initialize empty initials buffer and default outcome."""
         self._name = ""
         self._score = 0
         self._won = False
@@ -36,7 +33,12 @@ class GameOverState(GameState):
         context: GameContext,
         enter_data: StateEnterData | None = None,
     ) -> None:
-        """Apply enter_data and reset initials entry."""
+        """Read enter payload and reset initials entry.
+
+        Args:
+            context: Shared game context (unused).
+            enter_data: Optional dict with score and won flag.
+        """
         self._name = ""
         self._won = False
         self._score = 0
@@ -46,19 +48,29 @@ class GameOverState(GameState):
             self._won = bool(enter_data.get("won", False))
 
     def leave(self, context: GameContext) -> None:
-        """Leave end screen."""
+        """No-op; scene has no teardown work.
+
+        Args:
+            context: Shared game context (unused).
+        """
 
     def handle_events(
         self,
         events: list[pygame.event.Event],
         context: GameContext,
     ) -> None:
-        """Capture initials; save and return to main menu on Enter."""
+        """Capture initials and save the score on Enter.
+
+        Args:
+            events: Pygame events for this frame.
+            context: Shared game context for high scores and scene changes.
+        """
         for event in events:
             if event.type != pygame.KEYDOWN:
                 continue
             if event.key == pygame.K_RETURN:
-                name = HighscoreManager.clean_name(self._name or "AAA")
+                # noinspection PyProtectedMember
+                name = context.highscores._clean_name(self._name or "AAA")
                 context.highscores.add_score(name, self._score)
                 from states.menu_state import MenuState
 
@@ -76,10 +88,21 @@ class GameOverState(GameState):
                 self._name += char
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """No simulation."""
+        """No-op; screen has no simulation.
+
+        Args:
+            dt: Elapsed seconds since the last frame (unused).
+            now_ms: Monotonic clock in milliseconds (unused).
+            context: Shared game context (unused).
+        """
 
     def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw title, score, and initials prompt."""
+        """Draw outcome title, score, and initials prompt.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context with text renderer.
+        """
         text = context.text
         title = "YOU WIN!" if self._won else "GAME OVER"
         title_color = (

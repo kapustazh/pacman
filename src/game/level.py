@@ -12,7 +12,7 @@ from sprites.sprite_types import GhostKind
 
 @dataclass(frozen=True, slots=True)
 class CellPos:
-    """Immutable row/column position in level coordinates."""
+    """Immutable row/column position on the level grid."""
 
     row: int
     col: int
@@ -20,7 +20,7 @@ class CellPos:
 
 @dataclass(frozen=True, slots=True)
 class LevelLayout:
-    """Immutable snapshot used to spawn GameWorld."""
+    """Immutable maze snapshot used to spawn a game world."""
 
     cells: tuple[tuple[TileType, ...], ...]
     pellet_cells: frozenset[CellPos]
@@ -28,19 +28,37 @@ class LevelLayout:
     player_spawn: CellPos
     ghost_spawns: tuple[tuple[GhostKind, CellPos], ...]
     fruit_spawn: CellPos
+    # Floor cells the player can never reach: holes enclosed inside wall
+    # formations. Rendered as solid wall-mass fill.
+    unreachable_floor: frozenset[CellPos] = frozenset()
 
     @property
     def height(self) -> int:
-        """Return number of rows."""
+        """Return the number of rows in the grid.
+
+        Returns:
+            Row count.
+        """
         return len(self.cells)
 
     @property
     def width(self) -> int:
-        """Return number of columns."""
+        """Return the number of columns in the grid.
+
+        Returns:
+            Column count, or zero when the grid is empty.
+        """
         return len(self.cells[0]) if self.cells else 0
 
     def is_wall(self, pos: CellPos) -> bool:
-        """Return True when position is outside grid or blocked by wall."""
+        """Return whether a position is out of bounds or a wall tile.
+
+        Args:
+            pos: Grid position to test.
+
+        Returns:
+            True when the cell is blocked.
+        """
         if pos.row < 0 or pos.col < 0:
             return True
         if pos.row >= self.height or pos.col >= self.width:
@@ -53,7 +71,16 @@ def load_level(
     level_index: int,
     seed: int,
 ) -> LevelLayout:
-    """Generate a LevelLayout from config-driven procedural maze."""
+    """Build a procedural level layout from game config.
+
+    Args:
+        config: Game configuration dict with level sizes and pacgum count.
+        level_index: Zero-based index into the configured level list.
+        seed: Random seed for maze generation.
+
+    Returns:
+        A populated level layout ready for spawning.
+    """
     from game.level_builder import LevelBuilder
     from maze.maze_adapter import MazeAdaptor
 

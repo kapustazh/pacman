@@ -4,15 +4,8 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
+from core.state import BACK_KEYS, GameState, StateEnterData
 from states.text import ArcadeTextColor
-
-_BACK_KEYS = (
-    pygame.K_ESCAPE,
-    pygame.K_RETURN,
-    pygame.K_SPACE,
-    pygame.K_BACKSPACE,
-)
 
 INSTRUCTION_ROWS: tuple[tuple[str, str], ...] = (
     ("MOVE", "WASD / ARROWS"),
@@ -23,7 +16,7 @@ INSTRUCTION_ROWS: tuple[tuple[str, str], ...] = (
 
 
 class InstructionsState(GameState):
-    """Static instructions screen."""
+    """Static screen listing game controls."""
 
     TITLE_Y = 300
     ROW_START_Y = 420
@@ -38,31 +31,60 @@ class InstructionsState(GameState):
         context: GameContext,
         enter_data: StateEnterData | None = None,
     ) -> None:
-        """Enter instructions view."""
+        """No-op; scene has no setup work.
+
+        Args:
+            context: Shared game context (unused).
+            enter_data: Optional payload from the previous scene (unused).
+        """
 
     def leave(self, context: GameContext) -> None:
-        """Leave instructions view."""
+        """No-op; scene has no teardown work.
+
+        Args:
+            context: Shared game context (unused).
+        """
 
     def handle_events(
         self,
         events: list[pygame.event.Event],
         context: GameContext,
     ) -> None:
-        """Return to menu on back input."""
+        """Pop back to the previous scene on back keys.
+
+        Args:
+            events: Pygame events for this frame.
+            context: Shared game context for scene transitions.
+        """
         for event in events:
-            if event.type == pygame.KEYDOWN and event.key in _BACK_KEYS:
+            if event.type == pygame.KEYDOWN and event.key in BACK_KEYS:
                 context.scene_manager.pop()
                 return
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """No simulation."""
+        """No-op; screen has no simulation.
+
+        Args:
+            dt: Elapsed seconds since the last frame (unused).
+            now_ms: Monotonic clock in milliseconds (unused).
+            context: Shared game context (unused).
+        """
 
     def covers_previous_layers(self) -> bool:
-        """Hide menu while instructions screen is active."""
+        """Hide the menu while this screen is active.
+
+        Returns:
+            Always True so the menu is not drawn underneath.
+        """
         return True
 
     def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw aligned control legend."""
+        """Draw the title, control rows, and return prompt.
+
+        Args:
+            surface: Destination draw target.
+            context: Shared game context with text renderer.
+        """
         text = context.text
         text.draw_centered_arcade_text(
             surface,
@@ -72,8 +94,7 @@ class InstructionsState(GameState):
             scale=self.TITLE_SCALE,
         )
 
-        font = text.font(ArcadeTextColor.WHITE, scale=self.ROW_SCALE)
-        row_step = font.advance() + self.ROW_GAP
+        row_step = text.advance(self.ROW_SCALE) + self.ROW_GAP
         for index, (label, value) in enumerate(INSTRUCTION_ROWS):
             y = self.ROW_START_Y + index * row_step
             text.draw_arcade_two_column_row(

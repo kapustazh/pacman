@@ -1,30 +1,29 @@
 """Adaptor for the assigned A-Maze-ing package."""
 
-# [wehan] origin/wehan — A-Maze-ing adaptor and wall-code conversion.
-
 from maze.map_data import TileType
 
 
 class MazeAdaptor:
     """Convert external maze output into Pac-Man tile grid."""
-
     NORTH = 1  # 0001
-    EAST = 2  # 0010
+    EAST = 2   # 0010
     SOUTH = 4  # 0100
-    WEST = 8  # 1000
+    WEST = 8   # 1000
 
     def generate(
-        self, width: int, height: int, seed: int
+        self, width: int,
+        height: int,
+        seed: int
     ) -> list[list[TileType]]:
         """Generate a maze using the external package."""
         try:
             from mazegenerator.mazegenerator import MazeGenerator
 
-            generator = MazeGenerator(
-                size=(width, height),
-                perfect=False,
-                seed=seed,
-            )
+            generator = MazeGenerator(size=(width, height),
+                                      perfect=False, seed=seed,
+                                      entry_cell=(0, 0),
+                                      exit_cell=(0, 1))
+            # entry/exit cells fix long maze generation time
             return self.convert_maze(generator.maze)
         except Exception as Error:
             print(f"Warning: maze generator failed: {Error}")
@@ -58,7 +57,16 @@ class MazeAdaptor:
         return grid
 
     def fallback_grid(self) -> list[list[TileType]]:
-        """Return a minimal fallback grid if generation fails."""
-        grid = [[TileType.WALL] * 5 for _ in range(5)]
-        grid[2][2] = TileType.EMPTY
-        return grid
+        """Return a safe fallback grid if generation fails."""
+        return [
+            [TileType.WALL, TileType.WALL, TileType.WALL,
+             TileType.WALL, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.PACGUM, TileType.SUPER_PACGUM,
+             TileType.PACGUM, TileType.WALL],
+            [TileType.WALL, TileType.WALL, TileType.WALL,
+             TileType.WALL, TileType.WALL],
+        ]
