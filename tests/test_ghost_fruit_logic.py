@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from config.config import DEFAULT_CONFIG
 from game.fruit_schedule import fruit_for_level, fruit_spawn_seconds
-from game.game_world import GameWorld, spawn_fruit, update_fruit_spawns
+from game.game_world import GameWorld
 from game.ghost_logic import (
     activate_frightened_mode,
     move_ghosts,
@@ -10,7 +10,8 @@ from game.ghost_logic import (
     update_frightened_state,
 )
 from game.level import load_level
-from sprites.sprite_types import FruitKind, GhostKind
+from game.world_fruit import spawn_fruit, update_fruit_spawns
+from sprites.sprite_types import FruitKind, GhostKind, GhostMode
 
 
 def test_fruit_schedule_level_one() -> None:
@@ -75,17 +76,14 @@ def test_frightened_ghosts_flash_only_near_the_end(
     ghost = next(iter(world._ghosts.values()))
 
     update_frightened_state(world, now_ms=0)
-    assert ghost._frightened is True
-    assert ghost._flashing is False
+    assert ghost.mode is GhostMode.FRIGHTENED
 
     flash_starts_at = world._frightened_until_ms - world.FRIGHTENED_FLASH_MS
     update_frightened_state(world, now_ms=flash_starts_at)
-    assert ghost._frightened is True
-    assert ghost._flashing is True
+    assert ghost.mode is GhostMode.FLASHING
 
     update_frightened_state(world, now_ms=world._frightened_until_ms)
-    assert ghost._frightened is False
-    assert ghost._flashing is False
+    assert ghost.mode is GhostMode.NORMAL
 
 
 def test_scatter_mode_alternates_on_a_timer(game_world: GameWorld) -> None:
@@ -135,7 +133,7 @@ def test_frightened_flash_alternates_blue_and_white(
     ghost = next(iter(world._ghosts.values()))
     flash_starts_at = world._frightened_until_ms - world.FRIGHTENED_FLASH_MS
     update_frightened_state(world, now_ms=flash_starts_at)
-    assert ghost._flashing is True
+    assert ghost.mode is GhostMode.FLASHING
 
     interval = ghost.FLASH_INTERVAL_MS
     ghost.update(0, flash_starts_at)
@@ -157,18 +155,17 @@ def test_eaten_ghost_becomes_eyes_and_returns_home(
 
     resolve_actor_collisions(world)
 
-    assert ghost.returning is True
-    assert ghost._frightened is False
+    assert ghost.mode is GhostMode.EYES
     # eating a ghost freezes the screen briefly before the eyes fly home
     assert world.frozen is True
     world.unfreeze_gameplay()
 
     home = world._ghost_home[kind]
     for _ in range(200):
-        if not ghost.returning:
+        if ghost.mode is not GhostMode.EYES:
             break
         move_ghosts(world)
-    assert ghost.returning is False
+    assert ghost.mode is not GhostMode.EYES
     assert ghost.cell == home
 
 

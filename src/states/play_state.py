@@ -11,15 +11,12 @@ from pygame.surface import Surface
 from core.context import GameContext
 from core.state import GameState, StateEnterData
 from game.game_session import GameplayPhase, GameSession
-from game.game_world import (
-    GameWorld,
-    request_turn,
-    update_fruit_spawns,
-    update_ghost_movement,
-    update_player_movement,
-)
+from game.game_world import GameWorld
+from game.ghost_logic import update_ghost_movement
 from game.level import LevelLayout, load_level
 from game.render_config import MazeBounds, WorldRenderConfig
+from game.world_fruit import update_fruit_spawns
+from game.world_player import request_turn, update_player_movement
 from rendering.hud_overlay import HudOverlay
 from sprites.sprite_types import Direction
 from states.text import ArcadeTextColor

@@ -10,20 +10,13 @@ from entities.player_entity import PlayerEntity  # noqa: E402
 from entities.wall_tile_entity import WallTileEntity  # noqa: E402
 from game.game_session import GameSession, GameplayPhase  # noqa: E402
 from states.play_state import PlayState  # noqa: E402
-from game.game_world import (  # noqa: E402
-    GameWorld,
-    request_turn,
-    spawn_fruit,
-    update_ghost_movement,
-    update_player_movement,
-)
+from game.game_world import GameWorld  # noqa: E402
+from game.ghost_logic import update_ghost_movement  # noqa: E402
+from game.world_fruit import spawn_fruit  # noqa: E402
+from game.world_player import request_turn, update_player_movement  # noqa: E402
 from config.config import DEFAULT_CONFIG  # noqa: E402
 from game.level import CellPos, load_level  # noqa: E402
-from game.render_config import (  # noqa: E402
-    DIRECTION_DELTA,
-    WorldRenderConfig,
-    cell_center,
-)
+from game.render_config import DIRECTION_DELTA, WorldRenderConfig  # noqa: E402
 from sprites.assets import Assets  # noqa: E402
 from sprites.sprite_types import Direction, TileKind  # noqa: E402
 
@@ -297,6 +290,7 @@ def test_white_tiles_use_maze_parts_coords_not_tile_kind_coords() -> None:
     """White flash must slice maze_parts with MAZE_PARTS_WHITE_KIND_COORDS."""
     assets = Assets()
     assets.load()
+    assert assets._maze_sheet is not None
     for tile_kind in (TileKind.CORNER_TL, TileKind.CORNER_BL):
         assert (
             Assets.TILE_KIND_COORDS[tile_kind]
@@ -304,7 +298,9 @@ def test_white_tiles_use_maze_parts_coords_not_tile_kind_coords() -> None:
         )
         loaded = assets.maze_white_tiles[tile_kind]
         wrong = Assets._make_white_tile(
-            assets._slice_maze_cells(*Assets.TILE_KIND_COORDS[tile_kind])
+            assets._slice_sheet(
+                assets._maze_sheet, *Assets.TILE_KIND_COORDS[tile_kind], 1, 1
+            )
         )
         w, h = loaded.get_size()
         assert any(
@@ -327,20 +323,20 @@ def test_set_wall_flash_swaps_wall_surfaces(game_world: GameWorld) -> None:
 
 
 def test_respawn_ghosts_returns_all_to_home(game_world: GameWorld) -> None:
-    from sprites.sprite_types import GhostKind
+    from sprites.sprite_types import GhostKind, GhostMode
 
     ghost = game_world._ghosts[GhostKind.BLINKY]
     away = CellPos(ghost.cell.row + 1, ghost.cell.col)
     if game_world._layout.is_wall(away):
         away = CellPos(ghost.cell.row, ghost.cell.col + 1)
-    ghost.move_to(away, cell_center(game_world._render_config, away))
-    ghost.hidden = True
+    ghost.move_to(away, game_world._render_config.cell_center(away))
+    ghost.mode = GhostMode.HIDDEN
     ghost.kill()
 
     game_world.respawn_ghosts()
 
     for kind, entity in game_world._ghosts.items():
-        assert not entity.hidden
+        assert entity.mode is not GhostMode.HIDDEN
         assert entity.cell == game_world._ghost_home[kind]
 
 
@@ -359,7 +355,7 @@ def test_ghosts_move_while_player_blocked(game_world: GameWorld) -> None:
             blocked_dir = direction
             break
     assert blocked_dir is not None
-    center = cell_center(game_world._render_config, cell)
+    center = game_world._render_config.cell_center(cell)
     player.move_to(cell, center)
     player.face(blocked_dir)
     game_world._travel_direction = blocked_dir

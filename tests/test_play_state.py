@@ -51,7 +51,8 @@ def test_adjust_player_speed_clamps_and_speed_cheat_flag(
 
 
 def test_speed_cheat_does_not_accelerate_ghosts(game_world: GameWorld) -> None:
-    from game.game_world import update_ghost_movement, update_player_movement
+    from game.ghost_logic import update_ghost_movement
+    from game.world_player import update_player_movement
 
     world = game_world
     world.unfreeze_gameplay()

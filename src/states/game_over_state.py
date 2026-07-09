@@ -69,7 +69,6 @@ class GameOverState(GameState):
             if event.type != pygame.KEYDOWN:
                 continue
             if event.key == pygame.K_RETURN:
-                # noinspection PyProtectedMember
                 name = context.highscores._clean_name(self._name or "AAA")
                 context.highscores.add_score(name, self._score)
                 from states.menu_state import MenuState

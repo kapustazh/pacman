@@ -2,6 +2,7 @@ from pygame.sprite import Sprite
 from pygame.surface import Surface
 
 from game.level import CellPos
+from sprites.sprite_types import RenderLayer
 
 
 class PelletEntity(Sprite):
@@ -26,6 +27,6 @@ class PelletEntity(Sprite):
         self.cell = cell
         self.center = center
         self.points = points
-        self.layer = 1  # z-order: consumables draw above background
+        self.layer = RenderLayer.CONSUMABLE
         self.image = image
         self.rect = image.get_rect(center=center)

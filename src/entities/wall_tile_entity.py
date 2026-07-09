@@ -1,6 +1,8 @@
 from pygame.sprite import Sprite
 from pygame.surface import Surface
 
+from sprites.sprite_types import RenderLayer
+
 
 class WallTileEntity(Sprite):
     """Pygame sprite for one maze wall tile with optional flash."""
@@ -22,7 +24,7 @@ class WallTileEntity(Sprite):
         self._blue_surface = blue_surface
         self._white_surface = white_surface
         self._flash_white = False
-        self.layer = 0  # z-order: background draws below consumables/actors
+        self.layer = RenderLayer.BACKGROUND
         self.image = blue_surface
         self.rect = blue_surface.get_rect(center=center)
 

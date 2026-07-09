@@ -1,4 +1,12 @@
-from enum import Enum, auto
+from enum import Enum, IntEnum, auto
+
+
+class RenderLayer(IntEnum):
+    """Sprite draw order in ``LayeredUpdates``; higher draws on top."""
+
+    BACKGROUND = 0
+    CONSUMABLE = 1
+    ACTOR = 2
 
 
 class Direction(Enum):
@@ -17,6 +25,16 @@ class GhostKind(Enum):
     PINKY = "pinky"
     INKY = "inky"
     CLYDE = "clyde"
+
+
+class GhostMode(Enum):
+    """A ghost's current vulnerability/movement/animation state."""
+
+    NORMAL = auto()
+    FRIGHTENED = auto()
+    FLASHING = auto()
+    EYES = auto()
+    HIDDEN = auto()
 
 
 class FruitKind(Enum):

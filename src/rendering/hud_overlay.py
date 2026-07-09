@@ -9,11 +9,8 @@ from pygame.surface import Surface
 from game.game_session import GameSession, GameplayPhase
 from game.game_world import ScorePopup
 from game.render_config import MazeBounds
-from states.text import (
-    ArcadeTextColor,
-    ArcadeTextRenderer,
-    plus_glyph,
-)
+from rendering.widgets import plus_glyph
+from states.text import ArcadeTextColor, ArcadeTextRenderer
 
 
 class HudOverlay:
@@ -64,8 +61,6 @@ class HudOverlay:
             self._phase_message_surfaces[phase] = text.render(
                 message, color, self.MESSAGE_SCALE
             )
-        self._level_surface_cache: dict[int, Surface] = {}
-        self._value_surface_cache: dict[str, Surface] = {}
         self._life_icon = life_icon
 
     def set_fruit_icon(self, fruit_icon: Surface | None) -> None:
@@ -158,7 +153,9 @@ class HudOverlay:
         """
         bottom_y = maze_bounds.bottom + self.BOTTOM_EDGE
         self._draw_life_icons(surface, session.lives, maze_bounds.x, bottom_y)
-        level_surface = self._cached_level_surface(session.level_number)
+        level_surface = self._text.render(
+            f"LEVEL {session.level_number}", scale=self.HUD_SCALE
+        )
         level_rect = level_surface.get_rect(
             midright=(maze_bounds.x + maze_bounds.width, bottom_y),
         )
@@ -190,7 +187,7 @@ class HudOverlay:
             right_aligned: Anchor the column at ``x`` right edge.
         """
         label_surface = self._label_surfaces[label]
-        value_surface = self._cached_value_surface(value)
+        value_surface = self._text.render(value, scale=self.HUD_SCALE)
 
         if centered:
             label_rect = label_surface.get_rect(midtop=(x, self.TOP_LABEL_Y))
@@ -267,40 +264,6 @@ class HudOverlay:
             return
         rect = rendered.get_rect(center=maze_bounds.center)
         surface.blit(rendered, rect)
-
-    def _cached_level_surface(self, level_number: int) -> Surface:
-        """Return a cached ``LEVEL N`` label surface.
-
-        Args:
-            level_number: Level index shown in the bottom HUD.
-
-        Returns:
-            Rendered level label surface.
-        """
-        cached = self._level_surface_cache.get(level_number)
-        if cached is not None:
-            return cached
-        surface = self._text.render(
-            f"LEVEL {level_number}", scale=self.HUD_SCALE
-        )
-        self._level_surface_cache[level_number] = surface
-        return self._level_surface_cache[level_number]
-
-    def _cached_value_surface(self, value: str) -> Surface:
-        """Return a cached HUD value surface for a formatted string.
-
-        Args:
-            value: Preformatted score or time text.
-
-        Returns:
-            Rendered value surface.
-        """
-        cached = self._value_surface_cache.get(value)
-        if cached is not None:
-            return cached
-        surface = self._text.render(value, scale=self.HUD_SCALE)
-        self._value_surface_cache[value] = surface
-        return self._value_surface_cache[value]
 
 
 def _format_score(score: int) -> str:

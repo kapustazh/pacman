@@ -86,6 +86,20 @@ class WorldRenderConfig:
             origin_y=(screen_h - height_px) // 2,
         )
 
+    def cell_center(self, cell: CellPos) -> tuple[int, int]:
+        """Convert a grid cell to its pixel center on screen.
+
+        Args:
+            cell: Grid position to convert.
+
+        Returns:
+            (x, y) pixel center of the cell.
+        """
+        return (
+            self.origin_x + cell.col * self.tile_px + self.tile_px // 2,
+            self.origin_y + cell.row * self.tile_px + self.tile_px // 2,
+        )
+
 
 DIRECTION_DELTA: dict[Direction, tuple[int, int]] = {
     Direction.UP: (-1, 0),
@@ -93,20 +107,3 @@ DIRECTION_DELTA: dict[Direction, tuple[int, int]] = {
     Direction.LEFT: (0, -1),
     Direction.RIGHT: (0, 1),
 }
-
-
-def cell_center(config: WorldRenderConfig, cell: CellPos) -> tuple[int, int]:
-    """Convert a grid cell to its pixel center on screen.
-
-    Args:
-        config: Tile size and maze origin offset.
-        cell: Grid position to convert.
-
-    Returns:
-        (x, y) pixel center of the cell.
-    """
-    tile_px = config.tile_px
-    return (
-        config.origin_x + cell.col * tile_px + tile_px // 2,
-        config.origin_y + cell.row * tile_px + tile_px // 2,
-    )

@@ -7,6 +7,26 @@ class SpriteError(Exception):
     """Raised when sprite data is invalid."""
 
 
+def lerp_center(
+    prev_center: tuple[int, int],
+    center: tuple[int, int],
+    t: float,
+) -> tuple[int, int]:
+    """Blend two pixel centers for smooth grid-step motion.
+
+    Args:
+        prev_center: Pixel center at the start of the step.
+        center: Pixel center at the end of the step.
+        t: Blend factor from 0.0 (prev_center) to 1.0 (center).
+
+    Returns:
+        Interpolated (x, y) pixel center.
+    """
+    px, py = prev_center
+    cx, cy = center
+    return (round(px + (cx - px) * t), round(py + (cy - py) * t))
+
+
 @dataclass(slots=True)
 class AnimatedSprite:
     """Cycles through frame surfaces on a fixed timer."""
