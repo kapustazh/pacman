@@ -45,7 +45,15 @@ def main() -> None:
         str(config.get("highscore_filename", HIGHSCORES_FILE))
     )
     highscores.load()
-    engine = GameEngine(screen, assets, text, highscores, config, MenuState())
+    engine = GameEngine(
+        screen,
+        assets,
+        text,
+        highscores,
+        config,
+        MenuState(),
+        window_size=(SCREEN_WIDTH, SCREEN_HEIGHT),
+    )
     engine.run()
 
     pygame.quit()
