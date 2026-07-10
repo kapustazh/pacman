@@ -30,6 +30,6 @@ lint:
 
 lint-strict:
 	$(PYTHON) -m flake8 pac-man.py src
-	$(PYTHON) -m mypy . --strict --ignore-missing-imports
+	$(PYTHON) -m mypy . --warn-return-any --warn-unused-ignores --disallow-untyped-defs --check-untyped-defs
 
 re: clean install

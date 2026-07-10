@@ -14,7 +14,11 @@ from entities.pellet_entity import PelletEntity
 from entities.player_entity import PlayerEntity
 from entities.wall_tile_entity import WallTileEntity
 from game.fruit_schedule import fruit_for_level
-from game.ghost_logic import activate_frightened_mode, update_frightened_state
+from game.ghost_logic import (
+    activate_frightened_mode,
+    ghost_step_ms,
+    update_frightened_state,
+)
 from game.level import CellPos, LevelLayout
 from game.render_config import WorldRenderConfig
 from game.world_fruit import collect_fruit, kill_fruit
@@ -97,7 +101,6 @@ class GameWorld:
         self._scatter_mode: bool = False
         self._mode_started_ms: int = pygame.time.get_ticks()
         self._pause_until_ms: int = 0
-        self._ghost_step_count: int = 0
         self._invincible: bool = False
         self._ghosts_frozen: bool = False
         self._player_step_ms: int = self.PLAYER_STEP_MS
@@ -110,8 +113,7 @@ class GameWorld:
         self._step_now_ms: int = 0
         self._wall_flash_white: bool = False
         self._wall_sprites: list[WallTileEntity] = []
-        self._step_accumulator_ms: float = 0.0
-        self._ghost_step_accumulator_ms: float = 0.0
+        self._ghost_step_elapsed_ms: float = 0.0
         self._travel_direction: Direction = self.DEFAULT_TRAVEL_DIRECTION
         self._requested_direction: Direction | None = None
         spawn_from_layout(self)
@@ -176,7 +178,7 @@ class GameWorld:
             Fruit surface for the level, or None if unavailable.
         """
         kind = fruit_for_level(self._level_number)
-        fruit = self._catalog.fruits.get(kind)
+        fruit: Surface | None = self._catalog.fruits.get(kind)
         return fruit
 
     @property
@@ -263,8 +265,7 @@ class GameWorld:
         """Pause movement and clear pending input."""
         self.frozen = True
         self._requested_direction = None
-        self._step_accumulator_ms = 0.0
-        self._ghost_step_accumulator_ms = 0.0
+        self._reset_step_clocks()
         self._sync_visual_centers()
 
     def unfreeze_gameplay(self) -> None:
@@ -283,8 +284,7 @@ class GameWorld:
     def start_auto_movement(self) -> None:
         """Start default auto-walk after the READY phase ends."""
         self._travel_direction = self.DEFAULT_TRAVEL_DIRECTION
-        self._step_accumulator_ms = 0.0
-        self._ghost_step_accumulator_ms = 0.0
+        self._reset_step_clocks()
         self._mode_started_ms = pygame.time.get_ticks()
         if self._player is not None:
             self._player.face(self._travel_direction)
@@ -315,15 +315,13 @@ class GameWorld:
         """Interpolate actor sprites between discrete grid steps."""
         if self.frozen:
             return
-        t = min(1.0, self._step_accumulator_ms / self.player_step_ms)
+        t = min(1.0, self._ghost_step_elapsed_ms / self.player_step_ms)
         if self._player is not None:
             self._player.apply_visual_lerp(t)
-        ghost_t = min(
-            1.0,
-            self._ghost_step_accumulator_ms / self.PLAYER_STEP_MS,
-        )
         for ghost in self._ghosts.values():
             if ghost.mode is not GhostMode.HIDDEN:
+                step_ms = ghost_step_ms(self, ghost)
+                ghost_t = min(1.0, ghost._step_elapsed_ms / step_ms)
                 ghost.apply_visual_lerp(ghost_t)
 
     def draw(self, surface: Surface) -> None:
@@ -395,6 +393,12 @@ class GameWorld:
         for ghost in self._ghosts.values():
             if ghost.mode is not GhostMode.HIDDEN:
                 ghost.begin_step()
+
+    def _reset_step_clocks(self) -> None:
+        """Clear player and ghost step clocks after a gameplay pause."""
+        self._ghost_step_elapsed_ms = 0.0
+        for ghost in self._ghosts.values():
+            ghost._step_elapsed_ms = 0.0
 
 
 def add_score_popup(
