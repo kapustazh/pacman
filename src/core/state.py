@@ -80,3 +80,10 @@ class GameState(ABC):
             True when this scene fully covers earlier layers.
         """
         return False
+
+    def on_screen_resize(self, context: GameContext) -> None:
+        """Refresh layout that depends on the display size.
+
+        Args:
+            context: Shared game context with the updated screen surface.
+        """

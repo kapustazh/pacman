@@ -1,6 +1,6 @@
-# [transition UI] pygame main loop and scene delegation.
-
 from __future__ import annotations
+
+from dataclasses import replace
 
 from core.context import GameContext
 from core.scene_manager import SceneManager
@@ -28,6 +28,7 @@ class GameEngine:
         highscores: HighscoreManager,
         config: dict[str, object],
         initial_state: GameState,
+        window_size: tuple[int, int] = (1920, 1080),
         target_fps: int = 120,
     ) -> None:
         """Wire shared context and push the first scene.
@@ -39,8 +40,11 @@ class GameEngine:
             highscores: Persistent score table.
             config: Gameplay settings from config file.
             initial_state: Scene shown on startup.
+            window_size: Windowed resolution restored when leaving fullscreen.
             target_fps: Frame rate cap for the main loop.
         """
+        self._window_size = window_size
+        self._fullscreen = False
         self._clock = pygame.time.Clock()
         self._scene_manager = SceneManager()
         self._context = GameContext(
@@ -60,7 +64,7 @@ class GameEngine:
         while not self._scene_manager.shutdown_requested:
             dt = self._clock.tick(self._target_fps) / 1000.0
             now_ms = pygame.time.get_ticks()
-            events = pygame.event.get()
+            events = self._handle_global_events(pygame.event.get())
 
             if any(event.type == pygame.QUIT for event in events):
                 self._scene_manager.request_shutdown()
@@ -98,3 +102,32 @@ class GameEngine:
 
         for state in stack[draw_from:]:
             state.draw(self._context.screen, self._context)
+
+    def _handle_global_events(
+        self, events: list[pygame.event.Event]
+    ) -> list[pygame.event.Event]:
+        """Handle engine-level input and return events for scenes."""
+        remaining: list[pygame.event.Event] = []
+        for event in events:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
+                self._toggle_fullscreen()
+                continue
+            remaining.append(event)
+        return remaining
+
+    def _toggle_fullscreen(self) -> None:
+        """Switch between windowed and fullscreen display."""
+        if self._fullscreen:
+            screen = pygame.display.set_mode(self._window_size, vsync=1)
+        else:
+            screen = pygame.display.set_mode(
+                (0, 0), pygame.FULLSCREEN, vsync=1
+            )
+        self._fullscreen = not self._fullscreen
+        self._context = replace(self._context, screen=screen)
+        self._notify_screen_resize()
+
+    def _notify_screen_resize(self) -> None:
+        """Tell active scenes to refresh resolution-dependent layout."""
+        for state in self._scene_manager.stack_bottom_up():
+            state.on_screen_resize(self._context)

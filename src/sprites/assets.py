@@ -169,6 +169,42 @@ class Assets:
         except pygame.error as exc:
             raise AssetError(str(exc)) from exc
 
+    @staticmethod
+    def _slice_sheet(
+        sheet: Surface,
+        col: int,
+        row: int,
+        width_cells: int,
+        height_cells: int,
+    ) -> Surface:
+        """Cut one sprite from a sheet and scale it to tile size.
+
+        Args:
+            sheet: Loaded sprite sheet to slice from.
+            col: Left cell column on the sheet.
+            row: Top cell row on the sheet.
+            width_cells: Slice width in cells.
+            height_cells: Slice height in cells.
+
+        Returns:
+            Copied surface scaled to ``DISPLAY_TILE_SIZE``.
+        """
+        rect = pygame.Rect(
+            col * Assets.CELL_SIZE,
+            row * Assets.CELL_SIZE,
+            width_cells * Assets.CELL_SIZE,
+            height_cells * Assets.CELL_SIZE,
+        )
+        surface = sheet.subsurface(rect).copy()
+        if (
+            surface.get_width() != Assets.DISPLAY_TILE_SIZE
+            or surface.get_height() != Assets.DISPLAY_TILE_SIZE
+        ):
+            surface = pygame.transform.scale(
+                surface, (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
+            )
+        return surface
+
     def _slice_cells(
         self,
         col: int,
@@ -190,27 +226,15 @@ class Assets:
         Raises:
             AssetError: When the general sheet has not been loaded.
         """
-        if width_cells is None:
-            width_cells = self.SPRITE_CELLS
-        if height_cells is None:
-            height_cells = self.SPRITE_CELLS
         if self._general_sheet is None:
             raise AssetError("General sprites sheet not loaded")
-        rect = pygame.Rect(
-            col * self.CELL_SIZE,
-            row * self.CELL_SIZE,
-            width_cells * self.CELL_SIZE,
-            height_cells * self.CELL_SIZE,
+        return self._slice_sheet(
+            self._general_sheet,
+            col,
+            row,
+            self.SPRITE_CELLS if width_cells is None else width_cells,
+            self.SPRITE_CELLS if height_cells is None else height_cells,
         )
-        surface = self._general_sheet.subsurface(rect).copy()
-        if (
-            surface.get_width() != self.DISPLAY_TILE_SIZE
-            or surface.get_height() != self.DISPLAY_TILE_SIZE
-        ):
-            surface = pygame.transform.scale(
-                surface, (self.DISPLAY_TILE_SIZE, self.DISPLAY_TILE_SIZE)
-            )
-        return surface
 
     def _load_frames(self, coords: list[tuple[int, int]]) -> AnimatedSprite:
         """Build an animation from general-sheet cell coordinates.
@@ -265,45 +289,6 @@ class Assets:
         )
         self.ghost_eyes = self._load_frames(self.EYES_COORDS)
 
-    def _slice_maze_cells(
-        self,
-        col: int,
-        row: int,
-        width_cells: int = 1,
-        height_cells: int = 1,
-    ) -> Surface:
-        """Cut one tile from the maze parts sheet.
-
-        Args:
-            col: Left cell column on the maze sheet.
-            row: Top cell row on the maze sheet.
-            width_cells: Slice width in cells.
-            height_cells: Slice height in cells.
-
-        Returns:
-            Copied surface scaled to ``DISPLAY_TILE_SIZE``.
-
-        Raises:
-            AssetError: When the maze sheet has not been loaded.
-        """
-        if self._maze_sheet is None:
-            raise AssetError("Maze parts sheet not loaded")
-        rect = pygame.Rect(
-            col * self.CELL_SIZE,
-            row * self.CELL_SIZE,
-            width_cells * self.CELL_SIZE,
-            height_cells * self.CELL_SIZE,
-        )
-        surface = self._maze_sheet.subsurface(rect).copy()
-        if (
-            surface.get_width() != self.DISPLAY_TILE_SIZE
-            or surface.get_height() != self.DISPLAY_TILE_SIZE
-        ):
-            surface = pygame.transform.scale(
-                surface, (self.DISPLAY_TILE_SIZE, self.DISPLAY_TILE_SIZE)
-            )
-        return surface
-
     @staticmethod
     def _make_white_tile(surface: Surface) -> Surface:
         """Tint non-black pixels white for the level-clear flash.
@@ -332,11 +317,6 @@ class Assets:
         self._maze_sheet = pygame.image.load(maze_path).convert_alpha()
         for tile_kind, coords in self.TILE_KIND_COORDS.items():
             if tile_kind == TileKind.WALL:
-                # No line-art shape exists for a fully-enclosed wall cell in
-                # the original sheet (source mazes are always 1 cell thick);
-                # fill it light blue — the text sheet's 4th color band
-                # (ArcadeTextColor.CYAN), so wall mass reads as solid but
-                # distinct from the line walls.
                 self.maze_tiles[tile_kind] = self._solid_tile(
                     self.WALL_FILL_COLOR
                 )
@@ -345,10 +325,6 @@ class Assets:
             blue_surface = self._slice_cells(
                 col, row, width_cells=1, height_cells=1
             )
-            # black background transparent, so line art layered over the
-            # interior fill doesn't punch black squares into it
-            # (convert() drops per-pixel alpha, otherwise the colorkey
-            # would be ignored)
             blue_surface = blue_surface.convert()
             blue_surface.set_colorkey((0, 0, 0))
             self.maze_tiles[tile_kind] = blue_surface
@@ -359,14 +335,12 @@ class Assets:
                 )
                 continue
             col, row = coords
-            sheet_surface = self._slice_maze_cells(col, row)
+            sheet_surface = self._slice_sheet(self._maze_sheet, col, row, 1, 1)
             white_surface = self._make_white_tile(sheet_surface).convert()
             white_surface.set_colorkey((0, 0, 0))
             self.maze_white_tiles[tile_kind] = white_surface
         self.maze_tiles[TileKind.PILLAR] = self._dot_tile(self.WALL_LINE_COLOR)
-        self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile(
-            (255, 255, 255)
-        )
+        self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile((255, 255, 255))
         # T-junctions and the 4-way cross have no matching cell in the
         # sheet's double-line maze, so build them from the same row-4/col-4
         # line pixels the HORIZONTAL and VERTICAL slices use — one arm per

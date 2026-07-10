@@ -29,10 +29,6 @@ class Ghost:
         self.last_col = col
         self.spawn_row = row
         self.spawn_col = col
-        self.edible = False
-
-        self.active = True
-        self.respawn_turns = 0
 
     def find_path_bfs(
         self,
@@ -47,8 +43,7 @@ class Ghost:
         target = (target_row, target_col)
 
         queue: deque[tuple[int, int]] = deque([start])
-        came_from: dict[tuple[int, int],
-                        tuple[int, int] | None] = {start: None}
+        came_from: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
 
         moves = [
             (0, 1),  # right
@@ -91,11 +86,8 @@ class Ghost:
         return path
 
     def move_towards(
-            self,
-            target_row: int,
-            target_col: int,
-            map_data: MapData
-            ) -> None:
+        self, target_row: int, target_col: int, map_data: MapData
+    ) -> None:
         """
         Move one step towards the target using original Pac-Man style logic.
 
@@ -104,9 +96,6 @@ class Ghost:
         At a junction, each possible neighboring tile is compared by squared
         distance to the target, using a fixed tie-breaking order.
         """
-        if not self.active:
-            return
-
         next_pos = self._choose_pacman_step(target_row, target_col, map_data)
         if next_pos is None:
             self.move_random_allow_back(map_data)
@@ -156,10 +145,10 @@ class Ghost:
         # 2 forward choices == 3 total directions in the original game.
 
     def _choose_pacman_step(
-            self,
-            target_row: int,
-            target_col: int,
-            map_data: MapData,
+        self,
+        target_row: int,
+        target_col: int,
+        map_data: MapData,
     ) -> tuple[int, int] | None:
         """
         Choose the next grid cell using the original Pac-Man
@@ -175,7 +164,7 @@ class Ghost:
             next_row = self.row + current_direction[0]
             next_col = self.col + current_direction[1]
 
-            if not map_data .is_wall(next_row, next_col):
+            if not map_data.is_wall(next_row, next_col):
                 return next_row, next_col
 
         directions = self._valid_directions(map_data)
@@ -192,10 +181,7 @@ class Ghost:
             new_col = self.col + col_delta
             row_distance = new_row - target_row
             col_distance = new_col - target_col
-            distance = (
-                row_distance * row_distance
-                + col_distance * col_distance
-            )
+            distance = row_distance * row_distance + col_distance * col_distance
             if distance < best_distance:
                 best_distance = distance
                 best_direction = (row_delta, col_delta)
@@ -203,22 +189,17 @@ class Ghost:
         return self.row + best_direction[0], self.col + best_direction[1]
 
     def move_away(
-            self,
-            target_row: int,
-            target_col: int,
-            map_data: MapData
-            ) -> None:
+        self, target_row: int, target_col: int, map_data: MapData
+    ) -> None:
         """
         Move one step away from the player avoiding reverse BFS path chosen.
         """
 
-        if not self.active:
-            return
-
         avoid_pos: tuple[int, int] | None = None
 
         path = self.find_path_bfs(
-            target_row, target_col, self.row, self.col, map_data)
+            target_row, target_col, self.row, self.col, map_data
+        )
 
         if len(path) >= 2:
             avoid_pos = path[-2]
@@ -250,9 +231,6 @@ class Ghost:
 
     def move_random_allow_back(self, map_data: MapData) -> None:
         """Move randomly to any valid corridor, including previous cell."""
-        if not self.active:
-            return
-
         moves = DIRECTION_ORDER
 
         valid_moves: list[tuple[int, int]] = []
@@ -269,68 +247,6 @@ class Ghost:
             self.last_row = self.row
             self.last_col = self.col
             self.row, self.col = random.choice(valid_moves)
-
-    def move_random(self, map_data: MapData) -> None:
-        """Move randomly to a valid corridor when no path to target is found"""
-        if not self.active:
-            return
-
-        moves = DIRECTION_ORDER
-
-        valid_moves: list[tuple[int, int]] = []
-        back_pos = (self.last_row, self.last_col)
-
-        for row_delta, col_delta in moves:
-            new_row = self.row + row_delta
-            new_col = self.col + col_delta
-            new_pos = (new_row, new_col)
-            if map_data.is_wall(new_row, new_col):
-                continue
-            if new_pos == back_pos:
-                continue
-            valid_moves.append(new_pos)
-
-        if not valid_moves:
-            self.move_random_allow_back(map_data)
-            return
-
-        self.last_row = self.row
-        self.last_col = self.col
-        self.row, self.col = random.choice(valid_moves)
-
-    def start_respawn(self, delay_turns: int) -> None:
-        """Temporarily remove ghost before respawning at its corner."""
-        self.active = False
-        self.edible = False
-        self.respawn_turns = delay_turns
-        self.row = self.spawn_row
-        self.col = self.spawn_col
-        self.last_row = self.spawn_row  # last round should also be spawn place
-        self.last_col = self.spawn_col
-
-    def tick_respawn(self) -> None:
-        """Count down respawn turns and reactivate ghost when it reaches 0."""
-        if self.active:
-            return
-
-        self.respawn_turns -= 1
-        if self.respawn_turns <= 0:
-            self.active = True
-            self.respawn_turns = 0
-            self.row = self.spawn_row
-            self.col = self.spawn_col
-            self.last_row = self.spawn_row
-            self.last_col = self.spawn_col
-
-    def reset_to_spawn(self) -> None:
-        """Immediately reset ghost to its spawn position without delay."""
-        self.row = self.spawn_row
-        self.col = self.spawn_col
-        self.last_row = self.spawn_row
-        self.last_col = self.spawn_col
-        self.edible = False
-        self.active = True
-        self.respawn_turns = 0
 
     def get_chase_target(
         self,

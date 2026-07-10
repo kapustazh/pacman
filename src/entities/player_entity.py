@@ -1,11 +1,8 @@
-# [transition] SCRUM-35 — pygame sprite rewrite of wehan Player.
-
 from typing import ClassVar
-
 from pygame.sprite import Sprite
 from game.level import CellPos
-from sprites.sprites import AnimatedSprite
-from sprites.sprite_types import Direction
+from sprites.sprites import AnimatedSprite, lerp_center
+from sprites.sprite_types import Direction, RenderLayer
 
 
 class PlayerEntity(Sprite):
@@ -41,7 +38,7 @@ class PlayerEntity(Sprite):
         self._death_started_ms = 0
         self.death_finished = False
         self._moved_this_step = False
-        self.layer = 2  # z-order: actors draw above background/consumables
+        self.layer = RenderLayer.ACTOR
         self.image = animations_by_direction[direction].frame_at(0)
         self.rect = self.image.get_rect(center=center)
 
@@ -64,7 +61,9 @@ class PlayerEntity(Sprite):
         self.center = center
         self._moved_this_step = True
         if self.image is not None:
-            self.rect = self.image.get_rect(center=self._visual_center(1.0))
+            self.rect = self.image.get_rect(
+                center=lerp_center(self._prev_center, self.center, 1.0)
+            )
 
     def start_death(self, now_ms: int) -> None:
         """Start the death animation from the current position.
@@ -79,6 +78,18 @@ class PlayerEntity(Sprite):
             frame = self._death_animation.frames[0]
             self.image = frame
             self.rect = frame.get_rect(center=self.center)
+
+    def relocate(self, center: tuple[int, int]) -> None:
+        """Snap the sprite to a new pixel center after a display resize.
+
+        Args:
+            center: Updated pixel center on screen.
+        """
+        self.center = center
+        self._prev_center = center
+        rect = self.rect
+        if rect is not None:
+            rect.center = center
 
     def reset_after_death(
         self,
@@ -116,25 +127,9 @@ class PlayerEntity(Sprite):
         rect = self.rect
         if rect is None:
             return
-        center = self._visual_center(t)
+        center = lerp_center(self._prev_center, self.center, t)
         if rect.center != center:
             rect.center = center
-
-    def _visual_center(self, t: float) -> tuple[int, int]:
-        """Blend previous and current pixel centers for smooth motion.
-
-        Args:
-            t: Blend factor from 0.0 to 1.0.
-
-        Returns:
-            Interpolated (x, y) pixel center.
-        """
-        px, py = self._prev_center
-        cx, cy = self.center
-        return (
-            round(px + (cx - px) * t),
-            round(py + (cy - py) * t),
-        )
 
     def update(self, dt: float, now_ms: int) -> None:
         """Advance walk or death animation for the current frame.

@@ -7,7 +7,8 @@ from pygame.surface import Surface
 
 from core.context import GameContext
 from core.state import GameState, StateEnterData
-from states.text import ArcadeTextColor, draw_menu_row_highlight
+from rendering.widgets import draw_menu_row_highlight
+from states.text import ArcadeTextColor
 
 _KEY_COMMANDS: dict[int, str] = {
     pygame.K_UP: "up",

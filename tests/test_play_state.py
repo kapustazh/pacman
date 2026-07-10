@@ -1,7 +1,22 @@
 from __future__ import annotations
 
 from game.game_world import GameWorld
+from game.render_config import WorldRenderConfig
 from states.play_state import _cheat_labels
+
+
+def test_apply_render_config_recenters_world(game_world: GameWorld) -> None:
+    world = game_world
+    player = world._player
+    assert player is not None
+    original_center = player.center
+
+    render_config = WorldRenderConfig.centered(world.layout, (1280, 720))
+    world.apply_render_config(render_config)
+
+    assert player.center != original_center
+    assert player.center == render_config.cell_center(player.cell)
+    assert world._render_config == render_config
 
 
 def test_cheat_labels_empty_when_inactive() -> None:
@@ -51,7 +66,8 @@ def test_adjust_player_speed_clamps_and_speed_cheat_flag(
 
 
 def test_speed_cheat_does_not_accelerate_ghosts(game_world: GameWorld) -> None:
-    from game.game_world import update_ghost_movement, update_player_movement
+    from game.ghost_logic import update_ghost_movement
+    from game.world_player import update_player_movement
 
     world = game_world
     world.unfreeze_gameplay()

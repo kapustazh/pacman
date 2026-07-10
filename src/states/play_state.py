@@ -11,15 +11,12 @@ from pygame.surface import Surface
 from core.context import GameContext
 from core.state import GameState, StateEnterData
 from game.game_session import GameplayPhase, GameSession
-from game.game_world import (
-    GameWorld,
-    request_turn,
-    update_fruit_spawns,
-    update_ghost_movement,
-    update_player_movement,
-)
+from game.game_world import GameWorld
+from game.ghost_logic import update_ghost_movement
 from game.level import LevelLayout, load_level
 from game.render_config import MazeBounds, WorldRenderConfig
+from game.world_fruit import update_fruit_spawns
+from game.world_player import request_turn, update_player_movement
 from rendering.hud_overlay import HudOverlay
 from sprites.sprite_types import Direction
 from states.text import ArcadeTextColor
@@ -356,6 +353,21 @@ class PlayState(GameState):
         self._hud.draw(surface, self._session, self._maze_bounds)
         self._draw_cheat_message(surface, context)
 
+    def on_screen_resize(self, context: GameContext) -> None:
+        """Recompute maze bounds and world layout for the new screen size.
+
+        Args:
+            context: Shared game context with the updated screen surface.
+        """
+        if self._world is None:
+            return
+        render_config = WorldRenderConfig.centered(
+            self._world.layout,
+            context.screen.get_size(),
+        )
+        self._maze_bounds = render_config.maze_bounds(self._world.layout)
+        self._world.apply_render_config(render_config)
+
     def _draw_cheat_message(
         self, surface: Surface, context: GameContext
     ) -> None:
@@ -439,6 +451,7 @@ class PlayState(GameState):
             render_config,
             initial_score=initial_score,
             level_number=level_number,
+            level_max_time_s=int(config.get("level_max_time", 90)),
             pellet_points=int(config.get("points_per_pacgum", 10)),
             power_pellet_points=int(config.get("points_per_super_pacgum", 50)),
             ghost_points=int(config.get("points_per_ghost", 200)),

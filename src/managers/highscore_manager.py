@@ -104,14 +104,3 @@ class HighscoreManager:
         )
 
         return valid_scores[:10]
-
-    def print_highscores(self) -> None:
-        """Print highscores."""
-        print("=== HIGHSCORES ===")
-
-        if not self.highscores:
-            print("No highscores yet.")
-            return
-
-        for index, entry in enumerate(self.highscores, start=1):
-            print(f"{index}. {entry['name']} - {entry['score']}")

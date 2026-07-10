@@ -3,8 +3,8 @@
 from pygame.sprite import Sprite
 
 from game.level import CellPos
-from sprites.sprites import AnimatedSprite
-from sprites.sprite_types import GhostKind
+from sprites.sprites import AnimatedSprite, lerp_center
+from sprites.sprite_types import GhostKind, GhostMode, RenderLayer
 
 
 class GhostEntity(Sprite):
@@ -43,33 +43,36 @@ class GhostEntity(Sprite):
         self._frightened_animation = frightened_animation
         self._flash_animation = flash_animation or frightened_animation
         self._eyes_animation = eyes_animation or animation
-        self._frightened = False
-        self._flashing = False
-        self.returning = False
-        self.hidden = False
-        self.layer = 2  # z-order: actors draw above background/consumables
+        self.mode = GhostMode.NORMAL
+        self.layer = RenderLayer.ACTOR
         self.image = animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
 
     def set_frightened(self, frightened: bool, flashing: bool = False) -> None:
         """Switch between normal, frightened, and flashing appearance.
 
+        No-op while the ghost is EYES or HIDDEN: eyes always outrank
+        frightened/flashing in ``update()``, so a toggle mid-return trip
+        would never be visible anyway (``arrive_home`` re-applies it).
+
         Args:
             frightened: Whether the ghost is vulnerable to being eaten.
             flashing: Whether to alternate frightened and flash frames.
         """
-        self._frightened = frightened
-        self._flashing = flashing
+        if self.mode in (GhostMode.EYES, GhostMode.HIDDEN):
+            return
+        if not frightened:
+            self.mode = GhostMode.NORMAL
+        else:
+            self.mode = GhostMode.FLASHING if flashing else GhostMode.FRIGHTENED
 
     def start_returning_home(self) -> None:
         """Show eyes-only and begin travel back to the ghost house."""
-        self.returning = True
-        self._frightened = False
-        self._flashing = False
+        self.mode = GhostMode.EYES
 
     def arrive_home(self) -> None:
         """End the eyes-only trip and resume normal appearance."""
-        self.returning = False
+        self.mode = GhostMode.NORMAL
 
     def move_to(self, cell: CellPos, center: tuple[int, int]) -> None:
         """Advance the ghost one grid step and update the sprite rect.
@@ -81,7 +84,9 @@ class GhostEntity(Sprite):
         self.cell = cell
         self.center = center
         if self.image is not None:
-            self.rect = self.image.get_rect(center=self._visual_center(1.0))
+            self.rect = self.image.get_rect(
+                center=lerp_center(self._prev_center, self.center, 1.0)
+            )
 
     def begin_step(self) -> None:
         """Record the current center as the interpolation start point."""
@@ -96,25 +101,21 @@ class GhostEntity(Sprite):
         rect = self.rect
         if rect is None:
             return
-        center = self._visual_center(t)
+        center = lerp_center(self._prev_center, self.center, t)
         if rect.center != center:
             rect.center = center
 
-    def _visual_center(self, t: float) -> tuple[int, int]:
-        """Blend previous and current pixel centers for smooth motion.
+    def relocate(self, center: tuple[int, int]) -> None:
+        """Snap the sprite to a new pixel center after a display resize.
 
         Args:
-            t: Blend factor from 0.0 to 1.0.
-
-        Returns:
-            Interpolated (x, y) pixel center.
+            center: Updated pixel center on screen.
         """
-        px, py = self._prev_center
-        cx, cy = self.center
-        return (
-            round(px + (cx - px) * t),
-            round(py + (cy - py) * t),
-        )
+        self.center = center
+        self._prev_center = center
+        rect = self.rect
+        if rect is not None:
+            rect.center = center
 
     def respawn_at(self, cell: CellPos, center: tuple[int, int]) -> None:
         """Return the ghost to its home corner after being eaten.
@@ -127,10 +128,7 @@ class GhostEntity(Sprite):
         self.last_cell = cell
         self.center = center
         self._prev_center = center
-        self.hidden = False
-        self._frightened = False
-        self._flashing = False
-        self.returning = False
+        self.mode = GhostMode.NORMAL
         self.image = self._animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
 
@@ -141,18 +139,18 @@ class GhostEntity(Sprite):
             dt: Elapsed time since the last update in seconds.
             now_ms: Game clock time in milliseconds.
         """
-        if self.hidden:
+        if self.mode is GhostMode.HIDDEN:
             return
-        if self.returning:
+        if self.mode is GhostMode.EYES:
             animation = self._eyes_animation
-        elif self._frightened and self._flashing:
+        elif self.mode is GhostMode.FLASHING:
             toggle = (now_ms // self.FLASH_INTERVAL_MS) % 2
             animation = (
                 self._flash_animation
                 if toggle == 0
                 else self._frightened_animation
             )
-        elif self._frightened:
+        elif self.mode is GhostMode.FRIGHTENED:
             animation = self._frightened_animation
         else:
             animation = self._animation

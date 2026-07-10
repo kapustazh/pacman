@@ -16,7 +16,7 @@ from entities.ghost_map_adapter import (
     next_flee_step,
     next_return_step,
 )
-from game.render_config import cell_center
+from sprites.sprite_types import GhostMode
 
 if TYPE_CHECKING:
     from game.game_world import GameWorld
@@ -41,10 +41,10 @@ def move_ghosts(world: GameWorld) -> None:
         world._ghost_step_count % world.FRIGHTENED_GHOST_SPEED_DIVISOR == 0
     )
     for kind, ghost in world._ghosts.items():
-        if ghost.hidden:
+        if ghost.mode is GhostMode.HIDDEN:
             continue
         home = world._ghost_home.get(kind, ghost.cell)
-        if ghost.returning:
+        if ghost.mode is GhostMode.EYES:
             for _ in range(2):  # eyes fly home at double speed
                 if ghost.cell == home:
                     break
@@ -52,7 +52,7 @@ def move_ghosts(world: GameWorld) -> None:
                 if step is None:
                     break
                 ghost.last_cell = ghost.cell
-                ghost.move_to(step, cell_center(world._render_config, step))
+                ghost.move_to(step, world._render_config.cell_center(step))
             if ghost.cell == home:
                 ghost.arrive_home()
                 if world.frightened:
@@ -88,7 +88,37 @@ def move_ghosts(world: GameWorld) -> None:
         if step is None:
             continue
         ghost.last_cell = ghost.cell
-        ghost.move_to(step, cell_center(world._render_config, step))
+        ghost.move_to(step, world._render_config.cell_center(step))
+
+
+def _begin_ghost_visual_step(world: GameWorld) -> None:
+    """Start visual interpolation for every visible ghost.
+
+    Args:
+        world: Active game world.
+    """
+    for ghost in world._ghosts.values():
+        if ghost.mode is not GhostMode.HIDDEN:
+            ghost.begin_step()
+
+
+def update_ghost_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
+    """Advance ghosts on their fixed grid step while gameplay is active.
+
+    Args:
+        world: Active game world.
+        dt_s: Elapsed time in seconds since the last update.
+        now_ms: Current timestamp in milliseconds.
+    """
+    if world.frozen or world._player is None or world._player.dying:
+        return
+    world._step_now_ms = now_ms
+    world._ghost_step_accumulator_ms += dt_s * 1000.0
+    while world._ghost_step_accumulator_ms >= world.PLAYER_STEP_MS:
+        world._ghost_step_accumulator_ms -= world.PLAYER_STEP_MS
+        _begin_ghost_visual_step(world)
+        move_ghosts(world)
+        resolve_actor_collisions(world)
 
 
 def activate_frightened_mode(world: GameWorld) -> None:
@@ -101,7 +131,7 @@ def activate_frightened_mode(world: GameWorld) -> None:
     world._frightened_until_ms = now_ms + world.FRIGHTENED_DURATION_MS
     world.frightened = True
     for ghost in world._ghosts.values():
-        if not ghost.hidden:
+        if ghost.mode is not GhostMode.HIDDEN:
             ghost.set_frightened(True)
 
 
@@ -116,7 +146,7 @@ def update_frightened_state(world: GameWorld, now_ms: int) -> None:
     world.frightened = remaining > 0
     flashing = world.frightened and remaining <= world.FRIGHTENED_FLASH_MS
     for ghost in world._ghosts.values():
-        if not ghost.hidden:
+        if ghost.mode is not GhostMode.HIDDEN:
             ghost.set_frightened(world.frightened, flashing)
 
 
@@ -129,11 +159,11 @@ def resolve_actor_collisions(world: GameWorld) -> None:
     if world._player is None or world._player.dying:
         return
     for ghost in world._ghosts.values():
-        if ghost.hidden or ghost.returning:
+        if ghost.mode in (GhostMode.HIDDEN, GhostMode.EYES):
             continue
         if ghost.cell != world._player.cell:
             continue
-        if world.frightened:
+        if ghost.mode in (GhostMode.FRIGHTENED, GhostMode.FLASHING):
             from game.game_world import add_score_popup
 
             world.score += world.ghost_points
