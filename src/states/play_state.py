@@ -353,6 +353,21 @@ class PlayState(GameState):
         self._hud.draw(surface, self._session, self._maze_bounds)
         self._draw_cheat_message(surface, context)
 
+    def on_screen_resize(self, context: GameContext) -> None:
+        """Recompute maze bounds and world layout for the new screen size.
+
+        Args:
+            context: Shared game context with the updated screen surface.
+        """
+        if self._world is None:
+            return
+        render_config = WorldRenderConfig.centered(
+            self._world.layout,
+            context.screen.get_size(),
+        )
+        self._maze_bounds = render_config.maze_bounds(self._world.layout)
+        self._world.apply_render_config(render_config)
+
     def _draw_cheat_message(
         self, surface: Surface, context: GameContext
     ) -> None:

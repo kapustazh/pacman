@@ -50,6 +50,15 @@ class PauseState(GameState):
             rendered = text.render(line, color, scale)
             self._line_surfaces.append((rendered, y))
 
+    def on_screen_resize(self, context: GameContext) -> None:
+        """Rebuild the overlay for the new display size.
+
+        Args:
+            context: Shared game context with the updated screen surface.
+        """
+        self.leave(context)
+        self.enter(context)
+
     def leave(self, context: GameContext) -> None:
         """Release cached overlay and text surfaces.
 

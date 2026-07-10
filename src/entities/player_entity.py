@@ -79,6 +79,18 @@ class PlayerEntity(Sprite):
             self.image = frame
             self.rect = frame.get_rect(center=self.center)
 
+    def relocate(self, center: tuple[int, int]) -> None:
+        """Snap the sprite to a new pixel center after a display resize.
+
+        Args:
+            center: Updated pixel center on screen.
+        """
+        self.center = center
+        self._prev_center = center
+        rect = self.rect
+        if rect is not None:
+            rect.center = center
+
     def reset_after_death(
         self,
         cell: CellPos,

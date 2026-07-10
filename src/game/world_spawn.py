@@ -33,6 +33,7 @@ def spawn_from_layout(world: GameWorld) -> None:
             world._catalog.wall_fill,
             world._catalog.wall_fill_white,
             cfg.cell_center(pos),
+            pos,
         )
         world._wall_sprites.append(fill)
         world.all_sprites.add(fill, layer=fill.layer)
@@ -48,6 +49,7 @@ def spawn_from_layout(world: GameWorld) -> None:
                 blue_surface,
                 white_surface,
                 cfg.cell_center(pos),
+                pos,
             )
             world._wall_sprites.append(wall)
             world.all_sprites.add(wall, layer=wall.layer)

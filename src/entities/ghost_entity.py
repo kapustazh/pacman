@@ -105,6 +105,18 @@ class GhostEntity(Sprite):
         if rect.center != center:
             rect.center = center
 
+    def relocate(self, center: tuple[int, int]) -> None:
+        """Snap the sprite to a new pixel center after a display resize.
+
+        Args:
+            center: Updated pixel center on screen.
+        """
+        self.center = center
+        self._prev_center = center
+        rect = self.rect
+        if rect is not None:
+            rect.center = center
+
     def respawn_at(self, cell: CellPos, center: tuple[int, int]) -> None:
         """Return the ghost to its home corner after being eaten.
 

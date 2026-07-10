@@ -30,3 +30,14 @@ class PelletEntity(Sprite):
         self.layer = RenderLayer.CONSUMABLE
         self.image = image
         self.rect = image.get_rect(center=center)
+
+    def relocate(self, center: tuple[int, int]) -> None:
+        """Move the pellet to a new pixel center after a display resize.
+
+        Args:
+            center: Updated pixel center on screen.
+        """
+        self.center = center
+        rect = self.rect
+        if rect is not None:
+            rect.center = center

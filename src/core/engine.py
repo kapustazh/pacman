@@ -125,3 +125,9 @@ class GameEngine:
             )
         self._fullscreen = not self._fullscreen
         self._context = replace(self._context, screen=screen)
+        self._notify_screen_resize()
+
+    def _notify_screen_resize(self) -> None:
+        """Tell active scenes to refresh resolution-dependent layout."""
+        for state in self._scene_manager.stack_bottom_up():
+            state.on_screen_resize(self._context)

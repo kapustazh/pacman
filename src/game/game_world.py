@@ -117,6 +117,31 @@ class GameWorld:
         spawn_from_layout(self)
 
     @property
+    def layout(self) -> LevelLayout:
+        """Return the immutable level layout backing this world."""
+        return self._layout
+
+    def apply_render_config(self, render_config: WorldRenderConfig) -> None:
+        """Recompute sprite positions after the display size changes.
+
+        Args:
+            render_config: Updated grid-to-pixel mapping for the screen.
+        """
+        self._render_config = render_config
+        if self._player is not None:
+            self._player.relocate(render_config.cell_center(self._player.cell))
+        for ghost in self._ghosts.values():
+            ghost.relocate(render_config.cell_center(ghost.cell))
+        for pellet in self._pellets.values():
+            pellet.relocate(render_config.cell_center(pellet.cell))
+        if self._fruit is not None:
+            self._fruit.relocate(render_config.cell_center(self._fruit.cell))
+        for wall in self._wall_sprites:
+            wall.relocate(render_config.cell_center(wall.cell))
+        self.score_popups.clear()
+        self._sync_visual_centers()
+
+    @property
     def all_consumables_cleared(self) -> bool:
         """Return whether all pellets and power pellets are gone.
 
