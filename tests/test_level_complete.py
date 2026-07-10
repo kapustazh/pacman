@@ -286,6 +286,16 @@ def test_maze_white_tiles_loaded_for_all_tile_kinds() -> None:
         assert blue is not white
 
 
+def test_pillar_white_tile_flashes_white_not_wall_line_color() -> None:
+    assets = Assets()
+    assets.load()
+    blue = assets.maze_tiles[TileKind.PILLAR]
+    white = assets.maze_white_tiles[TileKind.PILLAR]
+    cx = blue.get_width() // 2
+    assert blue.get_at((cx, cx))[:3] == Assets.WALL_LINE_COLOR
+    assert white.get_at((cx, cx))[:3] == (255, 255, 255)
+
+
 def test_white_tiles_use_maze_parts_coords_not_tile_kind_coords() -> None:
     """White flash must slice maze_parts with MAZE_PARTS_WHITE_KIND_COORDS."""
     assets = Assets()
