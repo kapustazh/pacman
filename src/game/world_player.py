@@ -89,9 +89,9 @@ def update_player_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
     if world.frozen or world._player is None or world._player.dying:
         return
     world._step_now_ms = now_ms
-    world._step_accumulator_ms += dt_s * 1000.0
-    while world._step_accumulator_ms >= world.player_step_ms:
-        world._step_accumulator_ms -= world.player_step_ms
+    world._ghost_step_elapsed_ms += dt_s * 1000.0
+    while world._ghost_step_elapsed_ms >= world.player_step_ms:
+        world._ghost_step_elapsed_ms -= world.player_step_ms
         _begin_player_visual_step(world)
         _auto_step(world)
         resolve_actor_collisions(world)

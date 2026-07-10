@@ -25,7 +25,7 @@ class MapData:
 
     def is_wall(self, row: int, col: int) -> bool:
         """Return whether a grid cell is out of bounds or a wall tile."""
-        return self._layout.is_wall(CellPos(row, col))
+        return bool(self._layout.is_wall(CellPos(row, col)))
 
 
 @dataclass

@@ -18,3 +18,11 @@ dev = [
 
 [tool.uv.sources]
 mazegenerator = { path = "packages/mazegenerator-00001-py3-none-any.whl" }
+
+[tool.mypy]
+mypy_path = "src"
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = "mazegenerator.*"
+ignore_missing_imports = true
