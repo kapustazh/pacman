@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-import threading
 
 import pygame
 from pygame.surface import Surface
@@ -21,9 +20,6 @@ from rendering.hud_overlay import HudOverlay
 from sprites.sprite_types import Direction
 from states.text import ArcadeTextColor
 
-LOADING_TEXT_Y: int = 400
-LOADING_PACMAN_Y: int = 440
-LOADING_DOT_CYCLE_MS: int = 400
 CHEAT_MESSAGE_MARGIN: int = 12
 CHEAT_MESSAGE_SCALE: int = 2
 
@@ -55,17 +51,13 @@ class PlayState(GameState):
     """Active gameplay scene backed by GameWorld and GameSession."""
 
     def __init__(self) -> None:
-        """Initialize empty world, session, and loading state."""
+        """Initialize empty world and session."""
         self._world: GameWorld | None = None
         self._session: GameSession | None = None
         self._level_index: int = 0
         self._level_seed: int = 42
         self._hud: HudOverlay | None = None
         self._maze_bounds: MazeBounds | None = None
-        self._loading_thread: threading.Thread | None = None
-        self._pending_layout: LevelLayout | None = None
-        self._loading_error: BaseException | None = None
-        self._load_id: int = 0
 
     def enter(
         self,
@@ -98,7 +90,7 @@ class PlayState(GameState):
         )
         self._level_index = 0
         self._level_seed = int(context.config.get("seed", 42))
-        self._start_loading(context)
+        self._reload_world(context)
 
     def leave(self, context: GameContext) -> None:
         """Tear down world resources and reset play state.
@@ -114,10 +106,6 @@ class PlayState(GameState):
         self._level_seed = 42
         self._hud = None
         self._maze_bounds = None
-        self._load_id += 1
-        self._loading_thread = None
-        self._pending_layout = None
-        self._loading_error = None
 
     def handle_events(
         self,
@@ -181,16 +169,13 @@ class PlayState(GameState):
                 request_turn(self._world, direction)
 
     def update(self, dt: float, now_ms: int, context: GameContext) -> None:
-        """Advance loading, gameplay phase logic, and world animation.
+        """Advance gameplay phase logic and world animation.
 
         Args:
             dt: Elapsed seconds since the last frame.
             now_ms: Monotonic clock in milliseconds.
             context: Shared game context for scene transitions.
         """
-        if self._loading_thread is not None:
-            self._poll_loading(context, now_ms)
-            return
         if self._session is None or self._world is None:
             return
 
@@ -331,16 +316,12 @@ class PlayState(GameState):
             self._open_end_screen(context, won=False)
 
     def draw(self, surface: Surface, context: GameContext) -> None:
-        """Draw loading UI or the maze, HUD, and cheat overlay.
+        """Draw the maze, HUD, and cheat overlay.
 
         Args:
             surface: Destination draw target.
             context: Shared game context with assets and text renderer.
         """
-        if self._loading_thread is not None:
-            self._draw_loading(surface, context)
-            self._draw_cheat_message(surface, context)
-            return
         if (
             self._world is None
             or self._session is None
@@ -399,27 +380,6 @@ class PlayState(GameState):
         )
         surface.blit(rendered, rect)
 
-    def _draw_loading(self, surface: Surface, context: GameContext) -> None:
-        """Show animated loading text while the maze generates.
-
-        Args:
-            surface: Destination draw target.
-            context: Shared game context with assets and text renderer.
-        """
-        now_ms = pygame.time.get_ticks()
-        dots = "." * (1 + (now_ms // LOADING_DOT_CYCLE_MS) % 3)
-        context.text.draw_centered_arcade_text(
-            surface,
-            f"GENERATING MAZE{dots}",
-            LOADING_TEXT_Y,
-            ArcadeTextColor.YELLOW,
-        )
-        frame = context.assets.pacman[Direction.RIGHT].frame_at(now_ms)
-        rect = frame.get_rect(
-            center=(surface.get_width() // 2, LOADING_PACMAN_Y)
-        )
-        surface.blit(frame, rect)
-
     def _sync_session_score(self) -> None:
         """Mirror world score and high score into the session."""
         if self._session is None or self._world is None:
@@ -460,7 +420,7 @@ class PlayState(GameState):
             self._hud.set_fruit_icon(self._world.level_fruit_surface)
 
     def _reload_world(self, context: GameContext) -> None:
-        """Tear down the current world and start loading the next level.
+        """Tear down the current world and load the next level.
 
         Args:
             context: Shared game context for level loading.
@@ -468,59 +428,13 @@ class PlayState(GameState):
         if self._world is not None:
             self._world.teardown()
             self._world = None
-        self._start_loading(context)
-
-    def _start_loading(self, context: GameContext) -> None:
-        """Generate the maze on a background thread.
-
-        Args:
-            context: Shared game context with level config.
-        """
-        self._load_id += 1
-        load_id = self._load_id
-        self._pending_layout = None
-        self._loading_error = None
-        config = context.config
-        level_index = self._level_index
-        seed = self._level_seed
-
-        def generate() -> None:
-            """Load level layout on the worker thread."""
-            try:
-                layout = load_level(config, level_index, seed)
-            except BaseException as exc:  # noqa: BLE001 - surfaced below
-                if load_id != self._load_id:
-                    return
-                self._loading_error = exc
-                return
-            if load_id != self._load_id:
-                return
-            self._pending_layout = layout
-
-        self._loading_thread = threading.Thread(target=generate, daemon=True)
-        self._loading_thread.start()
-
-    def _poll_loading(self, context: GameContext, now_ms: int) -> None:
-        """Finish world setup after background level generation completes.
-
-        Args:
-            context: Shared game context for world construction.
-            now_ms: Monotonic clock used to enter the ready phase.
-
-        Raises:
-            BaseException: Re-raises any error captured during generation.
-        """
-        if self._loading_thread is None or self._loading_thread.is_alive():
-            return
-        self._loading_thread = None
-        if self._loading_error is not None:
-            raise self._loading_error
-        if self._pending_layout is None or self._session is None:
-            return
-        self._build_world(context, self._pending_layout)
-        self._pending_layout = None
-        self._session.reset_level_timer()
-        self._session.enter_ready(now_ms)
+        layout = load_level(
+            context.config, self._level_index, self._level_seed
+        )
+        self._build_world(context, layout)
+        if self._session is not None:
+            self._session.reset_level_timer()
+            self._session.enter_ready(pygame.time.get_ticks())
 
     def _handle_life_lost(self, now_ms: int) -> None:
         """Freeze play and enter life-lost or game-over phase.

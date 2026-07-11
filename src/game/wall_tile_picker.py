@@ -14,10 +14,10 @@ BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
     (True, False, True, False): TileKind.CORNER_BR,
     (False, False, True, True): TileKind.HORIZONTAL,
     (True, True, False, False): TileKind.VERTICAL,
-    (False, False, False, True): TileKind.CORNER_TL,
-    (False, False, True, False): TileKind.CORNER_TR,
-    (True, False, False, False): TileKind.CORNER_BL,
-    (False, True, False, False): TileKind.CORNER_TL,
+    (False, False, False, True): TileKind.HORIZONTAL,
+    (False, False, True, False): TileKind.HORIZONTAL,
+    (True, False, False, False): TileKind.VERTICAL,
+    (False, True, False, False): TileKind.VERTICAL,
     # Three-wall-neighbour cells are T-junctions; four are a cross. These
     # used to drop the odd branch (rendering a plain straight) or fall back
     # to a solid block, which left gaps and stray squares in the maze.

@@ -44,11 +44,12 @@ class GameWorld:
     PLAYER_STEP_MS_MIN: ClassVar[int] = 60
     PLAYER_STEP_MS_MAX: ClassVar[int] = 360
     PLAYER_SPEED_STEP_MS: ClassVar[int] = 20
+    GHOST_SPEED_STEP_MS: ClassVar[int] = 10
     DEFAULT_TRAVEL_DIRECTION: ClassVar[Direction] = Direction.RIGHT
     PELLET_POINTS: ClassVar[int] = 10
     POWER_PELLET_POINTS: ClassVar[int] = 50
     GHOST_POINTS: ClassVar[int] = 200
-    FRIGHTENED_DURATION_MS: ClassVar[int] = 6000
+    FRIGHTENED_DURATION_MS: ClassVar[int] = 9000
     FRIGHTENED_FLASH_MS: ClassVar[int] = 2000
     FRIGHTENED_GHOST_SPEED_DIVISOR: ClassVar[int] = 2
     SCORE_POPUP_DURATION_MS: ClassVar[int] = 1000
@@ -96,14 +97,16 @@ class GameWorld:
         self._player: PlayerEntity | None = None
         self._ghosts: dict[GhostKind, GhostEntity] = {}
         self._ghost_home: dict[GhostKind, CellPos] = {}
-        self._frightened_until_ms: int = 0
-        self.frightened: bool = False
         self._scatter_mode: bool = False
         self._mode_started_ms: int = pygame.time.get_ticks()
         self._pause_until_ms: int = 0
         self._invincible: bool = False
         self._ghosts_frozen: bool = False
-        self._player_step_ms: int = self.PLAYER_STEP_MS
+        self._player_step_ms: int = max(
+            self.PLAYER_STEP_MS_MIN,
+            self.PLAYER_STEP_MS
+            - (level_number - 1) * self.GHOST_SPEED_STEP_MS,
+        )
         self._fruit: PelletEntity | None = None
         self._fruit_spawn_index: int = 0
         self._fruit_kill_at_ms: int = 0
@@ -342,8 +345,6 @@ class GameWorld:
 
     def respawn_ghosts(self) -> None:
         """Return every ghost to its home cell and clear frightened mode."""
-        self._frightened_until_ms = 0
-        self.frightened = False
         for kind, ghost in self._ghosts.items():
             home = self._ghost_home[kind]
             center = self._render_config.cell_center(home)
@@ -369,8 +370,6 @@ class GameWorld:
         self.frozen = False
         self._wall_flash_white = False
         self._wall_sprites.clear()
-        self._frightened_until_ms = 0
-        self.frightened = False
         self._fruit_spawn_index = 0
         self._fruit_kill_at_ms = 0
 

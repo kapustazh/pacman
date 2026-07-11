@@ -48,6 +48,9 @@ class GhostEntity(Sprite):
         self.image = animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
         self._step_elapsed_ms: float = 0.0
+        # Per-ghost frightened deadline: an energizer frightens each ghost
+        # individually, and a respawn clears only that ghost's timer.
+        self.frightened_until_ms: int = 0
 
     def set_frightened(self, frightened: bool, flashing: bool = False) -> None:
         """Switch between normal, frightened, and flashing appearance.
@@ -133,6 +136,7 @@ class GhostEntity(Sprite):
         self._prev_center = center
         self._step_elapsed_ms = 0.0
         self.mode = GhostMode.NORMAL
+        self.frightened_until_ms = 0
         self.image = self._animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
 

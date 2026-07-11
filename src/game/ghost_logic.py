@@ -65,10 +65,8 @@ def move_one_ghost(
         if ghost.cell == home or step is None:
             center = world._render_config.cell_center(home)
             ghost.respawn_at(home, center)
-            if world.frightened:
-                ghost.set_frightened(True)
         return
-    if world.frightened:
+    if ghost.mode in (GhostMode.FRIGHTENED, GhostMode.FLASHING):
         step = next_flee_step(
             ghost.cell,
             ghost.last_cell,
@@ -129,30 +127,34 @@ def update_ghost_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
 def activate_frightened_mode(world: GameWorld) -> None:
     """Start frightened mode for all visible ghosts after a power pellet.
 
+    Each ghost gets its own deadline: ghosts already eaten (eyes) are not
+    re-frightened, and a later respawn only clears that ghost's timer.
+
     Args:
         world: Active game world.
     """
     now_ms = pygame.time.get_ticks()
-    world._frightened_until_ms = now_ms + world.FRIGHTENED_DURATION_MS
-    world.frightened = True
     for ghost in world._ghosts.values():
-        if ghost.mode is not GhostMode.HIDDEN:
-            ghost.set_frightened(True)
+        if ghost.mode in (GhostMode.HIDDEN, GhostMode.EYES):
+            continue
+        ghost.frightened_until_ms = now_ms + world.FRIGHTENED_DURATION_MS
+        ghost.set_frightened(True)
 
 
 def update_frightened_state(world: GameWorld, now_ms: int) -> None:
-    """Refresh frightened and end-of-mode flash state for all ghosts.
+    """Refresh each ghost's frightened/flash state from its own deadline.
 
     Args:
         world: Active game world.
         now_ms: Current timestamp in milliseconds.
     """
-    remaining = world._frightened_until_ms - now_ms
-    world.frightened = remaining > 0
-    flashing = world.frightened and remaining <= world.FRIGHTENED_FLASH_MS
     for ghost in world._ghosts.values():
-        if ghost.mode is not GhostMode.HIDDEN:
-            ghost.set_frightened(world.frightened, flashing)
+        if ghost.mode in (GhostMode.HIDDEN, GhostMode.EYES):
+            continue
+        remaining = ghost.frightened_until_ms - now_ms
+        frightened = remaining > 0
+        flashing = frightened and remaining <= world.FRIGHTENED_FLASH_MS
+        ghost.set_frightened(frightened, flashing)
 
 
 def resolve_actor_collisions(world: GameWorld) -> None:
