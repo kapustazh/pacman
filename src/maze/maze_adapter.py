@@ -64,10 +64,10 @@ class MazeAdaptor:
         from mazegenerator.mazegenerator import MazeGenerator
 
         generator = MazeGenerator(
-            size=(31,31),
+            size=(31, 31),
             perfect=False,
             seed=seed,
             entry_cell=(0, 0),
-            exit_cell=(0,1)
+            exit_cell=(0, 1)
         )
         return self.convert_maze(generator.maze)
