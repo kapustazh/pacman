@@ -43,7 +43,9 @@ class Ghost:
         target = (target_row, target_col)
 
         queue: deque[tuple[int, int]] = deque([start])
-        came_from: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+        came_from: dict[tuple[int, int], tuple[int, int] | None] = {
+            start: None
+        }
 
         moves = [
             (0, 1),  # right
@@ -181,7 +183,9 @@ class Ghost:
             new_col = self.col + col_delta
             row_distance = new_row - target_row
             col_distance = new_col - target_col
-            distance = row_distance * row_distance + col_distance * col_distance
+            distance = (
+                row_distance * row_distance + col_distance * col_distance
+            )
             if distance < best_distance:
                 best_distance = distance
                 best_direction = (row_delta, col_delta)

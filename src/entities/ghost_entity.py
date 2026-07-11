@@ -47,6 +47,7 @@ class GhostEntity(Sprite):
         self.layer = RenderLayer.ACTOR
         self.image = animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)
+        self._step_elapsed_ms: float = 0.0
 
     def set_frightened(self, frightened: bool, flashing: bool = False) -> None:
         """Switch between normal, frightened, and flashing appearance.
@@ -64,7 +65,9 @@ class GhostEntity(Sprite):
         if not frightened:
             self.mode = GhostMode.NORMAL
         else:
-            self.mode = GhostMode.FLASHING if flashing else GhostMode.FRIGHTENED
+            self.mode = (
+                GhostMode.FLASHING if flashing else GhostMode.FRIGHTENED
+            )
 
     def start_returning_home(self) -> None:
         """Show eyes-only and begin travel back to the ghost house."""
@@ -128,6 +131,7 @@ class GhostEntity(Sprite):
         self.last_cell = cell
         self.center = center
         self._prev_center = center
+        self._step_elapsed_ms = 0.0
         self.mode = GhostMode.NORMAL
         self.image = self._animation.frame_at(0)
         self.rect = self.image.get_rect(center=center)

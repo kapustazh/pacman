@@ -10,100 +10,97 @@ from typing import TYPE_CHECKING
 
 import pygame
 
+from entities.ghost_entity import GhostEntity
 from entities.ghost_map_adapter import (
     chase_target,
     next_chase_step,
     next_flee_step,
     next_return_step,
 )
-from sprites.sprite_types import GhostMode
+from sprites.sprite_types import GhostKind, GhostMode
 
 if TYPE_CHECKING:
     from game.game_world import GameWorld
 
 
-def move_ghosts(world: GameWorld) -> None:
-    """Advance every visible ghost one grid step.
+def ghost_step_ms(world: GameWorld, ghost: GhostEntity) -> int:
+    """Return the grid-step interval for a ghost based on its mode.
 
-    Frightened ghosts move at a reduced rate so Pac-Man can catch them;
-    eaten ghosts returning home are not slowed.
+    Frightened ghosts use a longer interval (smooth half speed). Eyes use a
+    shorter interval (smooth double speed). Normal/scatter use the default.
+    """
+    if ghost.mode is GhostMode.EYES:
+        return int(world.PLAYER_STEP_MS // 2)
+    if ghost.mode in (GhostMode.FRIGHTENED, GhostMode.FLASHING):
+        return int(world.PLAYER_STEP_MS * world.FRIGHTENED_GHOST_SPEED_DIVISOR)
+    return int(world.PLAYER_STEP_MS)
+
+
+def move_one_ghost(
+    world: GameWorld, kind: GhostKind, ghost: GhostEntity
+) -> None:
+    """Advance one ghost by a single grid step.
 
     Args:
         world: Active game world.
+        kind: Ghost personality key.
+        ghost: Ghost sprite to move.
     """
     if world._player is None or world._ghosts_frozen:
         return
+    if ghost.mode is GhostMode.HIDDEN:
+        return
     layout = world._layout
     player_cell = world._player.cell
-    fleeing = world.frightened
-    world._ghost_step_count += 1
-    frightened_step_due = (
-        world._ghost_step_count % world.FRIGHTENED_GHOST_SPEED_DIVISOR == 0
-    )
-    for kind, ghost in world._ghosts.items():
-        if ghost.mode is GhostMode.HIDDEN:
-            continue
-        home = world._ghost_home.get(kind, ghost.cell)
-        if ghost.mode is GhostMode.EYES:
-            for _ in range(2):  # eyes fly home at double speed
-                if ghost.cell == home:
-                    break
-                step = next_return_step(ghost.cell, home, layout)
-                if step is None:
-                    break
-                ghost.last_cell = ghost.cell
-                ghost.move_to(step, world._render_config.cell_center(step))
-            if ghost.cell == home:
-                ghost.arrive_home()
-                if world.frightened:
-                    ghost.set_frightened(True)
-            continue
-        if fleeing:
-            if not frightened_step_due:
-                continue
-            step = next_flee_step(
-                ghost.cell,
-                ghost.last_cell,
-                player_cell,
-                layout,
-            )
+    home = world._ghost_home.get(kind, ghost.cell)
+    if ghost.mode is GhostMode.EYES:
+        step = (
+            next_return_step(ghost.cell, home, layout)
+            if ghost.cell != home
+            else None
+        )
+        if step is not None:
+            ghost.last_cell = ghost.cell
+            ghost.move_to(step, world._render_config.cell_center(step))
+        if ghost.cell == home or step is None:
+            center = world._render_config.cell_center(home)
+            ghost.respawn_at(home, center)
+            if world.frightened:
+                ghost.set_frightened(True)
+        return
+    if world.frightened:
+        step = next_flee_step(
+            ghost.cell,
+            ghost.last_cell,
+            player_cell,
+            layout,
+        )
+    else:
+        if world._scatter_mode:
+            target = home
         else:
-            if world._scatter_mode:
-                target = home
-            else:
-                target = chase_target(
-                    kind,
-                    player_cell,
-                    world._travel_direction,
-                    ghost.cell,
-                    home,
-                    layout,
-                )
-            step = next_chase_step(
+            target = chase_target(
+                kind,
+                player_cell,
+                world._travel_direction,
                 ghost.cell,
-                ghost.last_cell,
-                target,
+                home,
                 layout,
             )
-        if step is None:
-            continue
-        ghost.last_cell = ghost.cell
-        ghost.move_to(step, world._render_config.cell_center(step))
-
-
-def _begin_ghost_visual_step(world: GameWorld) -> None:
-    """Start visual interpolation for every visible ghost.
-
-    Args:
-        world: Active game world.
-    """
-    for ghost in world._ghosts.values():
-        if ghost.mode is not GhostMode.HIDDEN:
-            ghost.begin_step()
+        step = next_chase_step(
+            ghost.cell,
+            ghost.last_cell,
+            target,
+            layout,
+        )
+    if step is None:
+        return
+    ghost.last_cell = ghost.cell
+    ghost.move_to(step, world._render_config.cell_center(step))
 
 
 def update_ghost_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
-    """Advance ghosts on their fixed grid step while gameplay is active.
+    """Advance ghosts on per-mode step clocks while gameplay is active.
 
     Args:
         world: Active game world.
@@ -113,11 +110,19 @@ def update_ghost_movement(world: GameWorld, dt_s: float, now_ms: int) -> None:
     if world.frozen or world._player is None or world._player.dying:
         return
     world._step_now_ms = now_ms
-    world._ghost_step_accumulator_ms += dt_s * 1000.0
-    while world._ghost_step_accumulator_ms >= world.PLAYER_STEP_MS:
-        world._ghost_step_accumulator_ms -= world.PLAYER_STEP_MS
-        _begin_ghost_visual_step(world)
-        move_ghosts(world)
+    dt_ms = dt_s * 1000.0
+    moved = False
+    for kind, ghost in world._ghosts.items():
+        if ghost.mode is GhostMode.HIDDEN:
+            continue
+        ghost._step_elapsed_ms += dt_ms
+        step_ms = ghost_step_ms(world, ghost)
+        while ghost._step_elapsed_ms >= step_ms:
+            ghost._step_elapsed_ms -= step_ms
+            ghost.begin_step()
+            move_one_ghost(world, kind, ghost)
+            moved = True
+    if moved:
         resolve_actor_collisions(world)
 
 
