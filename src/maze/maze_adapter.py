@@ -27,7 +27,7 @@ class MazeAdaptor:
             return self.convert_maze(generator.maze)
         except Exception as Error:
             print(f"Warning: maze generator failed: {Error}")
-            return self.fallback_grid()
+            return self.fallback_grid(seed)
 
     def convert_maze(self, maze: list[list[int]]) -> list[list[TileType]]:
         """Convert wall-code maze into TileType grid."""
@@ -56,17 +56,18 @@ class MazeAdaptor:
                     grid[grid_row][grid_col - 1] = TileType.EMPTY
         return grid
 
-    def fallback_grid(self) -> list[list[TileType]]:
-        """Return a safe fallback grid if generation fails."""
-        return [
-            [TileType.WALL, TileType.WALL, TileType.WALL,
-             TileType.WALL, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.EMPTY,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.PACGUM, TileType.SUPER_PACGUM,
-             TileType.PACGUM, TileType.WALL],
-            [TileType.WALL, TileType.WALL, TileType.WALL,
-             TileType.WALL, TileType.WALL],
-        ]
+    def fallback_grid(
+        self,
+        seed: int,
+    ) -> list[list[TileType]]:
+        """Return a safe fallback maze using assigned package"""
+        from mazegenerator.mazegenerator import MazeGenerator
+
+        generator = MazeGenerator(
+            size=(31,31),
+            perfect=False,
+            seed=seed,
+            entry_cell=(0, 0),
+            exit_cell=(0,1)
+        )
+        return self.convert_maze(generator.maze)
