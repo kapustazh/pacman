@@ -6,6 +6,7 @@ from typing import ClassVar
 import pygame
 from pygame.surface import Surface
 
+from game.wall_tile_picker import BUILT_TILE_NEIGHBOR_MASKS
 from sprites.sprites import AnimatedSprite
 from sprites.sprite_types import (
     Direction,
@@ -127,9 +128,6 @@ class Assets:
         self.wall_fill: Surface = Surface((1, 1))
         self.wall_fill_white: Surface = Surface((1, 1))
         self.fruits: dict[FruitKind, Surface] = {}
-        self._general_sheet: Surface | None = None
-        self._maze_sheet: Surface | None = None
-        self._loaded = False
 
     def load(self) -> None:
         """Load sprite sheets once; no-op when already loaded.
@@ -137,7 +135,7 @@ class Assets:
         Raises:
             AssetError: When a required image is missing or corrupt.
         """
-        if self._loaded:
+        if self.wall_fill.get_width() > 1:
             return
 
         sprites_root = self.root / "sprites"
@@ -157,7 +155,7 @@ class Assets:
             path = sprites_root.joinpath(*parts)
             if not path.exists():
                 raise AssetError(f"File not found: {path}")
-            return pygame.image.load(path).convert_alpha()
+            return pygame.image.load(path).convert()  # transparent background
 
         try:
             self._general_sheet = load_image("sheets", "general_sprites.png")
@@ -165,7 +163,6 @@ class Assets:
             self._load_ghosts()
             self._load_fruits()
             self._load_maze_tiles()
-            self._loaded = True
         except pygame.error as exc:
             raise AssetError(str(exc)) from exc
 
@@ -203,6 +200,7 @@ class Assets:
             surface = pygame.transform.scale(
                 surface, (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
             )
+        surface.set_colorkey((0, 0, 0))  # transparent background
         return surface
 
     def _slice_cells(
@@ -222,12 +220,7 @@ class Assets:
 
         Returns:
             Copied surface scaled to ``DISPLAY_TILE_SIZE``.
-
-        Raises:
-            AssetError: When the general sheet has not been loaded.
         """
-        if self._general_sheet is None:
-            raise AssetError("General sprites sheet not loaded")
         return self._slice_sheet(
             self._general_sheet,
             col,
@@ -289,8 +282,7 @@ class Assets:
         )
         self.ghost_eyes = self._load_frames(self.EYES_COORDS)
 
-    @staticmethod
-    def _make_white_tile(surface: Surface) -> Surface:
+    def _make_white_tile(self, surface: Surface) -> Surface:
         """Tint non-black pixels white for the level-clear flash.
 
         Args:
@@ -303,142 +295,100 @@ class Assets:
         for x in range(result.get_width()):
             for y in range(result.get_height()):
                 r, g, b, a = result.get_at((x, y))
-                if r + g + b > 20:
-                    result.set_at((x, y), (255, 255, 255, a))
+                if r + g + b > 20:  # not black
+                    result.set_at((x, y), (*self.WHITE_COLOR, a))
         return result
 
     def _load_maze_tiles(self) -> None:
         """Build blue and white maze tile sets, fills, and junctions."""
-        if self._general_sheet is None:
-            raise AssetError("General sprites sheet not loaded")
         maze_path = self.root / "sprites" / "maze" / "maze_parts.png"
         if not maze_path.exists():
             raise AssetError(f"File not found: {maze_path}")
-        self._maze_sheet = pygame.image.load(maze_path).convert_alpha()
+        self._maze_sheet = pygame.image.load(maze_path).convert()
         for tile_kind, coords in self.TILE_KIND_COORDS.items():
             if tile_kind == TileKind.WALL:
-                self.maze_tiles[tile_kind] = self._solid_tile(
-                    self.WALL_FILL_COLOR
-                )
+                self.maze_tiles[tile_kind] = solid_tile(self.WALL_FILL_COLOR)
                 continue
             col, row = coords
-            blue_surface = self._slice_cells(
+            self.maze_tiles[tile_kind] = self._slice_cells(
                 col, row, width_cells=1, height_cells=1
             )
-            blue_surface = blue_surface.convert()
-            blue_surface.set_colorkey((0, 0, 0))
-            self.maze_tiles[tile_kind] = blue_surface
         for tile_kind, coords in self.MAZE_PARTS_WHITE_KIND_COORDS.items():
             if tile_kind == TileKind.WALL:
-                self.maze_white_tiles[tile_kind] = self._solid_tile(
-                    (255, 255, 255)
-                )
+                self.maze_white_tiles[tile_kind] = solid_tile(self.WHITE_COLOR)
                 continue
             col, row = coords
             sheet_surface = self._slice_sheet(self._maze_sheet, col, row, 1, 1)
-            white_surface = self._make_white_tile(sheet_surface).convert()
-            white_surface.set_colorkey((0, 0, 0))
-            self.maze_white_tiles[tile_kind] = white_surface
-        self.maze_tiles[TileKind.PILLAR] = self._dot_tile(self.WALL_LINE_COLOR)
-        self.maze_white_tiles[TileKind.PILLAR] = self._dot_tile(
-            (255, 255, 255)
-        )
-        # T-junctions and the 4-way cross have no matching cell in the
-        # sheet's double-line maze, so build them from the same row-4/col-4
-        # line pixels the HORIZONTAL and VERTICAL slices use — one arm per
-        # wall neighbour. This tiles seamlessly with the sliced straights
-        # and corners and removes the old solid-block fallback.
-        for tile_kind, mask in self.JUNCTION_MASKS.items():
-            self.maze_tiles[tile_kind] = self._junction_tile(
-                mask, self.WALL_LINE_COLOR
+            self.maze_white_tiles[tile_kind] = self._make_white_tile(
+                sheet_surface
             )
-            self.maze_white_tiles[tile_kind] = self._junction_tile(
-                mask, (255, 255, 255)
+        for kind, mask in BUILT_TILE_NEIGHBOR_MASKS.items():
+            self.maze_tiles[kind] = built_tile(
+                kind, mask, self.WALL_LINE_COLOR
             )
-        # Interior-hole fill spans 2x2 tiles: it reaches the centre lines
-        # of the surrounding wall tiles, merging adjacent holes into one
-        # solid mass bounded exactly by the blue wall lines.
+            self.maze_white_tiles[kind] = built_tile(
+                kind, mask, self.WHITE_COLOR
+            )
         fill_px = self.DISPLAY_TILE_SIZE * 2
         self.wall_fill = pygame.Surface((fill_px, fill_px))
         self.wall_fill.fill(self.WALL_FILL_COLOR)
         self.wall_fill_white = pygame.Surface((fill_px, fill_px))
-        self.wall_fill_white.fill((255, 255, 255))
+        self.wall_fill_white.fill(self.WHITE_COLOR)
 
-    # Light blue sampled from the text sheet's 4th color band (CYAN).
-    WALL_FILL_COLOR: ClassVar[tuple[int, int, int]] = (0, 255, 255)
-    # Dark blue from general_sprites wall line art (VERTICAL/HORIZONTAL cells).
+    # Blue/Purple
+    WALL_FILL_COLOR: ClassVar[tuple[int, int, int]] = (66, 66, 255)
+    # Dark blue
     WALL_LINE_COLOR: ClassVar[tuple[int, int, int]] = (33, 33, 255)
 
-    # (up, down, left, right) arms present, matching wall_tile_picker.
-    JUNCTION_MASKS: ClassVar[dict[TileKind, tuple[bool, bool, bool, bool]]] = {
-        TileKind.T_UP: (True, False, True, True),
-        TileKind.T_DOWN: (False, True, True, True),
-        TileKind.T_LEFT: (True, True, True, False),
-        TileKind.T_RIGHT: (True, True, False, True),
-        TileKind.CROSS: (True, True, True, True),
-    }
+    WHITE_COLOR: ClassVar[tuple[int, int, int]] = (255, 255, 255)
 
-    @staticmethod
-    def _junction_tile(
-        mask: tuple[bool, bool, bool, bool],
-        color: tuple[int, int, int],
-    ) -> Surface:
-        """Compose a junction tile from centered line arms.
 
-        Args:
-            mask: ``(up, down, left, right)`` arms to draw.
-            color: RGB line color.
+def built_tile(
+    kind: TileKind,
+    mask: tuple[bool, bool, bool, bool],
+    color: tuple[int, int, int],
+) -> Surface:
+    """Draw pillar dots or T/cross arms not present on the maze sheets."""
+    if kind is TileKind.PILLAR:
+        return dot_tile(color)
+    return junction_tile(mask, color)
 
-        Returns:
-            Scaled junction tile surface.
-        """
-        up, down, left, right = mask
-        cell = 8  # native sheet cell size before display scaling
-        mid = cell // 2
-        native = pygame.Surface((cell, cell), pygame.SRCALPHA)
-        for i in range(cell):  # column
-            for j in range(cell):  # row
-                on = (
-                    (up and i == mid and j <= mid)
-                    or (down and i == mid and j >= mid)
-                    or (left and j == mid and i <= mid)
-                    or (right and j == mid and i >= mid)
-                )
-                if on:
-                    native.set_at((i, j), (*color, 255))
-        return pygame.transform.scale(
-            native, (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
-        )
 
-    @staticmethod
-    def _solid_tile(color: tuple[int, int, int]) -> Surface:
-        """Create a flat-filled wall tile.
+def junction_tile(
+    mask: tuple[bool, bool, bool, bool],
+    color: tuple[int, int, int],
+) -> Surface:
+    """Compose a junction tile from centered line arms."""
+    up, down, left, right = mask
+    cell = Assets.CELL_SIZE
+    mid = cell // 2
+    native = pygame.Surface((cell, cell), pygame.SRCALPHA)
+    if up:
+        pygame.draw.line(native, color, (mid, 0), (mid, mid))
+    if down:
+        pygame.draw.line(native, color, (mid, mid), (mid, cell - 1))
+    if left:
+        pygame.draw.line(native, color, (0, mid), (mid, mid))
+    if right:
+        pygame.draw.line(native, color, (mid, mid), (cell - 1, mid))
+    return pygame.transform.scale(
+        native, (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
+    )
 
-        Args:
-            color: RGB fill color.
 
-        Returns:
-            Square tile at ``DISPLAY_TILE_SIZE``.
-        """
-        surface = pygame.Surface(
-            (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
-        )
-        surface.fill(color)
-        return surface
+def solid_tile(color: tuple[int, int, int]) -> Surface:
+    """Create a flat-filled wall tile."""
+    surface = pygame.Surface(
+        (Assets.DISPLAY_TILE_SIZE, Assets.DISPLAY_TILE_SIZE)
+    )
+    surface.fill(color)
+    return surface
 
-    @staticmethod
-    def _dot_tile(color: tuple[int, int, int], scale: float = 0.5) -> Surface:
-        """Create a small centered circle for a lone wall post.
 
-        Args:
-            color: RGB fill color.
-            scale: Circle diameter as a fraction of tile size.
-
-        Returns:
-            Transparent tile with a centered dot.
-        """
-        size = Assets.DISPLAY_TILE_SIZE
-        surface = pygame.Surface((size, size), pygame.SRCALPHA)
-        radius = max(1, round(size * scale / 2))
-        pygame.draw.circle(surface, color, (size // 2, size // 2), radius)
-        return surface
+def dot_tile(color: tuple[int, int, int], scale: float = 0.5) -> Surface:
+    """Create a small centered circle for a lone wall post."""
+    size = Assets.DISPLAY_TILE_SIZE
+    surface = pygame.Surface((size, size), pygame.SRCALPHA)
+    radius = max(1, round(size * scale / 2))
+    pygame.draw.circle(surface, color, (size // 2, size // 2), radius)
+    return surface

@@ -54,7 +54,6 @@ class ArcadeTextRenderer:
     def __init__(self) -> None:
         """Initialize empty glyph and render caches."""
         self._glyphs_by_color: dict[ArcadeTextColor, dict[str, Surface]] = {}
-        self._atlas_loaded = False
         self._scaled_glyph_cache: dict[
             tuple[str, ArcadeTextColor, int], Surface
         ] = {}
@@ -213,7 +212,7 @@ class ArcadeTextRenderer:
         Raises:
             FileNotFoundError: If the sprite sheet path is missing.
         """
-        if self._atlas_loaded:
+        if self._glyphs_by_color:
             return
 
         if not self.TEXT_SHEET_PATH.exists():
@@ -221,7 +220,7 @@ class ArcadeTextRenderer:
                 f"Text sheet not found: {self.TEXT_SHEET_PATH}"
             )
 
-        sheet = pygame.image.load(self.TEXT_SHEET_PATH).convert_alpha()
+        sheet = pygame.image.load(self.TEXT_SHEET_PATH).convert()
         for color in ArcadeTextColor:
             block_row = int(color) * self.ROWS_PER_COLOR
             glyphs: dict[str, Surface] = {}
@@ -232,10 +231,10 @@ class ArcadeTextRenderer:
                     self.CELL_SIZE,
                     self.CELL_SIZE,
                 )
-                glyphs[char] = sheet.subsurface(rect).copy()
+                glyph = sheet.subsurface(rect).copy()
+                glyph.set_colorkey((0, 0, 0))
+                glyphs[char] = glyph
             self._glyphs_by_color[color] = glyphs
-
-        self._atlas_loaded = True
 
     def _glyph(self, char: str, color: ArcadeTextColor) -> Surface | None:
         """Look up one glyph surface for a character and color.
@@ -293,6 +292,6 @@ class ArcadeTextRenderer:
             return cached
         size = (self.CELL_SIZE * scale, self.CELL_SIZE * scale)
         scaled = pygame.transform.scale(glyph, size)
-        # bounded naturally: ~40 glyphs x 6 colors x a few scales
+        scaled.set_colorkey((0, 0, 0))
         self._scaled_glyph_cache[key] = scaled
         return scaled

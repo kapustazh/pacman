@@ -7,7 +7,7 @@ from maze.map_data import TileType
 from sprites.sprite_types import TileKind
 
 # up, down, left, right
-BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
+_BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
     (False, True, False, True): TileKind.CORNER_TL,
     (False, True, True, False): TileKind.CORNER_TR,
     (True, False, False, True): TileKind.CORNER_BL,
@@ -34,6 +34,20 @@ BY_NEIGHBORS: dict[tuple[bool, bool, bool, bool], TileKind] = {
     (False, False, False, False): TileKind.PILLAR,
 }
 
+_BUILT_TILES = frozenset(
+    {
+        TileKind.PILLAR,
+        TileKind.T_UP,
+        TileKind.T_DOWN,
+        TileKind.T_LEFT,
+        TileKind.T_RIGHT,
+        TileKind.CROSS,
+    }
+)
+BUILT_TILE_NEIGHBOR_MASKS: dict[TileKind, tuple[bool, bool, bool, bool]] = {
+    kind: mask for mask, kind in _BY_NEIGHBORS.items() if kind in _BUILT_TILES
+}
+
 
 def pick_for_neighbors(
     up: bool,
@@ -52,7 +66,7 @@ def pick_for_neighbors(
     Returns:
         Autotile kind for the neighbor pattern, or a solid wall fallback.
     """
-    return BY_NEIGHBORS.get((up, down, left, right), TileKind.WALL)
+    return _BY_NEIGHBORS.get((up, down, left, right), TileKind.WALL)
 
 
 def pick(layout: LevelLayout, cell: CellPos) -> TileKind:
