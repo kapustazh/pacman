@@ -88,7 +88,7 @@ class HighscoreManager:
 
             if not isinstance(name, str):
                 continue
-            if not isinstance(score, int):
+            if type(score) is not int:
                 continue
             if score < 0:
                 continue
