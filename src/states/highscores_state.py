@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import ClassVar
 
 import pygame
 from pygame.surface import Surface
@@ -11,13 +12,13 @@ from states.text import ArcadeTextColor
 class HighscoresState(GameState):
     """Screen showing the top saved scores."""
 
-    TITLE_Y = 200
-    LIST_Y = 340
-    ROW_STEP = 48
-    FOOTER_Y = 920
-    TITLE_SCALE = 4
-    ROW_SCALE = 2
-    FOOTER_SCALE = 2
+    TITLE_Y: ClassVar[int] = 200
+    LIST_Y: ClassVar[int] = 340
+    ROW_STEP: ClassVar[int] = 48
+    FOOTER_Y: ClassVar[int] = 920
+    TITLE_SCALE: ClassVar[int] = 4
+    ROW_SCALE: ClassVar[int] = 2
+    FOOTER_SCALE: ClassVar[int] = 2
 
     def enter(
         self,

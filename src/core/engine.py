@@ -61,6 +61,7 @@ class GameEngine:
 
     def run(self) -> None:
         """Poll events, update scenes, and flip the display until quit."""
+        # frame_count = 0
         while not self._scene_manager.shutdown_requested:
             dt = self._clock.tick(self._target_fps) / 1000.0
             now_ms = pygame.time.get_ticks()
@@ -88,6 +89,11 @@ class GameEngine:
             self._context.screen.fill(BG_COLOR)
             self._draw_stack()
             pygame.display.flip()
+            # frame_count += 1
+            # if frame_count % 30 == 0:
+            #     pygame.display.set_caption(
+            #         f"Pac-Man  {self._clock.get_fps():.0f} FPS"
+            #     ) debug fps counter
 
     def _draw_stack(self) -> None:
         """Draw visible scenes from the first opaque layer downward."""

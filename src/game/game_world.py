@@ -12,7 +12,6 @@ from pygame.surface import Surface
 from entities.ghost_entity import GhostEntity
 from entities.pellet_entity import PelletEntity
 from entities.player_entity import PlayerEntity
-from entities.wall_tile_entity import WallTileEntity
 from game.fruit_schedule import fruit_for_level
 from game.ghost_logic import (
     activate_frightened_mode,
@@ -115,7 +114,8 @@ class GameWorld:
         self.frozen: bool = False
         self._step_now_ms: int = 0
         self._wall_flash_white: bool = False
-        self._wall_sprites: list[WallTileEntity] = []
+        self._maze_background: Surface = Surface((1, 1))
+        self._maze_background_white: Surface = Surface((1, 1))
         self._ghost_step_elapsed_ms: float = 0.0
         self._travel_direction: Direction = self.DEFAULT_TRAVEL_DIRECTION
         self._requested_direction: Direction | None = None
@@ -141,8 +141,6 @@ class GameWorld:
             pellet.relocate(render_config.cell_center(pellet.cell))
         if self._fruit is not None:
             self._fruit.relocate(render_config.cell_center(self._fruit.cell))
-        for wall in self._wall_sprites:
-            wall.relocate(render_config.cell_center(wall.cell))
         self.score_popups.clear()
         self._sync_visual_centers()
 
@@ -226,11 +224,7 @@ class GameWorld:
         Args:
             white: When True, use white flash sprites; otherwise blue.
         """
-        if self._wall_flash_white == white:
-            return
         self._wall_flash_white = white
-        for wall in self._wall_sprites:
-            wall.set_flash_white(white)
 
     def toggle_invincible(self) -> bool:
         """Flip cheat invincibility.
@@ -328,11 +322,20 @@ class GameWorld:
                 ghost.apply_visual_lerp(ghost_t)
 
     def draw(self, surface: Surface) -> None:
-        """Draw all sprites in layer order.
+        """Draw the maze background, then all sprites in layer order.
 
         Args:
             surface: Destination pygame surface.
         """
+        background = (
+            self._maze_background_white
+            if self._wall_flash_white
+            else self._maze_background
+        )
+        surface.blit(
+            background,
+            (self._render_config.origin_x, self._render_config.origin_y),
+        )
         self.all_sprites.draw(surface)
 
     def respawn_player(self) -> None:
@@ -369,7 +372,6 @@ class GameWorld:
         self.score_popups.clear()
         self.frozen = False
         self._wall_flash_white = False
-        self._wall_sprites.clear()
         self._fruit_spawn_index = 0
         self._fruit_kill_at_ms = 0
 

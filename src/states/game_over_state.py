@@ -17,10 +17,15 @@ class GameOverState(GameState):
     SCORE_Y: ClassVar[int] = 370
     PROMPT_Y: ClassVar[int] = 470
     NAME_Y: ClassVar[int] = 540
+    HINT_Y: ClassVar[int] = 580
     TITLE_SCALE: ClassVar[int] = 5
     SCORE_SCALE: ClassVar[int] = 4
     PROMPT_SCALE: ClassVar[int] = 2
+    HINT_SCALE: ClassVar[int] = 2
     NAME_SCALE: ClassVar[int] = 3
+    MAX_NAME_LENGTH: ClassVar[int] = 10
+    DEFAULT_NAME: ClassVar[str] = "GUEST"
+    MAX_NAME_Y: ClassVar[int] = 620
 
     def __init__(self) -> None:
         """Initialize empty initials buffer and default outcome."""
@@ -69,7 +74,9 @@ class GameOverState(GameState):
             if event.type != pygame.KEYDOWN:
                 continue
             if event.key == pygame.K_RETURN:
-                name = context.highscores._clean_name(self._name or "AAA")
+                name = context.highscores._clean_name(
+                    self._name or self.DEFAULT_NAME
+                )
                 context.highscores.add_score(name, self._score)
                 from states.menu_state import MenuState
 
@@ -82,7 +89,7 @@ class GameOverState(GameState):
             if (
                 char
                 and (char.isalnum() or char == " ")
-                and len(self._name) < 10
+                and len(self._name) < self.MAX_NAME_LENGTH
             ):
                 self._name += char
 
@@ -123,7 +130,7 @@ class GameOverState(GameState):
         )
         text.draw_centered_arcade_text(
             surface,
-            "ENTER NAME - RETURN TO SAVE",
+            "ENTER YOUR NAME",
             self.PROMPT_Y,
             ArcadeTextColor.WHITE,
             self.PROMPT_SCALE,
@@ -135,4 +142,18 @@ class GameOverState(GameState):
             self.NAME_Y,
             ArcadeTextColor.YELLOW,
             self.NAME_SCALE,
+        )
+        text.draw_centered_arcade_text(
+            surface,
+            "A-Z 0-9 SPACE",
+            self.HINT_Y,
+            ArcadeTextColor.WHITE,
+            self.HINT_SCALE,
+        )
+        text.draw_centered_arcade_text(
+            surface,
+            "MAX 10 CHARACTERS",
+            self.MAX_NAME_Y,
+            ArcadeTextColor.WHITE,
+            self.HINT_SCALE,
         )
