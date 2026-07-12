@@ -26,8 +26,14 @@ class MazeAdaptor:
             # entry/exit cells fix long maze generation time
             return self.convert_maze(generator.maze)
         except Exception as Error:
-            print(f"Warning: maze generator failed: {Error}")
+            print(f"Warning: maze generator failed: {Error}.")
+            print("Using fallback maze instead.")
+        try:
             return self.fallback_grid(seed)
+        except Exception as Error:
+            print("Warning: fallback maze generator failed.")
+            print(f"Maze package error: {Error}.")
+            raise RuntimeError("Maze package error.") from None
 
     def convert_maze(self, maze: list[list[int]]) -> list[list[TileType]]:
         """Convert wall-code maze into TileType grid."""

@@ -41,7 +41,7 @@ def remove_comments(content: str) -> str:
 
 
 def load_config(path: str) -> dict[str, Any]:
-    """load config safely. Never crash with traceback."""
+    """Load config safely. Never crash with traceback."""
     try:
         with open(path, "r", encoding="utf-8") as file:
             raw_content = file.read()
@@ -57,6 +57,10 @@ def load_config(path: str) -> dict[str, Any]:
         print("Warning: invalid JSON config.")
         print("Using default configuration.")
         return DEFAULT_CONFIG.copy()
+    if not isinstance(loaded, dict):
+        print("Warning: config must be a JSON object.")
+        print("Using default configuration.")
+        return DEFAULT_CONFIG.copy()
 
     config = DEFAULT_CONFIG.copy()
     config.update(validate_config(loaded))
@@ -65,9 +69,13 @@ def load_config(path: str) -> dict[str, Any]:
 
 def get_positive_int(data: dict[str, Any], key: str, default: int) -> int:
     """Read a positive integer from config."""
-    value = data.get(key, default)
+    if key not in data:
+        print(f"Warning: missing {key}, using default {default}.")
+        return default
 
-    if not isinstance(value, int) or value <= 0:
+    value = data[key]
+
+    if type(value) is not int or value <= 0:
         print(f"Warning: invalid value for {key}, using default {default}.")
         return default
     return value
@@ -91,10 +99,14 @@ def validate_config(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_string(data: dict[str, Any], key: str, default: str) -> str:
-    """Read a string from config"""
-    value = data.get(key, default)
+    """Read a string from config."""
+    if key not in data:
+        print(f"Warning: missing {key}, using default {default}.")
+        return default
 
-    if not isinstance(value, str) or not value:
+    value = data[key]
+
+    if type(value) is not str or not value:
         print(f"Warning: invalid value for {key}, using default {default}.")
         return default
     return value
@@ -102,7 +114,11 @@ def get_string(data: dict[str, Any], key: str, default: str) -> str:
 
 def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
     """Read level definitions from config."""
-    value = data.get("levels", DEFAULT_CONFIG["levels"])
+    if "levels" not in data:
+        print("Warning: missing levels, using default levels.")
+        return cast(list[dict[str, int]], DEFAULT_CONFIG["levels"])
+
+    value = data["levels"]
 
     if not isinstance(value, list) or not value:
         print("Warning: invalid levels, using default levels.")
@@ -112,15 +128,25 @@ def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
 
     for level in value:
         if not isinstance(level, dict):
+            print("Warning: invalid level entry, skipping it.")
             continue
 
-        width = level.get("width", 21)
-        height = level.get("height", 21)
-
-        if not isinstance(width, int) or width < 5:
+        if "width" not in level:
+            print("Warning: missing level width, using default 21.")
             width = 21
-        if not isinstance(height, int) or height < 5:
+        else:
+            width = level["width"]
+            if type(width) is not int or width < 5:
+                print("Warning: invalid level width, using default 21.")
+                width = 21
+        if "height" not in level:
+            print("Warning: missing level height, using default 21.")
             height = 21
+        else:
+            height = level["height"]
+            if type(height) is not int or height < 5:
+                print("Warning: invalid level height, using default 21.")
+                height = 21
 
         levels.append({"width": width, "height": height})
 

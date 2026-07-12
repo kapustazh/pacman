@@ -20,7 +20,7 @@ clean:
 	find . -name "*.pyo" -delete
 
 lint:
-	$(PYTHON) -m flake8 pac-man.py src
+	$(PYTHON) -m flake8 --exclude=.venv
 	$(PYTHON) -m mypy . \
 	--warn-return-any \
 	--warn-unused-ignores \
