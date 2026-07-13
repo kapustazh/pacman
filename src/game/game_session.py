@@ -126,7 +126,7 @@ class GameSession:
         self.phase_started_at_ms = now_ms
 
     def enter_game_over(self, now_ms: int) -> None:
-        """Enter the terminal game-over phase.
+        """Enter the game-over phase.
 
         Args:
             now_ms: Current timestamp in milliseconds.
