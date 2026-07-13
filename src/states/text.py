@@ -10,6 +10,8 @@ from typing import ClassVar
 import pygame
 from pygame.surface import Surface
 
+from core.paths import resource_root
+
 
 class ArcadeTextColor(IntEnum):
     """Palette rows on the arcade text sprite sheet."""
@@ -26,7 +28,7 @@ class ArcadeTextRenderer:
     """Renders arcade-style text from a shared glyph atlas."""
 
     TEXT_SHEET_PATH: ClassVar[Path] = (
-        Path(__file__).resolve().parents[2]
+        resource_root()
         / "assets"
         / "new_assets"
         / "Arcade - Pac-Man - Miscellaneous - Text.png"

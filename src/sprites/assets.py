@@ -6,6 +6,7 @@ from typing import ClassVar
 import pygame
 from pygame.surface import Surface
 
+from core.paths import resource_root
 from game.wall_tile_picker import BUILT_TILE_NEIGHBOR_MASKS
 from sprites.sprites import AnimatedSprite
 from sprites.sprite_types import (
@@ -31,7 +32,7 @@ class AssetError(Exception):
 class Assets:
     """Loads sprite sheets and exposes gameplay surfaces."""
 
-    ASSETS: ClassVar[Path] = Path(__file__).resolve().parents[2] / "assets"
+    ASSETS: ClassVar[Path] = resource_root() / "assets"
     CELL_SIZE: ClassVar[int] = 8
     SPRITE_CELLS: ClassVar[int] = 2
     DISPLAY_TILE_SIZE: ClassVar[int] = 16

@@ -9,6 +9,12 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# build files
+build/
+dist/
+*.zip
+.spec
+
 # pytype static type analyzer
 .pytype/
 
@@ -58,3 +64,8 @@ __marimo__/
 # debug files
 debug_tiles/
 mypy.ini
+
+# Claude
+.claude/
+
+*.txt
