@@ -58,6 +58,9 @@ class PlayState(GameState):
         self._level_seed: int = 42
         self._hud: HudOverlay | None = None
         self._maze_bounds: MazeBounds | None = None
+        self._speed_up_presses: int = 0
+        self._speed_down_presses: int = 0
+        self._speed_delta_ms: int = 0
 
     def enter(
         self,
@@ -90,6 +93,9 @@ class PlayState(GameState):
         )
         self._level_index = 0
         self._level_seed = int(context.config.get("seed", 42))
+        self._speed_up_presses = 0
+        self._speed_down_presses = 0
+        self._speed_delta_ms = 0
         self._reload_world(context)
 
     def leave(self, context: GameContext) -> None:
@@ -144,9 +150,11 @@ class PlayState(GameState):
                 self._world.adjust_player_speed(
                     -GameWorld.PLAYER_SPEED_STEP_MS
                 )
+                self._sync_speed_cheat_state()
                 continue
             if event.key == pygame.K_MINUS and self._world is not None:
                 self._world.adjust_player_speed(GameWorld.PLAYER_SPEED_STEP_MS)
+                self._sync_speed_cheat_state()
                 continue
             if event.key == pygame.K_l and self._session is not None:
                 self._session.lives += 1
@@ -418,6 +426,19 @@ class PlayState(GameState):
         )
         if self._hud is not None:
             self._hud.set_fruit_icon(self._world.level_fruit_surface)
+        self._world.restore_speed_cheat(
+            self._speed_up_presses,
+            self._speed_down_presses,
+            self._speed_delta_ms,
+        )
+
+    def _sync_speed_cheat_state(self) -> None:
+        """Persist +/- speed cheat usage for HUD and later levels."""
+        if self._world is None:
+            return
+        self._speed_up_presses = self._world.speed_up_presses
+        self._speed_down_presses = self._world.speed_down_presses
+        self._speed_delta_ms = self._world.speed_delta_from_baseline
 
     def _reload_world(self, context: GameContext) -> None:
         """Tear down the current world and load the next level.
