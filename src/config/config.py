@@ -40,6 +40,20 @@ def remove_comments(content: str) -> str:
     return "\n".join(lines)
 
 
+def reject_duplicate_keys(
+        pairs: list[tuple[str, Any]],
+) -> dict[str, Any]:
+    """"Reject duplicate keys in JSON object."""
+    result: dict[str, Any] = {}
+
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate key: '{key}'")
+        result[key] = value
+
+    return result
+
+
 def load_config(path: str) -> dict[str, Any]:
     """Load config safely. Never crash with traceback."""
     try:
@@ -52,11 +66,15 @@ def load_config(path: str) -> dict[str, Any]:
 
     try:
         clean_content = remove_comments(raw_content)
-        loaded = json.loads(clean_content)
-    except json.JSONDecodeError:
-        print("Warning: invalid JSON config.")
+        loaded = json.loads(
+            clean_content,
+            object_pairs_hook=reject_duplicate_keys,
+        )
+    except (json.JSONDecodeError, ValueError) as error:
+        print(f"Warning: {error}.")
         print("Using default configuration.")
         return DEFAULT_CONFIG.copy()
+
     if not isinstance(loaded, dict):
         print("Warning: config must be a JSON object.")
         print("Using default configuration.")
