@@ -52,6 +52,7 @@ class ArcadeTextRenderer:
         80,
         120,
     )
+    WHITE_RGBA: ClassVar[tuple[int, int, int, int]] = (224, 221, 255, 255)
 
     def __init__(self) -> None:
         """Initialize empty glyph and render caches."""
