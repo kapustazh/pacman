@@ -22,6 +22,7 @@ class InstructionsState(GameState):
 
     CHEAT_ROWS: ClassVar[tuple[tuple[str, str], ...]] = (
         ("INVINCIBLE", "I"),
+        ("SKIP LEVEL", "N"),
         ("FREEZE", "F"),
         ("SPEED", " / -"),
         ("LIFE", "L"),
