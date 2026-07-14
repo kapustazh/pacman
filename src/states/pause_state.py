@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import ClassVar
 
 import pygame
 from pygame.surface import Surface
@@ -11,9 +12,9 @@ from states.text import ArcadeTextColor
 class PauseState(GameState):
     """Modal pause overlay shown above active gameplay."""
 
-    OVERLAY_COLOR = (0, 0, 0, 180)
-    LINE_HEIGHT = 64
-    LINES: tuple[tuple[str, ArcadeTextColor, int], ...] = (
+    OVERLAY_COLOR: ClassVar[tuple[int, int, int, int]] = (0, 0, 0, 180)
+    LINE_HEIGHT: ClassVar[int] = 64
+    LINES: ClassVar[tuple[tuple[str, ArcadeTextColor, int], ...]] = (
         ("PAUSED", ArcadeTextColor.YELLOW, 5),
         ("ESC RESUME", ArcadeTextColor.WHITE, 3),
         ("M MAIN MENU", ArcadeTextColor.ROSE, 2),

@@ -4,7 +4,7 @@
 
 ## Description
 
-This project recreates Pac-Man using procedural maze generation, original Pac-Man inspired ghost AI, persistent highscores and modular software architecture.
+This project recreates Pac-Man with a pygame arcade UI, procedural maze generation, original Pac-Man inspired ghost AI, persistent highscores, and modular software architecture.
 
 ### Features
 
@@ -22,14 +22,17 @@ This project recreates Pac-Man using procedural maze generation, original Pac-Ma
 | Respawn | Eaten ghosts temporarily disappear and return after a delay |
 | Highscores | Persistent JSON leaderboard |
 | Config validation | Missing and invalid values fall back to safe defaults |
-| Cheat mode | Invincibility, freeze ghosts, add life, skip level |
-| Rendering | Terminal-based renderer |
+| Cheat mode | Invincibility, freeze ghosts, speed adjust, add life, skip level |
+| Rendering | Pygame-ce arcade UI with sprite sheets, HUD, and menus |
+| Packaging | PyInstaller build for itch.io (`make package-itch`) |
 | Static analysis | `flake8` and `mypy` through Makefile |
 
 
 ---
 
 ## Instructions
+
+Run all commands from the project root (where the `Makefile` lives).
 
 ### Installation
 
@@ -39,36 +42,60 @@ make install
 
 ### Run
 
+Development (with `config.json`):
+
 ```bash
 make run
 ```
-or 
+
+Release-style (built-in defaults, no config file):
+
 ```bash
-python3 pac-man.py config.json
+make run-release
 ```
 
+Or directly:
+
+```bash
+python3 pac-man.py config.json   # with config
+python3 pac-man.py               # defaults only
+```
+
+### Packaging (itch.io)
+
+```bash
+make package-itch    # → dist/pac-man-linux.zip
+```
+
+Upload the zip to itch.io and set the Linux executable to `pac-man/pac-man`.
 
 ### Other commands
 
 ```bash
+make help            # show all available targets
 make debug
 make lint
 make lint-strict
 make clean
 make re
+make build-itch     # build without zipping
+make package-ich    # archived build
 ```
 
 ### Controls
 
 | Key | Action |
 |-----|--------|
-| W A S D | Move |
-| P | Pause |
-| Q | Quit |
-| I | Invincibility |
-| F | Freeze ghosts |
-| N | Skip level |
-| L | Add life |
+| W A S D / Arrows | Move |
+| Esc | Pause |
+| F11 | Toggle fullscreen |
+| I | Invincibility (cheat) |
+| F | Freeze ghosts (cheat) |
+| + / - | Speed up / slow down Pac-Man (cheat) |
+| N | Skip level (cheat) |
+| L | Add life (cheat) |
+
+Menus use Up/Down or W/S to navigate and Enter/Space to confirm.
 
 
 ---
@@ -86,10 +113,10 @@ The game uses a JSON configuration file with comment lines beginning with `#`.
 | `points_per_super_pacgum` | int | `50` | Score for each Super Pacgum |
 | `points_per_ghost` | int | `200` | Score for eating a ghost |
 | `seed` | int | `42` | Seed used for Level 1 |
-| `level_max_time` | int | `10000` | Maximum turns allowed per level |
+| `level_max_time` | int | `90` | Maximum seconds allowed per level |
 | `levels` | list | `10 levels` | Maze size configuration |
 
-- Missing configuration file → load default configuration.
+- Missing configuration file → load default configuration (used by the release build).
 - Invalid JSON → load default configuration.
 - Unknown keys → ignored.
 - Invalid values → replaced with default values.
@@ -136,7 +163,7 @@ MazeGenerator produces a wall-code representation where each cell stores wall in
 MazeGenerator
       │
       ▼
-MazeAdapter
+MazeAdaptor
       │
       ▼
 TileType Grid
@@ -145,10 +172,10 @@ TileType Grid
 LevelBuilder
       │
       ▼
-GameState
+GameWorld
 ```
 
-MazeAdapter is responsible for
+`MazeAdaptor` is responsible for
 
 - importing the assigned package
 - generating a maze
@@ -157,34 +184,83 @@ MazeAdapter is responsible for
 
 ---
 
-## Implementation
+## Rendering
 
-### Game Play Flow
-Turn flow:
+The game is rendered with **pygame-ce** in a 1920×1080 window (F11 toggles fullscreen).
+
+### Visual pipeline
 
 ```text
-Player Input
-    ↓
-Move Player
-    ↓
-Collect Items
-    ↓
-Collision Check
-    ↓
-Move Ghosts
-    ↓
-Collision Check
-    ↓
-Update Timers
-    ↓
-Render
+GameEngine (main loop)
+      │
+      ▼
+Scene stack (MenuState, PlayState, PauseState, …)
+      │
+      ▼
+GameWorld.draw()  →  maze background + sprite layers
+      │
+      ▼
+HudOverlay.draw() →  score, lives, timer, phase text
 ```
+
+Each frame, `GameEngine` polls input, updates the active scene, clears the screen, and draws the scene stack from the bottom up. Pause and other overlays sit above gameplay without restarting the world.
+
+### Assets and sprites
+
+| Component | Role |
+|-----------|------|
+| `Assets` | Loads sprite sheets from `assets/` and slices 8×8 cells into 16×16 surfaces |
+| `AnimatedSprite` | Pac-Man, ghosts, pellets, fruit, and death animation |
+| `WallTilePicker` | Picks wall tile art from neighbour masks (`maze_parts.png`) |
+| `ArcadeTextRenderer` | Renders HUD and menu text from the arcade glyph sheet |
+
+Sprite sheets live under `assets/sprites/` and `assets/new_assets/`. `src/core/paths.py` resolves asset paths in both development and PyInstaller builds.
+
+### Layout
+
+`WorldRenderConfig` converts grid cells to pixel coordinates. The maze is centered on screen at 16 px per tile. Actors move on a discrete grid, but sprites are visually interpolated between steps for smoother motion.
+
+### On-screen UI
+
+| Screen | Module |
+|--------|--------|
+| Main menu | `MenuState` |
+| High scores | `HighscoresState` |
+| Instructions | `InstructionsState` |
+| Gameplay + HUD | `PlayState` + `HudOverlay` |
+| Pause overlay | `PauseState` |
+| Game over / victory | `GameOverState` |
+
+The in-game HUD shows score, high score, remaining lives, level timer, and phase messages (READY, LEVEL CLEAR, GAME OVER).
+
+---
+
+## Implementation
+
+### Gameplay loop
+
+The game runs in real time at up to 120 FPS. Each frame:
+
+```text
+Input
+  ↓
+Scene update (dt)
+  ↓
+Player / ghost movement
+  ↓
+Collisions, pellets, fruit, timers
+  ↓
+Draw maze + sprites + HUD
+```
+
+Grid logic still advances in discrete steps, but movement is time-based and visually smoothed between cells.
+
 The player wins a level after collecting all Pacgums.
 Lives and score carry across levels.
 
 ## Ghost AI
 
-Ghost behaviour is managed by `GameState`, while each ghost is responsible for selecting its own target and deciding its next movement.
+Ghost behaviour is managed by `GameWorld` and `GameSession`, while each ghost is responsible for selecting its own target and deciding its next movement.
 
 The implementation adopts the original Pac-Man movement philosophy while introducing several project-specific adaptations to satisfy the subject requirements, particularly for frightened behaviour and respawning.
 
@@ -229,7 +305,7 @@ Ghost behaviour consists of two independent layers.
 
 ### Global Behaviour
 
-The global behaviour is controlled by `GameState` and affects every active ghost simultaneously.
+The global behaviour is controlled by `GameWorld` and affects every active ghost simultaneously.
 
 | Mode | Description |
 |------|-------------|
@@ -265,7 +341,7 @@ The chase behaviour is divided into two stages:
 1. **Target selection**, where each ghost calculates a different destination according to its personality.
 2. **Movement selection**, where every ghost uses the same junction-based local greedy algorithm to move one tile toward its current target.
 
-Instead of computing a complete shortest path every turn, ghosts:
+Instead of computing a complete shortest path every step, ghosts:
 1. Continue moving straight through corridors whenever possible.
 2. Make decisions only at junctions.
 3. Ignore the immediate reverse direction unless no alternative exists.
@@ -346,47 +422,75 @@ Breadth-First Search is only used during frightened mode to estimate a safe esca
 ## Software Architecture
 
 ```text
-                  GameState
-                      │
-        ┌─────────────┴─────────────┐
-        │                           │
-   LevelManager                TerminalRenderer
-        │
-        ▼
-   LevelBuilder
-        │
-        ▼
- MapData + Player + Ghosts
+                    GameEngine
+                        │
+                 SceneManager
+                        │
+        ┌───────────────┼───────────────┐
+        │               │               │
+   MenuState       PlayState      PauseState
+                        │
+              ┌─────────┴─────────┐
+              │                   │
+         GameSession           GameWorld
+              │                   │
+         lives, timer        Player, Ghosts,
+         phase flow          pellets, fruit
 ```
+
 **Figure 2.** High-level architecture of the game modules.
 
 ### General Software Architecture
 
 ```text
 pac-man.py                     -> Program entry point
+pacman.spec                    -> PyInstaller packaging spec
 src/
 ├── config/
 │   └── config.py              -> Load and validate JSON configuration
-│                              -> Default game configuration
+│
+├── core/
+│   ├── engine.py              -> Pygame main loop
+│   ├── scene_manager.py       -> Scene stack (push/pop/change)
+│   ├── context.py             -> Shared screen, assets, config, scores
+│   ├── state.py               -> Base class for all scenes
+│   └── paths.py               -> Asset and save paths (dev vs packaged)
+│
+├── states/
+│   ├── menu_state.py          -> Main menu
+│   ├── play_state.py          -> Active gameplay scene
+│   ├── pause_state.py         -> Pause overlay
+│   ├── highscores_state.py    -> Leaderboard screen
+│   ├── instructions_state.py  -> Controls screen
+│   ├── game_over_state.py     -> End-of-run name entry
+│   └── text.py                -> Arcade glyph text renderer
 │
 ├── game/
-│   ├── game_state.py          -> Main game loop and gameplay coordination
-│   ├── level_builder.py       -> Populate maze with player, ghosts and pacgums
-│   └── level_manager.py       -> Level progression and seed management
+│   ├── game_world.py          -> World state, collisions, drawing
+│   ├── game_session.py        -> Lives, timer, phase flow
+│   ├── level_builder.py       -> Populate maze with actors and pellets
+│   ├── render_config.py       -> Grid-to-pixel layout
+│   ├── ghost_logic.py         -> Ghost movement and frightened mode
+│   └── wall_tile_picker.py    -> Maze wall autotiling
 │
 ├── maze/
 │   ├── maze_adapter.py        -> Interface to the A-Maze-ing package
 │   └── map_data.py            -> Internal TileType grid representation
 │
 ├── entities/
-│   ├── player.py              -> Player movement and scoring
-│   └── ghost.py               -> Ghost AI, target selection and movement behaviours
+│   ├── player_entity.py       -> Pac-Man sprite and movement
+│   ├── ghost_entity.py        -> Ghost sprite and state
+│   └── ghost.py               -> Ghost AI and target selection
 │
-├── managers/
-│   └── highscore_manager.py   -> Load, validate and save highscores
+├── sprites/
+│   └── assets.py              -> Sprite sheet loading
 │
-└── ui/
-    └── terminal_renderer.py   -> Terminal rendering and HUD output
+├── rendering/
+│   ├── hud_overlay.py         -> In-game HUD
+│   └── widgets.py             -> Shared UI drawing helpers
+│
+└── managers/
+    └── highscore_manager.py   -> Load, validate and save highscores
 ```
 
 ### Module Responsibilities
@@ -394,59 +498,50 @@ src/
 | Module | Responsibility |
 |----------|----------------|
 | `config` | Loads and validates the JSON configuration file. |
+| `core` | Engine loop, scene stack, shared context, and path resolution. |
+| `states` | Menu, gameplay, pause, and end-of-run screens. |
+| `game` | World simulation, session flow, rendering layout, and ghost logic. |
 | `maze` | Generates the maze and converts it into the internal TileType grid. |
-| `game` | Controls the game loop, player actions and level progression. |
-| `entities` | Implements the player and ghost behaviours. |
+| `entities` | Player and ghost behaviour on the grid. |
+| `sprites` / `rendering` | Asset loading and on-screen drawing. |
 | `managers` | Handles persistent highscore storage. |
-| `ui` | Displays the current game state in the terminal. |
 
 ### Data Flow
 
 ```text
-config.json
+config.json (optional)
       │
       ▼
-load_config()
+load_config() / default_config()
       │
       ▼
-LevelManager
+GameEngine → MenuState → PlayState
       │
       ▼
-MazeAdapter
+MazeAdaptor → LevelBuilder → GameWorld
       │
       ▼
-MapData
+GameSession (lives, timer, phases)
       │
       ▼
-LevelBuilder
-      │
-      ▼
-Player + Ghosts
-      │
-      ▼
-GameState
-      │
-      ▼
-TerminalRenderer
+HudOverlay + GameWorld.draw()
 ```
 
 ### Class Relationships
 
-- `GameState` owns the `Player`, `Ghost`, `MapData`, `LevelManager` and `HighscoreManager`.
-- `LevelManager` provides the current level configuration and maze seed.
-- `MazeAdapter` converts the external maze into the internal `TileType` grid.
-- `LevelBuilder` populates the maze with the player, ghosts and collectibles.
-- `Ghost` queries `MapData` for valid movement and performs junction-based local greedy movement. Breadth-First Search (BFS) is only used during frightened mode to estimate a safe escape direction.
-- `TerminalRenderer` reads the current game state and renders the board without modifying gameplay logic.
+- `GameEngine` owns the pygame loop and delegates to `SceneManager`.
+- `PlayState` owns a `GameWorld` (simulation) and a `GameSession` (lives, timer, phases).
+- `MazeAdaptor` converts the external maze into the internal `TileType` grid.
+- `LevelBuilder` populates the maze with the player, ghosts, and collectibles.
+- `Ghost` queries the world for valid movement and performs junction-based local greedy movement. Breadth-First Search (BFS) is only used during frightened mode to estimate a safe escape direction.
+- `HudOverlay` and scene states read world/session data and render without modifying gameplay logic.
 
 ---
 
 ## Project Management
 
 - The project was managed through GitHub branches, pull requests, issue tracking, and team discussions.
-
 - Jira is used for planning, task tracking, meeting notes, technical decisions, and project documentation.
-(https://kapustazh.atlassian.net/jira/software/projects/SCRUM/boards/1/timeline?selectedIssue=SCRUM-21)
 
 ---
 
@@ -462,15 +557,16 @@ AI tools were used for:
 - Debugging assistance
 - Design reviews
 - Documentation drafting
+- Code review
+- Code Implementation
 
-All generated content was reviewed, understood, and adapted before integration into the project.
+All generated content was reviewed, understood, and adapted before integration into the project. (or not...)
 
 ---
 
 ## Future Improvements
 
-- Pygame UI + Audio
-- Real-time-based instead of turn-based
-- Executable packaging and public deployment
+- Sound effects and music
+- Additional platform builds (Windows, macOS)
 
 ---

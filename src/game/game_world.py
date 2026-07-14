@@ -101,11 +101,9 @@ class GameWorld:
         self._pause_until_ms: int = 0
         self._invincible: bool = False
         self._ghosts_frozen: bool = False
-        self._player_step_ms: int = max(
-            self.PLAYER_STEP_MS_MIN,
-            self.PLAYER_STEP_MS
-            - (level_number - 1) * self.GHOST_SPEED_STEP_MS,
-        )
+        self._speed_up_presses: int = 0
+        self._speed_down_presses: int = 0
+        self._player_step_ms: int = self.level_baseline_step_ms(level_number)
         self._fruit: PelletEntity | None = None
         self._fruit_spawn_index: int = 0
         self._fruit_kill_at_ms: int = 0
@@ -209,14 +207,51 @@ class GameWorld:
         """
         return self._player_step_ms
 
-    @property
-    def speed_cheat_active(self) -> bool:
-        """Return whether the player speed cheat differs from default.
+    @classmethod
+    def level_baseline_step_ms(cls, level_number: int) -> int:
+        """Return Pac-Man's default step interval for a level.
+
+        Args:
+            level_number: One-based level index.
 
         Returns:
-            True when step interval has been adjusted away from default.
+            Baseline milliseconds between player grid steps.
         """
-        return self._player_step_ms != self.PLAYER_STEP_MS
+        return max(
+            cls.PLAYER_STEP_MS_MIN,
+            cls.PLAYER_STEP_MS
+            - (level_number - 1) * cls.GHOST_SPEED_STEP_MS,
+        )
+
+    @property
+    def speed_up_presses(self) -> int:
+        """Return how many times + was pressed this run."""
+        return self._speed_up_presses
+
+    @property
+    def speed_down_presses(self) -> int:
+        """Return how many times - was pressed this run."""
+        return self._speed_down_presses
+
+    @property
+    def speed_cheat_active(self) -> bool:
+        """Return whether +/- presses leave a net speed adjustment.
+
+        Returns:
+            True when + and - were not pressed equally.
+        """
+        return self._speed_up_presses != self._speed_down_presses
+
+    @property
+    def speed_delta_from_baseline(self) -> int:
+        """Return speed cheat offset from this level's baseline.
+
+        Returns:
+            Milliseconds added to the level baseline step interval.
+        """
+        return self._player_step_ms - self.level_baseline_step_ms(
+            self._level_number
+        )
 
     def set_wall_flash(self, white: bool) -> None:
         """Toggle wall tiles between blue and white maze sprites.
@@ -250,11 +285,40 @@ class GameWorld:
         Args:
             delta_ms: Change in milliseconds; lower values move faster.
         """
+        if delta_ms < 0:
+            self._speed_up_presses += 1
+        elif delta_ms > 0:
+            self._speed_down_presses += 1
         self._player_step_ms = max(
             self.PLAYER_STEP_MS_MIN,
             min(
                 self.PLAYER_STEP_MS_MAX,
                 self._player_step_ms + delta_ms,
+            ),
+        )
+
+    def restore_speed_cheat(
+        self,
+        up_presses: int,
+        down_presses: int,
+        delta_ms: int,
+    ) -> None:
+        """Reapply speed cheat state after rebuilding the world.
+
+        Args:
+            up_presses: Number of + presses this run.
+            down_presses: Number of - presses this run.
+            delta_ms: Saved offset from the level baseline step interval.
+        """
+        self._speed_up_presses = up_presses
+        self._speed_down_presses = down_presses
+        if delta_ms == 0:
+            return
+        self._player_step_ms = max(
+            self.PLAYER_STEP_MS_MIN,
+            min(
+                self.PLAYER_STEP_MS_MAX,
+                self.level_baseline_step_ms(self._level_number) + delta_ms,
             ),
         )
 

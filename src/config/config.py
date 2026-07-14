@@ -23,9 +23,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         {"width": 27, "height": 27},
         {"width": 27, "height": 27},
         {"width": 29, "height": 29},
-        {"width": 29, "height": 29}
-        ],
-    }
+        {"width": 29, "height": 29},
+    ],
+}
 
 
 def remove_comments(content: str) -> str:
@@ -41,9 +41,9 @@ def remove_comments(content: str) -> str:
 
 
 def reject_duplicate_keys(
-        pairs: list[tuple[str, Any]],
+    pairs: list[tuple[str, Any]],
 ) -> dict[str, Any]:
-    """"Reject duplicate keys in JSON object."""
+    """ "Reject duplicate keys in JSON object."""
     result: dict[str, Any] = {}
 
     for key, value in pairs:
@@ -52,6 +52,11 @@ def reject_duplicate_keys(
         result[key] = value
 
     return result
+
+
+def default_config() -> dict[str, Any]:
+    """Return a copy of the built-in default configuration."""
+    return DEFAULT_CONFIG.copy()
 
 
 def load_config(path: str) -> dict[str, Any]:
@@ -102,13 +107,15 @@ def get_positive_int(data: dict[str, Any], key: str, default: int) -> int:
 def validate_config(data: dict[str, Any]) -> dict[str, Any]:
     """Validate known config keys and ignore unknown keys."""
     return {
-        "highscore_filename": get_string(data, "highscore_filename",
-                                         "highscores.json"),
+        "highscore_filename": get_string(
+            data, "highscore_filename", "highscores.json"
+        ),
         "lives": get_positive_int(data, "lives", 3),
         "pacgum": get_positive_int(data, "pacgum", 42),
         "points_per_pacgum": get_positive_int(data, "points_per_pacgum", 10),
         "points_per_super_pacgum": get_positive_int(
-            data, "points_per_super_pacgum", 50),
+            data, "points_per_super_pacgum", 50
+        ),
         "points_per_ghost": get_positive_int(data, "points_per_ghost", 200),
         "seed": get_positive_int(data, "seed", 42),
         "level_max_time": get_positive_int(data, "level_max_time", 90),
@@ -174,8 +181,7 @@ def get_levels(data: dict[str, Any]) -> list[dict[str, int]]:
 
     if len(levels) < 10:
         print(
-            "Warning: less than 10 levels configured. "
-            "Using default levels."
+            "Warning: less than 10 levels configured. " "Using default levels."
         )
         return cast(list[dict[str, int]], DEFAULT_CONFIG["levels"])
 
