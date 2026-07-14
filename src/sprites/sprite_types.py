@@ -4,9 +4,8 @@ from enum import Enum, IntEnum, auto
 class RenderLayer(IntEnum):
     """Sprite draw order in ``LayeredUpdates``; higher draws on top."""
 
-    BACKGROUND = 0
-    CONSUMABLE = 1
-    ACTOR = 2
+    CONSUMABLE = 0
+    ACTOR = 1
 
 
 class Direction(Enum):

@@ -18,7 +18,6 @@ class ArcadeTextColor(IntEnum):
 
     WHITE = 0
     RED = 1
-    CYAN = 3
     GOLD = 4
     ROSE = 5
     YELLOW = 6

@@ -5,7 +5,7 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import BACK_KEYS, GameState, StateEnterData
+from core.state import BACK_KEYS, GameState
 from rendering.widgets import plus_glyph
 from states.text import ArcadeTextColor, ArcadeTextRenderer
 
@@ -41,16 +41,11 @@ class InstructionsState(GameState):
     GAP_CHARS: ClassVar[int] = 2
     CHEAT_SHIFT_CHARS: ClassVar[int] = 4
 
-    def enter(
-        self,
-        context: GameContext,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
+    def enter(self, context: GameContext) -> None:
         """No-op; scene has no setup work.
 
         Args:
-            context: Shared game context (unused).
-            enter_data: Optional payload from the previous scene (unused).
+            context: Shared game context.
         """
 
     def leave(self, context: GameContext) -> None:

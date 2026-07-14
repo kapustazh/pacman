@@ -4,14 +4,10 @@ from collections import deque
 from typing import Literal
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
+from core.state import GameState
 
 TransitionKind = Literal["change", "push", "pop", "shutdown"]
-Transition = tuple[
-    TransitionKind,
-    GameState | None,
-    StateEnterData | None,
-]
+Transition = tuple[TransitionKind, GameState | None]
 
 
 class SceneManager:
@@ -41,39 +37,29 @@ class SceneManager:
         """
         return tuple(self._stack)
 
-    def change(
-        self,
-        state: GameState,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
+    def change(self, state: GameState) -> None:
         """Replace the entire stack with one scene.
 
         Args:
             state: Scene to show.
-            enter_data: Optional data passed to ``enter``.
         """
-        self._enqueue(("change", state, enter_data))
+        self._enqueue(("change", state))
 
-    def push(
-        self,
-        state: GameState,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
+    def push(self, state: GameState) -> None:
         """Push a scene on top of the current one.
 
         Args:
             state: Overlay scene to show.
-            enter_data: Optional data passed to ``enter``.
         """
-        self._enqueue(("push", state, enter_data))
+        self._enqueue(("push", state))
 
     def pop(self) -> None:
         """Remove the top scene and resume the one below."""
-        self._enqueue(("pop", None, None))
+        self._enqueue(("pop", None))
 
     def request_shutdown(self) -> None:
         """Leave every scene and mark the engine for exit."""
-        self._enqueue(("shutdown", None, None))
+        self._enqueue(("shutdown", None))
 
     def flush(self, context: GameContext) -> None:
         """Apply queued scene transitions.
@@ -84,7 +70,7 @@ class SceneManager:
         while self._pending:
             transition = self._pending.popleft()
 
-            kind, state, enter_data = transition
+            kind, state = transition
             match kind:
                 case "shutdown":
                     while self._stack:
@@ -98,50 +84,38 @@ class SceneManager:
                     if state is None:
                         raise ValueError("Transition state is required")
                     if kind == "change":
-                        self._change_state(context, state, enter_data)
+                        self._change_state(context, state)
                     else:
-                        self._push_state(context, state, enter_data)
+                        self._push_state(context, state)
 
     def _enqueue(self, transition: Transition) -> None:
         """Queue a transition for the next flush.
 
         Args:
-            transition: Kind, target scene, and optional enter data.
+            transition: Kind and target scene.
         """
         self._pending.append(transition)
 
-    def _change_state(
-        self,
-        context: GameContext,
-        state: GameState,
-        enter_data: StateEnterData | None,
-    ) -> None:
+    def _change_state(self, context: GameContext, state: GameState) -> None:
         """Leave all scenes, then push the new one.
 
         Args:
             context: Shared game context.
             state: Replacement scene.
-            enter_data: Optional data passed to ``enter``.
         """
         while self._stack:
             self._leave_top_state(context)
-        self._push_state(context, state, enter_data)
+        self._push_state(context, state)
 
-    def _push_state(
-        self,
-        context: GameContext,
-        state: GameState,
-        enter_data: StateEnterData | None,
-    ) -> None:
+    def _push_state(self, context: GameContext, state: GameState) -> None:
         """Activate a scene on top of the stack.
 
         Args:
             context: Shared game context.
             state: Scene to activate.
-            enter_data: Optional data passed to ``enter``.
         """
         self._stack.append(state)
-        state.enter(context, enter_data)
+        state.enter(context)
 
     def _pop_state(self, context: GameContext) -> None:
         """Leave the top scene; request shutdown if the stack empties.

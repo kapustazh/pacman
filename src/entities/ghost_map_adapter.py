@@ -20,11 +20,23 @@ class MapData:
     """Expose a level layout's wall check as a row/col lookup."""
 
     def __init__(self, layout: LevelLayout) -> None:
-        """Wrap an immutable level layout for wall lookups."""
+        """Wrap an immutable level layout for wall lookups.
+
+        Args:
+            layout: Immutable maze layout to query.
+        """
         self._layout = layout
 
     def is_wall(self, row: int, col: int) -> bool:
-        """Return whether a grid cell is out of bounds or a wall tile."""
+        """Return whether a grid cell is out of bounds or a wall tile.
+
+        Args:
+            row: Grid row index.
+            col: Grid column index.
+
+        Returns:
+            True when the cell is a wall or outside the layout.
+        """
         return bool(self._layout.is_wall(CellPos(row, col)))
 
 
@@ -38,7 +50,7 @@ class Player:
     last_col_delta: int
 
 
-def _ghost_step(
+def ghost_step(
     approach: bool,
     cell: CellPos,
     last: CellPos,
@@ -66,26 +78,6 @@ def _ghost_step(
     if (ghost.row, ghost.col) == (cell.row, cell.col):
         return None
     return CellPos(ghost.row, ghost.col)
-
-
-def next_chase_step(
-    cell: CellPos,
-    last: CellPos,
-    target: CellPos,
-    layout: LevelLayout,
-) -> CellPos | None:
-    """Take one chase step toward a target using Ghost.move_towards."""
-    return _ghost_step(True, cell, last, target, layout)
-
-
-def next_flee_step(
-    cell: CellPos,
-    last: CellPos,
-    player: CellPos,
-    layout: LevelLayout,
-) -> CellPos | None:
-    """Step away from the player using Ghost.move_away."""
-    return _ghost_step(False, cell, last, player, layout)
 
 
 def chase_target(
@@ -125,8 +117,6 @@ def next_return_step(
     layout: LevelLayout,
 ) -> CellPos | None:
     """Take one step along the shortest path back to a ghost home cell.
-
-    Uses Ghost.find_path_bfs to route the eyes back home after being eaten.
 
     Args:
         cell: Current ghost cell.

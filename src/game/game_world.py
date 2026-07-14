@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 import pygame
-from pygame.sprite import LayeredUpdates
+from pygame.sprite import LayeredUpdates, Sprite
 from pygame.surface import Surface
 
 from entities.ghost_entity import GhostEntity
@@ -23,7 +23,6 @@ from game.render_config import WorldRenderConfig
 from game.world_fruit import collect_fruit, kill_fruit
 from game.world_spawn import spawn_from_layout
 from sprites.assets import Assets
-from pygame.sprite import Sprite
 from sprites.sprite_types import Direction, GhostKind, GhostMode
 
 

@@ -7,8 +7,6 @@ from pygame.surface import Surface
 
 from core.context import GameContext
 
-StateEnterData = dict[str, object]
-
 BACK_KEYS = (
     pygame.K_ESCAPE,
     pygame.K_RETURN,
@@ -21,16 +19,11 @@ class GameState(ABC):
     """Base class for scenes managed by ``SceneManager``."""
 
     @abstractmethod
-    def enter(
-        self,
-        context: GameContext,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
+    def enter(self, context: GameContext) -> None:
         """Prepare the scene when it becomes active.
 
         Args:
             context: Shared game context.
-            enter_data: Optional startup data from the previous scene.
         """
 
     @abstractmethod

@@ -8,7 +8,7 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
+from core.state import GameState
 from game.game_session import GameplayPhase, GameSession
 from game.game_world import GameWorld
 from game.ghost_logic import update_ghost_movement
@@ -62,16 +62,11 @@ class PlayState(GameState):
         self._speed_down_presses: int = 0
         self._speed_delta_ms: int = 0
 
-    def enter(
-        self,
-        context: GameContext,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
+    def enter(self, context: GameContext) -> None:
         """Create session state and start loading the first level.
 
         Args:
             context: Shared game context with config, assets, and scores.
-            enter_data: Optional payload from the previous scene (unused).
         """
         catalog = context.assets
         life_icon = catalog.pacman[Direction.LEFT].frames[1]
@@ -503,8 +498,7 @@ class PlayState(GameState):
         if self._world is not None:
             score = max(score, self._world.score)
         context.scene_manager.change(
-            GameOverState(),
-            {"score": score, "won": won},
+            GameOverState(score=score, won=won),
         )
 
 

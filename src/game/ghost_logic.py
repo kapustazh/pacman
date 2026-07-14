@@ -13,8 +13,7 @@ import pygame
 from entities.ghost_entity import GhostEntity
 from entities.ghost_map_adapter import (
     chase_target,
-    next_chase_step,
-    next_flee_step,
+    ghost_step,
     next_return_step,
 )
 from sprites.sprite_types import GhostKind, GhostMode
@@ -67,7 +66,8 @@ def move_one_ghost(
             ghost.respawn_at(home, center)
         return
     if ghost.mode in (GhostMode.FRIGHTENED, GhostMode.FLASHING):
-        step = next_flee_step(
+        step = ghost_step(
+            False,
             ghost.cell,
             ghost.last_cell,
             player_cell,
@@ -85,7 +85,8 @@ def move_one_ghost(
                 home,
                 layout,
             )
-        step = next_chase_step(
+        step = ghost_step(
+            True,
             ghost.cell,
             ghost.last_cell,
             target,

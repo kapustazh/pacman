@@ -49,26 +49,6 @@ BUILT_TILE_NEIGHBOR_MASKS: dict[TileKind, tuple[bool, bool, bool, bool]] = {
 }
 
 
-def pick_for_neighbors(
-    up: bool,
-    down: bool,
-    left: bool,
-    right: bool,
-) -> TileKind:
-    """Map four wall-neighbor flags to a maze tile kind.
-
-    Args:
-        up: Whether the cell above is a wall.
-        down: Whether the cell below is a wall.
-        left: Whether the cell to the left is a wall.
-        right: Whether the cell to the right is a wall.
-
-    Returns:
-        Autotile kind for the neighbor pattern, or a solid wall fallback.
-    """
-    return _BY_NEIGHBORS.get((up, down, left, right), TileKind.WALL)
-
-
 def pick(layout: LevelLayout, cell: CellPos) -> TileKind:
     """Choose a wall sprite for one grid cell from its neighbors.
 
@@ -83,7 +63,7 @@ def pick(layout: LevelLayout, cell: CellPos) -> TileKind:
     down = _has_wall_neighbor(layout, CellPos(cell.row + 1, cell.col))
     left = _has_wall_neighbor(layout, CellPos(cell.row, cell.col - 1))
     right = _has_wall_neighbor(layout, CellPos(cell.row, cell.col + 1))
-    return pick_for_neighbors(up, down, left, right)
+    return _BY_NEIGHBORS.get((up, down, left, right), TileKind.WALL)
 
 
 def _has_wall_neighbor(layout: LevelLayout, pos: CellPos) -> bool:
