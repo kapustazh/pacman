@@ -27,10 +27,7 @@ class ArcadeTextRenderer:
     """Renders arcade-style text from a shared glyph atlas."""
 
     TEXT_SHEET_PATH: ClassVar[Path] = (
-        resource_root()
-        / "assets"
-        / "new_assets"
-        / "Arcade - Pac-Man - Miscellaneous - Text.png"
+        resource_root() / "assets" / "new_assets" / "font.png"
     )
     CELL_SIZE: ClassVar[int] = 8
     ROWS_PER_COLOR: ClassVar[int] = 4
