@@ -5,7 +5,7 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import BACK_KEYS, GameState, StateEnterData
+from core.state import BACK_KEYS, GameState
 from states.text import ArcadeTextColor
 
 
@@ -20,16 +20,11 @@ class HighscoresState(GameState):
     ROW_SCALE: ClassVar[int] = 2
     FOOTER_SCALE: ClassVar[int] = 2
 
-    def enter(
-        self,
-        context: GameContext,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
+    def enter(self, context: GameContext) -> None:
         """No-op; scene has no setup work.
 
         Args:
-            context: Shared game context (unused).
-            enter_data: Optional payload from the previous scene (unused).
+            context: Shared game context.
         """
 
     def leave(self, context: GameContext) -> None:

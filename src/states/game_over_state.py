@@ -6,7 +6,7 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
+from core.state import GameState
 from states.text import ArcadeTextColor
 
 
@@ -27,36 +27,30 @@ class GameOverState(GameState):
     DEFAULT_NAME: ClassVar[str] = "GUEST"
     MAX_NAME_Y: ClassVar[int] = 620
 
-    def __init__(self) -> None:
-        """Initialize empty initials buffer and default outcome."""
-        self._name = ""
-        self._score = 0
-        self._won = False
-
-    def enter(
-        self,
-        context: GameContext,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
-        """Read enter payload and reset initials entry.
+    def __init__(self, score: int = 0, won: bool = False) -> None:
+        """Initialize the end screen with the final outcome.
 
         Args:
-            context: Shared game context (unused).
-            enter_data: Optional dict with score and won flag.
+            score: Final score to display and save.
+            won: True when the player cleared all levels.
         """
         self._name = ""
-        self._won = False
-        self._score = 0
-        if enter_data is not None:
-            score = enter_data.get("score", 0)
-            self._score = score if isinstance(score, int) else 0
-            self._won = bool(enter_data.get("won", False))
+        self._score = score
+        self._won = won
+
+    def enter(self, context: GameContext) -> None:
+        """Clear the initials buffer when the scene becomes active.
+
+        Args:
+            context: Shared game context.
+        """
+        self._name = ""
 
     def leave(self, context: GameContext) -> None:
         """No-op; scene has no teardown work.
 
         Args:
-            context: Shared game context (unused).
+            context: Shared game context.
         """
 
     def handle_events(
@@ -97,9 +91,9 @@ class GameOverState(GameState):
         """No-op; screen has no simulation.
 
         Args:
-            dt: Elapsed seconds since the last frame (unused).
-            now_ms: Monotonic clock in milliseconds (unused).
-            context: Shared game context (unused).
+            dt: Elapsed seconds since the last frame.
+            now_ms: Monotonic clock in milliseconds.
+            context: Shared game context.
         """
 
     def draw(self, surface: Surface, context: GameContext) -> None:

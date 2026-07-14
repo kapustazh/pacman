@@ -14,7 +14,7 @@ from config.config import default_config, load_config  # noqa: E402
 from core.engine import GameEngine  # noqa: E402
 from core.paths import resource_root, user_data_dir  # noqa: E402
 from managers.highscore_manager import HighscoreManager  # noqa: E402
-from sprites.assets import Assets  # noqa: E402
+from sprites.assets import AssetError, Assets  # noqa: E402
 from states.menu_state import MenuState  # noqa: E402
 from states.text import ArcadeTextRenderer  # noqa: E402
 
@@ -56,9 +56,14 @@ def main() -> None:
 
     config = resolve_config()
     assets = Assets()
-    assets.load()
     text = ArcadeTextRenderer()
-    text.preload()
+    try:
+        assets.load()
+        text.preload()
+    except (AssetError, FileNotFoundError) as exc:
+        print(f"Warning: {exc}")
+        pygame.quit()
+        sys.exit(1)
     highscores = HighscoreManager(highscore_path(config))
     highscores.load()
     engine = GameEngine(

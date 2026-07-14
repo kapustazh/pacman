@@ -6,7 +6,7 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
+from core.state import GameState
 from rendering.widgets import draw_menu_row_highlight
 from states.text import ArcadeTextColor
 
@@ -93,16 +93,11 @@ class MenuState(GameState):
         if handler is not None:
             handler(context)
 
-    def enter(
-        self,
-        context: GameContext,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
+    def enter(self, context: GameContext) -> None:
         """Reset selection to the first row.
 
         Args:
-            context: Shared game context (unused).
-            enter_data: Optional payload from the previous scene (unused).
+            context: Shared game context.
         """
         self._selected_index = 0
 

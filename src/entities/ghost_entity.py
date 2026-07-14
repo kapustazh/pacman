@@ -56,8 +56,7 @@ class GhostEntity(Sprite):
         """Switch between normal, frightened, and flashing appearance.
 
         No-op while the ghost is EYES or HIDDEN: eyes always outrank
-        frightened/flashing in ``update()``, so a toggle mid-return trip
-        would never be visible anyway (``arrive_home`` re-applies it).
+        frightened/flashing in ``update()``.
 
         Args:
             frightened: Whether the ghost is vulnerable to being eaten.
@@ -75,10 +74,6 @@ class GhostEntity(Sprite):
     def start_returning_home(self) -> None:
         """Show eyes-only and begin travel back to the ghost house."""
         self.mode = GhostMode.EYES
-
-    def arrive_home(self) -> None:
-        """End the eyes-only trip and resume normal appearance."""
-        self.mode = GhostMode.NORMAL
 
     def move_to(self, cell: CellPos, center: tuple[int, int]) -> None:
         """Advance the ghost one grid step and update the sprite rect.

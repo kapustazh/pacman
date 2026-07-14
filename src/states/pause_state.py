@@ -5,7 +5,7 @@ import pygame
 from pygame.surface import Surface
 
 from core.context import GameContext
-from core.state import GameState, StateEnterData
+from core.state import GameState
 from states.text import ArcadeTextColor
 
 
@@ -25,16 +25,11 @@ class PauseState(GameState):
         self._overlay: Surface | None = None
         self._line_surfaces: list[tuple[Surface, int]] = []
 
-    def enter(
-        self,
-        context: GameContext,
-        enter_data: StateEnterData | None = None,
-    ) -> None:
+    def enter(self, context: GameContext) -> None:
         """Build the dim overlay and cache pause text once.
 
         Args:
             context: Shared game context with screen size and text renderer.
-            enter_data: Optional payload from the previous scene (unused).
         """
         self._overlay = Surface(context.screen.get_size(), pygame.SRCALPHA)
         self._overlay.fill(self.OVERLAY_COLOR)
