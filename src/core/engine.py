@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import ClassVar
 
 from core.context import GameContext
 from core.scene_manager import SceneManager
@@ -14,11 +15,10 @@ from sprites.assets import Assets
 from states.text import ArcadeTextRenderer
 
 
-BG_COLOR = (0, 0, 0)
-
-
 class GameEngine:
     """Runs the pygame loop and delegates to the active scene stack."""
+
+    BG_COLOR: ClassVar[tuple[int, int, int]] = (0, 0, 0)
 
     def __init__(
         self,
@@ -86,7 +86,7 @@ class GameEngine:
             if self._scene_manager.shutdown_requested:
                 break
 
-            self._context.screen.fill(BG_COLOR)
+            self._context.screen.fill(self.BG_COLOR)
             self._draw_stack()
             pygame.display.flip()
             # frame_count += 1

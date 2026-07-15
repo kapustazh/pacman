@@ -17,7 +17,7 @@ class SceneManager:
         """Start with an empty scene stack."""
         self._stack: list[GameState] = []
         self._pending: deque[Transition] = deque()
-        self.shutdown_requested = False
+        self.shutdown_requested: bool = False
 
     def top(self) -> GameState | None:
         """Return the active scene, or None when the stack is empty.

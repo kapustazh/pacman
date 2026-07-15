@@ -129,6 +129,7 @@ class Assets:
         self.wall_fill: Surface = Surface((1, 1))
         self.wall_fill_white: Surface = Surface((1, 1))
         self.fruits: dict[FruitKind, Surface] = {}
+        self._loaded = False
 
     def load(self) -> None:
         """Load sprite sheets once; no-op when already loaded.
@@ -136,7 +137,7 @@ class Assets:
         Raises:
             AssetError: When a required image is missing or corrupt.
         """
-        if self.wall_fill.get_width() > 1:
+        if self._loaded:
             return
 
         sprites_root = self.root / "sprites"
@@ -164,6 +165,7 @@ class Assets:
             self._load_ghosts()
             self._load_fruits()
             self._load_maze_tiles()
+            self._loaded = True
         except pygame.error as exc:
             raise AssetError(str(exc)) from exc
 

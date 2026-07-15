@@ -7,14 +7,24 @@ from pathlib import Path
 
 
 def resource_root() -> Path:
-    """Project root in dev; PyInstaller extract dir when frozen."""
+    """Return the directory that contains bundled read-only assets.
+
+    Returns:
+        ``sys._MEIPASS`` when running as a PyInstaller executable;
+        otherwise the project root (two levels above ``src/core/paths.py``).
+    """
     if getattr(sys, "frozen", False):
         return Path(sys._MEIPASS)
     return Path(__file__).resolve().parents[2]
 
 
 def user_data_dir() -> Path:
-    """Writable directory next to the executable, or project root in dev."""
+    """Return the directory for writable user files such as highscores.
+
+    Returns:
+        The directory containing the executable when frozen;
+        otherwise the project root (two levels above ``src/core/paths.py``).
+    """
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parents[2]
