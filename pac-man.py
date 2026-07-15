@@ -25,7 +25,14 @@ ICON_PATH = paths.resource_root() / "assets" / "icon" / "image.png"
 
 
 def highscore_path(config: dict[str, Any]) -> str:
-    """Store highscores next to the executable in release builds."""
+    """Store highscores next to the executable in release builds.
+
+    Args:
+        config: The configuration dictionary.
+
+    Returns:
+        The path to the highscores file.
+    """
     filename = Path(
         str(config.get("highscore_filename", HIGHSCORES_FILE))
     ).name
@@ -35,7 +42,11 @@ def highscore_path(config: dict[str, Any]) -> str:
 
 
 def main() -> None:
-    """Initialize pygame, load assets, and run the game loop."""
+    """Initialize pygame, load assets, and run the game loop.
+
+    Returns:
+        None
+    """
     config = resolve_config()
     pygame.init()
     pygame.key.set_repeat(0)

@@ -64,7 +64,11 @@ def default_config() -> dict[str, Any]:
 
 
 def resolve_config() -> dict[str, Any]:
-    """Load the CLI config, or packaged defaults when no path is given."""
+    """Load the CLI config, or packaged defaults when no path is given.
+
+    Returns:
+        The resolved configuration.
+    """
     frozen = is_frozen_build()
     usage = (
         f"Usage: {Path(sys.argv[0]).name} "
