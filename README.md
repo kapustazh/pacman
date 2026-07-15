@@ -79,7 +79,7 @@ make lint-strict
 make clean
 make re
 make build-itch     # build without zipping
-make package-ich    # archived build
+make package-itch    # archived build
 ```
 
 ### Controls
