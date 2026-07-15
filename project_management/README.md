@@ -28,8 +28,6 @@ choices, risk handling, team organization, and acceptance testing.
 |----------|---------|
 | [team.md](team.md) | Team organization, ownership, and decision-making |
 | [timeline.md](timeline.md) | Development phases and progress reconstructed from Git history |
-| [gantt.md](gantt.md) | Visual Gantt chart of the project timeline |
 | [tracking.md](tracking.md) | Jira, branch, pull-request, and progress tracking workflow |
 | [risks.md](risks.md) | Risk register and mitigation actions |
-| [decisions.md](decisions.md) | Key technical decisions and their rationale |
 | [acceptance-tests.md](acceptance-tests.md) | Feature acceptance test plan and bug/fix evidence |
