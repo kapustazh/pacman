@@ -44,5 +44,4 @@ added project management documentation.
 | Testing | Validate features during development | Bugs and missing requirements were tracked and fixed iteratively |
 | Documentation | Maintain project documentation | README evolved during development; project management documentation was finalized near completion |
 
-For the visual schedule, see [gantt.md](gantt.md). Task tracking and the Jira/GitHub
-workflow are described in [tracking.md](tracking.md).
+Task tracking and the Jira/GitHub workflow are described in [tracking.md](tracking.md).
