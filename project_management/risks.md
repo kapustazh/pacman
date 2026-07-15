@@ -11,7 +11,7 @@ and the actions taken to reduce or resolve them.
 | R4 | **Configuration errors** — malformed values, wrong types, missing keys, or duplicate JSON keys could silently cause incorrect game behavior | High | High | Added defaults and type validation, ignored unknown keys, used safe fallback behavior, and rejected duplicate keys with `object_pairs_hook` | Closed |
 | R5 | **Ghost AI becoming too complex** — pathfinding behavior could make ghosts feel too intelligent and unlike classic Pac-Man | Medium | High | Replaced BFS chase behavior with junction-based local greedy movement, deterministic tie-breaking, chase/scatter modes, and separate respawn behavior | Closed |
 | R6 | **Highscore file errors** — invalid or unwritable highscore data could break the end-game flow | Medium | Medium | Validated loaded entries, rejected invalid data, kept only the top 10 scores, sanitized player names, and handled file errors cleanly | Closed |
-| R7 | **Missing subject requirements late in development** — configuration, instructions, packaging, or documentation requirements could be overlooked | High | Medium | Rechecked the subject, created focused Jira tasks for missing requirements, reviewed the README and packaging, and added dedicated project management documentation | Mitigated |
+| R7 | **Late discovery of subject-compliance gaps** — configuration, instructions, packaging, or documentation requirements could be overlooked | High | Medium | Rechecked the subject, created focused Jira tasks for identified gaps, reviewed the README and packaging, and added dedicated project management documentation | Mitigated |
 
 ## Risk Process
 

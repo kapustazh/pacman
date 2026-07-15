@@ -2,32 +2,33 @@
 
 This directory documents the management of the Pac-Man project in line with
 Chapter VIII of the subject. The project was managed by a two-person team using
-a lightweight Scrum workflow, Jira tickets, Git feature branches, pull requests,
+a lightweight Scrum workflow, Jira tasks, Git feature branches, pull requests,
 and short integration cycles.
 
-The documents below provide evidence of planning, progress tracking, technical
-choices, risk handling, team organization, and acceptance testing.
+The documents provide evidence of project planning, progress tracking, technical
+decisions, risk handling, team organization, and acceptance testing.
 
 ## Methodology
 
-- **Approach**: lightweight Scrum / iterative development for a two-person team.
-- **Planning**: work was divided into Jira issues using `SCRUM-xx` identifiers.
-- **Cadence**: short implementation cycles; features were integrated as soon as
-  they reached a runnable and reviewable state.
+- **Approach**: Lightweight Scrum and iterative development for a two-person team.
+- **Planning**: Work was divided into Jira tasks using `SCRUM-xx` identifiers.
+- **Tracking**: Jira was used to track tasks and progress during development.
 - **Branching**: Jira-linked feature branches were created from `develope`.
-- **Review flow**: feature branch → pull request → review/integration → merge into
-  `develope`; direct feature work on `main` was avoided.
-- **Quality gate**: `make lint` runs flake8 and mypy. Manual playtesting was used
-  for gameplay, UI, configuration, and game-flow validation.
-- **Collaboration**: difficult integration points were discussed jointly, while
-  parallel features were implemented by their primary owner.
+- **Review flow**: Feature branch → pull request → review by the other team member
+  → merge into `develope`.
+- **Integration**: Frontend integration was mainly handled by `mnestere` based on
+  the backend developed by `wehan`. Major backend changes were discussed and
+  handled by `wehan` through separate Jira tasks and pull requests.
+- **Quality checks**: `make lint` was used for flake8 and mypy. Manual playtesting
+  was used to validate gameplay and graphical behavior.
 
 ## Documents
 
 | Document | Purpose |
 |----------|---------|
-| [team.md](team.md) | Team organization, ownership, and decision-making |
-| [timeline.md](timeline.md) | Development phases and progress reconstructed from Git history |
+| [team.md](team.md) | Team organization, ownership, and collaboration workflow |
+| [timeline.md](timeline.md) | Development phases, Jira timeline, and planned vs actual progress |
 | [tracking.md](tracking.md) | Jira, branch, pull-request, and progress tracking workflow |
-| [risks.md](risks.md) | Risk register and mitigation actions |
-| [acceptance-tests.md](acceptance-tests.md) | Feature acceptance test plan and bug/fix evidence |
+| [decisions.md](decisions.md) | Main technical implementation choices and their rationale |
+| [risks.md](risks.md) | Main project risks and mitigation actions |
+| [acceptance-tests.md](acceptance-tests.md) | Feature-level acceptance tests and verification status |

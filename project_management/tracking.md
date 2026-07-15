@@ -3,13 +3,6 @@
 Project work was tracked through Jira Scrum and GitHub. Jira task IDs were used in
 branch names to keep implementation work connected to the corresponding task.
 
-## Jira Scrum Board
-
-The Jira Scrum board was used to track project tasks, task ownership, and progress
-through the development workflow.
-
-Detailed examples of Jira tasks and their related GitHub work are listed below.
-![alt text](image.png)
 
 ## Workflow
 
