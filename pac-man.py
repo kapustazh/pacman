@@ -10,9 +10,9 @@ sys.path.insert(0, str(SRC_ROOT))
 
 import pygame  # noqa: E402
 
-from config.config import default_config, load_config  # noqa: E402
+from config.config import resolve_config  # noqa: E402
+from core import paths  # noqa: E402
 from core.engine import GameEngine  # noqa: E402
-from core.paths import resource_root, user_data_dir  # noqa: E402
 from managers.highscore_manager import HighscoreManager  # noqa: E402
 from sprites.assets import AssetError, Assets  # noqa: E402
 from states.menu_state import MenuState  # noqa: E402
@@ -21,31 +21,33 @@ from states.text import ArcadeTextRenderer  # noqa: E402
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
 HIGHSCORES_FILE = "highscores.json"
-ICON_PATH = resource_root() / "assets" / "icon" / "image.png"
-
-
-def resolve_config() -> dict[str, Any]:
-    """Load JSON config when provided, otherwise use built-in defaults."""
-    if len(sys.argv) == 1:
-        return default_config()
-    if len(sys.argv) == 2:
-        return load_config(sys.argv[1])
-    print("Usage: pac-man.py [config.json]")
-    sys.exit(1)
+ICON_PATH = paths.resource_root() / "assets" / "icon" / "image.png"
 
 
 def highscore_path(config: dict[str, Any]) -> str:
-    """Store highscores next to the executable in release builds."""
+    """Store highscores next to the executable in release builds.
+
+    Args:
+        config: The configuration dictionary.
+
+    Returns:
+        The path to the highscores file.
+    """
     filename = Path(
         str(config.get("highscore_filename", HIGHSCORES_FILE))
     ).name
-    if getattr(sys, "frozen", False):
-        return str(user_data_dir() / filename)
+    if paths.is_frozen_build():
+        return str(paths.user_data_dir() / filename)
     return str(config.get("highscore_filename", HIGHSCORES_FILE))
 
 
 def main() -> None:
-    """Initialize pygame, load assets, and run the game loop."""
+    """Initialize pygame, load assets, and run the game loop.
+
+    Returns:
+        None
+    """
+    config = resolve_config()
     pygame.init()
     pygame.key.set_repeat(0)
     pygame.mouse.set_visible(False)
@@ -54,7 +56,6 @@ def main() -> None:
     if ICON_PATH.exists():
         pygame.display.set_icon(pygame.image.load(ICON_PATH))
 
-    config = resolve_config()
     assets = Assets()
     text = ArcadeTextRenderer()
     try:
@@ -76,7 +77,6 @@ def main() -> None:
         window_size=(SCREEN_WIDTH, SCREEN_HEIGHT),
     )
     engine.run()
-
     pygame.quit()
 
 

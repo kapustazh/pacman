@@ -23,7 +23,7 @@ help:
 	@printf "\n"
 	@printf "$(BOLD)$(YELLOW)▶ Play$(RESET)\n"
 	@printf "  $(GREEN)make run$(RESET)          $(DIM)Start game with config.json$(RESET)\n"
-	@printf "  $(GREEN)make run-release$(RESET)  $(DIM)Start game with built-in defaults (no config)$(RESET)\n"
+	@printf "  $(GREEN)make run-release$(RESET)  $(DIM)Run packaged build with built-in defaults$(RESET)\n"
 	@printf "  $(GREEN)make debug$(RESET)        $(DIM)Start game in the Python debugger (pdb)$(RESET)\n"
 	@printf "\n"
 	@printf "$(BOLD)$(BLUE)▶ Setup$(RESET)\n"
@@ -51,7 +51,8 @@ run:
 	$(PYTHON) pac-man.py config.json
 
 run-release:
-	$(PYTHON) pac-man.py
+	@test -x dist/pac-man/pac-man || (printf "$(YELLOW)Run make build-itch first.$(RESET)\n" && exit 1)
+	./dist/pac-man/pac-man
 
 debug:
 	$(PYTHON) -m pdb pac-man.py config.json
