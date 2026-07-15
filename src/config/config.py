@@ -1,8 +1,12 @@
 """Configuration loading and validation for Pac-man."""
 
 import json
+import sys
+from pathlib import Path
 from typing import Any
 from typing import cast
+
+from core.paths import is_frozen_build
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "highscore_filename": "highscores.json",
@@ -57,6 +61,26 @@ def reject_duplicate_keys(
 def default_config() -> dict[str, Any]:
     """Return a copy of the built-in default configuration."""
     return DEFAULT_CONFIG.copy()
+
+
+def resolve_config() -> dict[str, Any]:
+    """Load the CLI config, or packaged defaults when no path is given."""
+    frozen = is_frozen_build()
+    usage = (
+        f"Usage: {Path(sys.argv[0]).name} "
+        f"{'[config.json]' if frozen else 'config.json'}"
+    )
+    if len(sys.argv) == 1 and frozen:
+        return default_config()
+    if len(sys.argv) != 2:
+        raise SystemExit(usage)
+
+    path = Path(sys.argv[1])
+    if path.suffix.lower() != ".json":
+        raise SystemExit(f"Error: configuration file must be JSON: {path}")
+    if not path.is_file():
+        raise SystemExit(f"Error: configuration file not found: {path}")
+    return load_config(str(path))
 
 
 def load_config(path: str) -> dict[str, Any]:

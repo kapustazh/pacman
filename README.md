@@ -42,23 +42,24 @@ make install
 
 ### Run
 
-Development (with `config.json`):
+Development (requires `config.json`):
 
 ```bash
 make run
 ```
 
-Release-style (built-in defaults, no config file):
+Packaged build (built-in defaults, no config file):
 
 ```bash
+make build-itch
 make run-release
 ```
 
 Or directly:
 
 ```bash
-python3 pac-man.py config.json   # with config
-python3 pac-man.py               # defaults only
+python3 pac-man.py config.json   # development: config is required
+./dist/pac-man/pac-man           # packaged: defaults when no config is passed
 ```
 
 ### Packaging (itch.io)
@@ -116,8 +117,9 @@ The game uses a JSON configuration file with comment lines beginning with `#`.
 | `level_max_time` | int | `90` | Maximum seconds allowed per level |
 | `levels` | list | `10 levels` | Maze size configuration |
 
-- Missing configuration file → load default configuration (used by the release build).
-- Invalid JSON → load default configuration.
+- Development run without a config argument → print usage and exit.
+- Packaged build without a config argument → load default configuration.
+- Missing or invalid config file when a path is given → load default configuration with warnings.
 - Unknown keys → ignored.
 - Invalid values → replaced with default values.
 - No Python traceback is shown during gameplay.
@@ -509,7 +511,7 @@ src/
 ### Data Flow
 
 ```text
-config.json (optional)
+config.json (required in dev; optional in packaged build)
       │
       ▼
 load_config() / default_config()
