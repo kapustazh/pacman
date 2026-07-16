@@ -1,0 +1,79 @@
+"""Adaptor for the assigned A-Maze-ing package."""
+
+from maze.map_data import TileType
+
+
+class MazeAdaptor:
+    """Convert external maze output into Pac-Man tile grid."""
+    NORTH = 1  # 0001
+    EAST = 2   # 0010
+    SOUTH = 4  # 0100
+    WEST = 8   # 1000
+
+    def generate(
+        self, width: int,
+        height: int,
+        seed: int
+    ) -> list[list[TileType]]:
+        """Generate a maze using the external package."""
+        try:
+            from mazegenerator.mazegenerator import MazeGenerator
+
+            generator = MazeGenerator(size=(width, height),
+                                      perfect=False, seed=seed,
+                                      entry_cell=(0, 0),
+                                      exit_cell=(0, 1))
+            # entry/exit cells fix long maze generation time
+            return self.convert_maze(generator.maze)
+        except Exception as Error:
+            print(f"Warning: maze generator failed: {Error}.")
+            print("Using fallback maze instead.")
+        try:
+            return self.fallback_grid(seed)
+        except Exception as Error:
+            print("Warning: fallback maze generator failed.")
+            print(f"Maze package error: {Error}.")
+            raise RuntimeError("Maze package error.") from None
+
+    def convert_maze(self, maze: list[list[int]]) -> list[list[TileType]]:
+        """Convert wall-code maze into TileType grid."""
+        grid_height = len(maze) * 2 + 1
+        grid_width = len(maze[0]) * 2 + 1
+
+        grid = [
+            [TileType.WALL for _ in range(grid_width)]
+            for _ in range(grid_height)
+        ]
+
+        for row_index, row in enumerate(maze):
+            for col_index, cell in enumerate(row):
+                grid_row = row_index * 2 + 1
+                grid_col = col_index * 2 + 1
+
+                grid[grid_row][grid_col] = TileType.EMPTY
+
+                if cell & self.NORTH == 0 and grid_row > 1:
+                    grid[grid_row - 1][grid_col] = TileType.EMPTY
+                if cell & self.EAST == 0 and grid_col < grid_width - 2:
+                    grid[grid_row][grid_col + 1] = TileType.EMPTY
+                if cell & self.SOUTH == 0 and grid_row < grid_height - 2:
+                    grid[grid_row + 1][grid_col] = TileType.EMPTY
+                if cell & self.WEST == 0 and grid_col > 1:
+                    grid[grid_row][grid_col - 1] = TileType.EMPTY
+        return grid
+
+    def fallback_grid(
+        self,
+        seed: int,
+    ) -> list[list[TileType]]:
+        """Return a safe fallback maze using assigned package"""
+        from mazegenerator.mazegenerator import MazeGenerator
+
+        generator = MazeGenerator(
+            size=(31, 31),
+            perfect=False,
+            seed=seed,
+            entry_cell=(0, 0),
+            exit_cell=(0, 1)
+        )
+        return self.convert_maze(generator.maze)
