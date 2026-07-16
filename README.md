@@ -550,6 +550,8 @@ HudOverlay + GameWorld.draw()
 ## Resources
 
 - Pacman Guide (Chinese): https://www.bilibili.com/video/BV1Jr4y1C7mc/?spm_id_from=333.337.search-card.all.click 
+- State pattern: https://www.youtube.com/watch?v=OeirQdzYdnc
+- Pacman AI ghost explained: https://www.youtube.com/watch?v=ICwzQ0_RCcQ
 
 ## AI Usage
 
