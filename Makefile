@@ -82,4 +82,5 @@ build-itch: install
 	$(PYTHON) -m PyInstaller --noconfirm pacman.spec
 
 package-itch: build-itch
+	cp -f README.TXT dist/pac-man/README.TXT
 	$(PYTHON) -c "import shutil; shutil.make_archive('dist/pac-man-linux', 'zip', 'dist', 'pac-man')"

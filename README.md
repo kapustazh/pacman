@@ -71,6 +71,7 @@ make package-itch    # → dist/pac-man-linux.zip
 ```
 
 Upload the zip to itch.io and set the Linux executable to `pac-man/pac-man`.
+In-package instructions ship as `README.TXT` next to the `pac-man` binary.
 
 Live page: [https://kapustazh.itch.io/pac-man](https://kapustazh.itch.io/pac-man)
 
