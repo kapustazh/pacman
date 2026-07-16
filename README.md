@@ -6,6 +6,8 @@
 
 This project recreates Pac-Man with a pygame arcade UI, procedural maze generation, original Pac-Man inspired ghost AI, persistent highscores, and modular software architecture.
 
+Play it on [itch.io](https://kapustazh.itch.io/pac-man).
+
 ### Features
 
 | Feature | Implementation |
@@ -69,6 +71,8 @@ make package-itch    # → dist/pac-man-linux.zip
 ```
 
 Upload the zip to itch.io and set the Linux executable to `pac-man/pac-man`.
+
+Live page: [https://kapustazh.itch.io/pac-man](https://kapustazh.itch.io/pac-man)
 
 ### Other commands
 
